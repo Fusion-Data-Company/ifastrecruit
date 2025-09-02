@@ -1,0 +1,298 @@
+Awesome. Here’s a copy-paste build prompt your Replit builder can execute to scaffold iFast Broker exactly to spec — 3 ElevenLabs voice agents + silent executors, Airtop-first recovery, OpenRouter routing, Apify Command Center, Indeed intake, Mailjet outreach, Slack pools, internal scheduler (ICS), and Fortune-500 glass UI. It’s blueprint-first (no full code), atomic, and production-oriented from step 1.
+
+⸻
+
+iFast Broker — Replit Builder Prompt (Final)
+
+PROJECT MANIFEST
+
+Name: iFast Broker
+Type: Single-user Recruiting Engine (voice agents + ATS + Slack onboarding)
+Stack: Node 20 + Fastify (API/SSE) • React 18 + Vite (SPA) • Prisma + Postgres • ElevenLabs (3 agents) • OpenRouter • Apify + Airtop • Mailjet • Slack • FullCalendar + ical-generator • MCP (JSON-RPC 2.0 over SSE/HTTP)
+Design: Enterprise-elite, toned-down cyberpunk; glassmorphism; Cinzel (H) + Inter (body); ambient blue/teal/cyan glows (no pink/purple); framer-motion micro-animations.
+
+⸻
+
+BUILD SEQUENCE
+
+PHASE 0 — One-shot bootstrap (shell)
+
+Run these in Replit shell (copy-paste as a block):
+
+# workspace
+mkdir -p ifast-broker/{apps/{web,server}/{api,integrations},packages/{db,types},docs,tests}
+cd ifast-broker
+printf "packages:\n  - 'apps/*'\n  - 'packages/*'\n" > pnpm-workspace.yaml
+
+# root package
+npm i -g pnpm@9 || true
+pnpm init -y
+pnpm add -D typescript tsx rimraf concurrently dotenv
+pnpm add -D @types/node
+
+# web app
+cd apps/web && pnpm init -y && pnpm add react react-dom react-router-dom framer-motion @tanstack/react-table @tanstack/react-virtual @dnd-kit/core @fullcalendar/react @fullcalendar/interaction @fullcalendar/daygrid @fullcalendar/timegrid && pnpm add -D vite @types/react @types/react-dom && cd ../../..
+
+# server app
+cd apps/server && pnpm init -y && pnpm add fastify @fastify/cors @fastify/rate-limit pino zod prisma @prisma/client pg undici apify-client node-mailjet ical-generator @slack/web-api eventsource-parser && pnpm add @modelcontextprotocol/sdk && cd ../../..
+
+# packages
+cd packages/db && pnpm init -y && cd ../types && pnpm init -y && cd ../../
+
+# tsconfig bases
+cat > tsconfig.json <<'EOF'
+{ "compilerOptions": { "target":"ES2020","module":"ESNext","moduleResolution":"Bundler","strict":true,"esModuleInterop":true,"skipLibCheck":true,"jsx":"react-jsx","baseUrl":"." } }
+EOF
+
+# replit config
+cat > .replit <<'EOF'
+run = "pnpm -w dev"
+EOF
+cat > replit.nix <<'EOF'
+{ pkgs }: { deps = [ pkgs.nodejs_20 pkgs.pnpm pkgs.ffmpeg pkgs.postgresql ]; }
+EOF
+
+# root scripts
+node -e "let p=require('./package.json'); p.scripts={dev:'concurrently -n srv,web \"pnpm --filter @ifast/server dev\" \"pnpm --filter @ifast/web dev\"', build:'pnpm -r build'}; p.private=true; p.name='ifast-broker'; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2));"
+
+# name workspaces
+node -e "let s=require('fs'); let p=JSON.parse(s.readFileSync('apps/server/package.json')); p.name='@ifast/server'; p.type='module'; p.scripts={dev:'tsx server.ts'}; s.writeFileSync('apps/server/package.json', JSON.stringify(p,null,2));"
+node -e "let w=require('fs'); let p=JSON.parse(w.readFileSync('apps/web/package.json')); p.name='@ifast/web'; p.type='module'; p.scripts={dev:'vite'}; w.writeFileSync('apps/web/package.json', JSON.stringify(p,null,2));"
+
+# minimal server stubs (≤10 lines each)
+cat > apps/server/server.ts <<'EOF'
+// Fastify bootstrap (stub)
+import Fastify from "fastify"; const app=Fastify({logger:true});
+app.get("/health", async ()=>({ok:true}));
+app.get("/sse", (req, reply)=>{ reply.raw.writeHead(200,{"Content-Type":"text/event-stream"}); reply.raw.write("event: ping\ndata: ok\n\n"); });
+await app.listen({ port: 5000, host: "0.0.0.0" });
+EOF
+
+# web Vite stub index (minimal)
+mkdir -p apps/web/{pages,components,styles}
+cat > apps/web/index.html <<'EOF'
+<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>iFast Broker</title><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600..900&family=Inter:wght@400;600&display=swap" rel="stylesheet"/><link href="/styles/theme.css" rel="stylesheet"/></head><body><div id="root"></div><script type="module" src="/main.tsx"></script></body></html>
+EOF
+cat > apps/web/main.tsx <<'EOF'
+import React from "react"; import { createRoot } from "react-dom/client";
+import "./styles/theme.css"; import Index from "./pages/index";
+createRoot(document.getElementById("root")!).render(<Index/>);
+EOF
+cat > apps/web/pages/index.tsx <<'EOF'
+export default function Index(){ return (<div className="app-shell"><div className="kpis">iFast Broker</div><div id="agent-widget"/> </div>); }
+EOF
+cat > apps/web/styles/theme.css <<'EOF'
+:root{--bg:#0b1220;--glass:rgba(255,255,255,.06);--text:#e8eefc;--glow:#18b0e4;}
+body{margin:0;background:linear-gradient(120deg,#0b1220, #0d1b2a);color:var(--text);font-family:Inter,sans-serif;}
+.app-shell{min-height:100vh;padding:24px;}
+#agent-widget{position:fixed;right:16px;bottom:16px;width:384px;height:600px;background:var(--glass);backdrop-filter:blur(10px);border-radius:18px;box-shadow:0 0 40px var(--glow);}
+h1,h2,h3{font-family:Cinzel,serif;}
+EOF
+
+echo "Bootstrap done."
+
+Checkpoint 0
+	•	Visit Web (port 3000): see dark glass shell + bottom-right widget box.
+	•	Server (port 5000): /health returns { ok: true }.
+
+⸻
+
+PHASE 1 — Environment & Prisma
+
+ENV VARS (Replit Secrets):
+
+DATABASE_URL
+ELEVENLABS_API_KEY
+OPENROUTER_API_KEY
+MAILJET_API_KEY
+MAILJET_API_SECRET
+MAILJET_TEMPLATE_INTERVIEW
+MAILJET_TEMPLATE_BOOKING
+SLACK_BOT_TOKEN
+SLACK_SIGNING_SECRET
+SLACK_ROUND_ONE_CHANNEL   # optional; else auto-create
+SLACK_HIRES_CHANNEL       # optional; else auto-create
+AIRTOP_API_KEY
+APP_BASE_URL              # e.g., https://<your-repl>.replit.app
+ADMIN_QUERY_KEY           # for /admin and /apify pages
+
+DB schema (implement in Prisma; model names only here):
+	•	Campaign (id, name, source enum: INDEED/APIFY/MANUAL, paramsJson, status, createdAt)
+	•	Candidate (id, campaignId, name, email unique, phone, sourceRef, resumeUrl, tags[], pipelineStage, createdAt)
+	•	Interview (id, candidateId, transcriptUrl, summary, scorecardJson, greenFlags[], redFlags[], completedAt)
+	•	Booking (id, candidateId, startTs, endTs, location, icsUrl, status)
+	•	ApifyActor (id, name, actorId, configurationJson, lastRun)
+	•	AuditLog (id, actor, action, payloadJson, ts)
+
+Builder Actions:
+	•	Initialize Prisma in apps/server; generate client in packages/db.
+	•	Migration: create tables above.
+	•	Optional: triggers + NOTIFY channels for realtime (candidates, interviews, bookings).
+
+Validation: pnpm --filter @ifast/server dev can connect to DB; tables exist.
+
+⸻
+
+PHASE 2 — MCP Server & Tools (JSON-RPC 2.0)
+
+Files: apps/server/mcp/mcp.server.ts, apps/server/mcp/tools/*.ts
+
+Tool names (must match exactly):
+	•	launch_indeed_campaign
+	•	manage_apify_actor (CRUD + run + monitor + dataset)
+	•	process_candidate (stage update → recompute score → Indeed Disposition if source=Indeed → Slack pool move/post → audit)
+	•	send_interview_links
+	•	create_calendar_slots
+	•	book_interview
+	•	db.upsert_candidate
+	•	db.write_interview
+	•	update_slack_pools (ensure + post convenience)
+	•	operate_browser (Airtop recipes)
+	•	llm.route (OpenRouter policy: orchestrator/research/fast)
+
+Builder Actions:
+	•	Implement tools/list and tools/call (strict JSON-RPC 2.0).
+	•	Zod-validate all inputs; write AuditLog for every call (tool name, params, result/err).
+	•	Expose MCP over HTTP + SSE (single-user; bearer token optional).
+
+Validation: tools/list returns the roster; calling each tool yields stubbed success.
+
+⸻
+
+PHASE 3 — Integrations (Airtop everywhere)
+
+Indeed (apps/server/integrations/indeed.ts)
+	•	Functions: createCampaign(params), postDisposition(candidateId, status), ingestApplication(payload).
+	•	Strategy: try API → catch → call operate_browser('indeed.post_job'| 'indeed.export_applicants').
+	•	Route: POST /api/indeed/applications → upsert Candidate → SSE emit.
+
+Apify (apps/server/integrations/apify.ts)
+	•	CRUD for actors (JSON config), run, monitor, fetch dataset, normalize + dedupe to Candidates.
+	•	On failure: operate_browser('apify.run_or_fix').
+
+Slack (apps/server/integrations/slack.ts)
+	•	ensurePools() to verify/create #ifast_round_one & #ifast_hires (or env overrides).
+	•	postUpdate(channel, message, blocks?).
+	•	Used by process_candidate to announce moves.
+
+Mailjet (apps/server/integrations/mailjet.ts)
+	•	v3.1 transactional send; templates: INTERVIEW_INVITE, BOOKING_CONFIRM.
+	•	Webhook: POST /api/mailjet/webhooks for delivery/bounce/open.
+
+Airtop (apps/server/integrations/airtop.ts)
+	•	Recipes: indeed.post_job, indeed.export_applicants, apify.run_or_fix, site.login_flow (receive params).
+	•	Always write AuditLog with pathUsed: "airtop" when fallback happens.
+
+OpenRouter (apps/server/integrations/openrouter.ts)
+	•	Policy profiles: orchestrator (default), research, fast (headers include X-Title: iFast Broker).
+
+Validation:
+	•	Post a sample Indeed application → Candidate row appears in grid.
+	•	Run an Apify actor → dataset imported; fallback path logged if needed.
+	•	Slack test: messages post to pools.
+
+⸻
+
+PHASE 4 — Three ElevenLabs Voice Agents (+ silent executors)
+
+Agent Roles
+	•	A1 — UI Interface Agent (visible, bottom-right)
+The only agent the recruiter talks to (voice + text). Executes MCP tools directly or delegates to silent agents. Summarizes in exec language.
+	•	A3 — Interview Agent (public)
+Candidate voice screening via /interview/:token. Sends transcript + scorecard via webhook.
+	•	A4 — Onboarding Agent (silent trigger)
+Fires when stage becomes Hired. Generates onboarding checklist, sends welcome + booking, posts to Slack #ifast_hires. No user chat; reports results to A1.
+
+Silent Automation Agents (server-side, non-voice)
+	•	Campaign Orchestrator • Data Processor • Email Orchestrator • Calendar Manager • Slack Reporter • Airtop Operator.
+They never speak, only do and report back to A1 through events/summaries.
+
+Builder Actions
+	•	apps/server/integrations/eleven.ts: mint WebRTC tokens; register 3 agents.
+	•	apps/web/components/AgentPanel.tsx: fixed bottom-right widget; chat + push-to-talk; talks only to A1.
+	•	System prompt for A1 (store server-side): enterprise recruiter (20y + MBA), act via tools not instructions; always confirm outcome concisely; allowed tools = the MCP roster above.
+
+Validation
+	•	Opening the widget and saying “Start a UHC sales campaign in California, auto-DQ no license” → live campaign + interview links + exec summary in the widget.
+
+⸻
+
+PHASE 5 — UI (Dashboard, Grid, Pipeline, Apify Studio, Scheduler)
+
+Dashboard (apps/web/pages/index.tsx)
+	•	Header KPIs: applicants today, interview completion rate, booking rate, offer rate.
+	•	DataGrid (TanStack): virtualized 10k rows, inline edits, pin columns, filters, saved views, CSV export.
+	•	PipelineBoard (dnd-kit): drag → process_candidate (score recompute, Indeed Disposition, Slack pool post).
+	•	AgentPanel mounted bottom-right at all times.
+
+Apify Command Center (apps/web/pages/apify.tsx)
+	•	Visual JSON builder for actor config (selectors, pagination, proxy); CRUD; run/monitor; import dataset; bulk send interview links.
+
+Public Interview (/interview/:token)
+	•	A3 session; on webhook, Candidate Card updates (transcript, score, flags).
+
+Scheduler (/booking/:token)
+	•	FullCalendar UI; on booking confirm → generate ICS via ical-generator; send via Mailjet; write Booking row.
+
+Styling
+	•	Enforce: glass surfaces; subtle glow; no pink/purple; Cinzel headings; Inter body; motion ≤180ms.
+
+Validation
+	•	Drag candidate to First Interview → Slack #ifast_round_one + (if Indeed) Disposition update.
+	•	Drag to Hired → onboarding email + Slack #ifast_hires.
+
+⸻
+
+PHASE 6 — Public App Safety (no auth)
+	•	Unpredictable tokens for /interview/:token and /booking/:token.
+	•	Gate /admin & /apify behind ?key=${ADMIN_QUERY_KEY}.
+	•	Rate-limit write endpoints.
+	•	Always wrap critical flows with Airtop fallback + AuditLog.
+
+⸻
+
+INTEGRATION CHECKPOINTS (verification)
+	1.	UI Agent widget: One utterance → campaign launched, interview links sent; A1 posts an exec summary (“Live on Indeed; Apify actor running; initial candidates expected shortly.”)
+	2.	Indeed intake: Sample Application POST creates Candidate; SSE updates grid instantly.
+	3.	Apify studio: Create → test → run → monitor → import; Airtop used if actor glitches.
+	4.	Interview: Candidate completes A3; transcript + score saved; Candidate Card shows flags; A1 summarizes “top fits.”
+	5.	Pipeline → Slack: Move First Interview → #ifast_round_one; move Hired → onboarding tasks + #ifast_hires.
+	6.	Scheduler/ICS: Booking link works; ICS imports in Google/Outlook.
+	7.	Airtop recovery: Simulate API failure; Airtop completes job; audit shows pathUsed: "airtop"; A1 announces fallback succinctly.
+
+⸻
+
+PACKAGE PINNING (add to the respective apps)
+
+Server: fastify @fastify/cors @fastify/rate-limit pino zod prisma @prisma/client pg undici apify-client node-mailjet ical-generator @slack/web-api eventsource-parser @modelcontextprotocol/sdk
+Web: react react-dom react-router-dom framer-motion @tanstack/react-table @tanstack/react-virtual @dnd-kit/core @fullcalendar/react @fullcalendar/interaction @fullcalendar/daygrid @fullcalendar/timegrid
+
+⸻
+
+REPLIT RUN
+	•	Start: Click Run (executes pnpm -w dev → server + web).
+	•	Health: GET /health → { ok: true }.
+	•	Open Web: You should see KPI shell + bottom-right widget placeholder.
+
+⸻
+
+ROLLBACK / FALLBACK POLICY
+	•	ElevenLabs token issue → keep text chat active; MCP still callable from widget buttons.
+	•	OpenRouter failure → retry with fast profile; log.
+	•	Any third-party API error → call operate_browser(recipe) (Airtop), log AuditLog, and A1 says:
+“API unavailable; I’m operating the site directly and continuing.”
+
+⸻
+
+WHAT THE BUILDER MUST IMPLEMENT NEXT (no full code; acceptance tests guide)
+	•	Prisma schema + migrations (tables listed).
+	•	MCP tools (names + behaviors above).
+	•	Integrations with Airtop fallback and AuditLog of path used.
+	•	UI: DataGrid, PipelineBoard, Apify studio, Calendar, AgentPanel (glassmorphic style).
+	•	Webhooks: Indeed applications, ElevenLabs post-call, Mailjet events.
+	•	Slack pools: ensure/move/post.
+	•	Public pages: /interview/:token, /booking/:token with signed tokens.
+
+⸻
+
+If the builder follows this prompt exactly, you’ll have a production-ready skeleton that already acts end-to-end: the UI Agent (bottom-right) is the sole interface; Interview and Onboarding are independent ElevenLabs agents; all heavy lifting is handled by silent executors with Airtop-first reliability.
