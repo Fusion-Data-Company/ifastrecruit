@@ -247,7 +247,7 @@ export default function NotificationSystem({ className }: NotificationSystemProp
   return (
     <>
       {/* Connection Status Indicator (for development) */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <div className="fixed bottom-4 left-4 z-50">
           <Card className="glass-panel p-2">
             <div className="flex items-center space-x-2 text-xs">

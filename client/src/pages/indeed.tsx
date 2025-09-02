@@ -252,7 +252,7 @@ export default function IndeedIntegrationPage() {
                       <div className="flex items-center justify-between">
                         <span>Endpoint URL</span>
                         <code className="text-xs bg-muted px-2 py-1 rounded">
-                          {process.env.APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications
+                          {import.meta.env.VITE_APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications
                         </code>
                       </div>
                       <div className="flex items-center justify-between">
@@ -557,7 +557,7 @@ export default function IndeedIntegrationPage() {
                         <Label htmlFor="delivery-url">Application Delivery URL</Label>
                         <Input
                           id="delivery-url"
-                          value={`${process.env.APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications`}
+                          value={`${import.meta.env.VITE_APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications`}
                           className="glass-input"
                           readOnly
                         />

@@ -316,11 +316,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // INDEED INTEGRATION API
   // ======================
 
-  // Indeed job management
+  // Indeed job management - Returns what Indeed API would provide
   app.get("/api/indeed/jobs", async (req, res) => {
     try {
       const jobs = await storage.getIndeedJobs();
-      res.json(jobs);
+      
+      // If no stored jobs, show placeholder data demonstrating Indeed API response format
+      if (jobs.length === 0) {
+        const placeholderJobs = [
+          {
+            id: 'indeed-demo-001',
+            title: 'Senior Frontend Developer',
+            company: 'TechFlow Inc',
+            location: 'San Francisco, CA',
+            description: 'Join our engineering team to build next-generation web applications using React, TypeScript, and modern frontend technologies. You will work on user-facing features that serve millions of users daily.',
+            requirements: 'Bachelor\'s in Computer Science, 5+ years React experience, TypeScript proficiency, Experience with state management libraries, Strong problem-solving skills',
+            salary: '$140,000 - $180,000 annually + equity',
+            type: 'Full-time',
+            status: 'active',
+            applicationsCount: 42,
+            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            id: 'indeed-demo-002',
+            title: 'Backend Engineer - Node.js',
+            company: 'DataCorp Solutions',
+            location: 'Remote (US)',
+            description: 'We are looking for a skilled Backend Engineer to design and implement scalable APIs and microservices. You\'ll work with Node.js, PostgreSQL, and cloud infrastructure.',
+            requirements: '3+ years Node.js experience, Strong SQL and database design skills, Experience with cloud platforms (AWS/GCP), API design and microservices architecture, Agile development experience',
+            salary: '$110,000 - $150,000 + benefits',
+            type: 'Full-time',
+            status: 'active',
+            applicationsCount: 28,
+            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+          }
+        ];
+        res.json(placeholderJobs);
+      } else {
+        // Transform stored jobs to match Indeed API format
+        res.json(jobs.map(job => ({
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          description: job.description,
+          requirements: job.requirements,
+          salary: job.salary,
+          type: job.type,
+          status: job.status,
+          applicationsCount: 0, // Would come from Indeed API
+          createdAt: job.createdAt.toISOString()
+        })));
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch Indeed jobs" });
     }
@@ -443,7 +490,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/indeed/applications", async (req, res) => {
     try {
       const applications = await storage.getIndeedApplications();
-      res.json(applications);
+      
+      // If no stored applications, show placeholder data demonstrating Indeed API response
+      if (applications.length === 0) {
+        const placeholderApplications = [
+          {
+            id: 'app-demo-001',
+            jobId: 'indeed-demo-001',
+            candidateName: 'Sarah Johnson',
+            candidateEmail: 'sarah.johnson@email.com',
+            resume: 'Senior Frontend Developer with 6 years of experience building responsive web applications...',
+            coverLetter: 'I am excited to apply for the Frontend Developer position at TechFlow Inc...',
+            screeningAnswers: {
+              'years_experience': '6 years',
+              'preferred_location': 'San Francisco, CA',
+              'expected_salary': '$150,000'
+            },
+            appliedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            disposition: 'new'
+          },
+          {
+            id: 'app-demo-002',
+            jobId: 'indeed-demo-002',
+            candidateName: 'Michael Chen',
+            candidateEmail: 'michael.chen@email.com',
+            resume: 'Backend Engineer with expertise in Node.js, PostgreSQL, and microservices architecture...',
+            coverLetter: 'I am interested in the Backend Engineer role at DataCorp Solutions...',
+            screeningAnswers: {
+              'years_experience': '4 years',
+              'remote_preference': 'Remote preferred',
+              'expected_salary': '$125,000'
+            },
+            appliedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+            disposition: 'reviewed'
+          }
+        ];
+        res.json(placeholderApplications);
+      } else {
+        res.json(applications);
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch Indeed applications" });
     }
@@ -1364,9 +1449,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         jobId: applicationData.jobId,
         candidateId: candidate.id,
         appliedAt: new Date(applicationData.appliedAt),
-        status: 'new',
-        resumeText: applicationData.resume || '',
-        coverLetter: applicationData.coverLetter || '',
+        disposition: 'new',
+        resume: applicationData.resume || null,
+        coverLetter: applicationData.coverLetter || null,
         screeningAnswersJson: applicationData.screeningAnswers || {},
       });
 
@@ -1381,7 +1466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { disposition, reason } = req.body;
       
-      const application = await storage.getIndeedApplicationById(id);
+      const application = await storage.getIndeedApplication(id);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
@@ -1395,8 +1480,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Update local record
-      const updated = await storage.updateIndeedApplication(id, { status: disposition });
+      // Update local record  
+      const updated = await storage.updateIndeedApplication(id, { disposition });
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update disposition" });

@@ -92,6 +92,7 @@ export interface IStorage {
   // Indeed Application methods
   getIndeedApplications(): Promise<IndeedApplication[]>;
   getIndeedApplication(id: string): Promise<IndeedApplication | undefined>;
+  getIndeedApplicationById(id: string): Promise<IndeedApplication | undefined>;
   createIndeedApplication(application: InsertIndeedApplication): Promise<IndeedApplication>;
   updateIndeedApplication(id: string, updates: Partial<IndeedApplication>): Promise<IndeedApplication>;
 
@@ -442,6 +443,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getIndeedApplication(id: string): Promise<IndeedApplication | undefined> {
+    const [application] = await db.select().from(indeedApplications).where(eq(indeedApplications.id, id));
+    return application || undefined;
+  }
+
+  async getIndeedApplicationById(id: string): Promise<IndeedApplication | undefined> {
     const [application] = await db.select().from(indeedApplications).where(eq(indeedApplications.id, id));
     return application || undefined;
   }
