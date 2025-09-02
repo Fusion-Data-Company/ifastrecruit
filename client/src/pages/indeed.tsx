@@ -41,6 +41,12 @@ interface Application {
   disposition: 'new' | 'reviewed' | 'interview' | 'offer' | 'hired' | 'rejected';
 }
 
+interface IntegrationStatus {
+  connected: boolean;
+  activeJobs: number;
+  totalApplications: number;
+}
+
 export default function IndeedIntegrationPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -64,7 +70,7 @@ export default function IndeedIntegrationPage() {
     enabled: true, // Enable real API
   });
 
-  const { data: integrationStatus = {} } = useQuery({
+  const { data: integrationStatus = { connected: false, activeJobs: 0, totalApplications: 0 } } = useQuery<IntegrationStatus>({
     queryKey: ['/api/indeed/status'],
     enabled: true, // Enable real API
   });
