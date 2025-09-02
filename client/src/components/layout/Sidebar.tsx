@@ -8,7 +8,8 @@ export default function Sidebar() {
     { path: "/", label: "Dashboard", icon: "fas fa-chart-line" },
     { path: "/candidates", label: "Candidates", icon: "fas fa-users" },
     { path: "/interviews", label: "Interviews", icon: "fas fa-calendar-alt" },
-    { path: "/apify", label: "Apify Center", icon: "fas fa-robot" },
+    { path: "/indeed", label: "Indeed Integration", icon: "fas fa-briefcase" },
+    { path: "/apify", label: "Apify Command Center", icon: "fas fa-robot" },
     { path: "/email", label: "Email Studio", icon: "fas fa-envelope" },
     { path: "/slack", label: "Slack Pools", icon: "fab fa-slack" },
   ];

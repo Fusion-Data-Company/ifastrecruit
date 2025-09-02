@@ -2,7 +2,16 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
-import { insertCandidateSchema, insertCampaignSchema, insertInterviewSchema, insertBookingSchema } from "@shared/schema";
+import { 
+  insertCandidateSchema, 
+  insertCampaignSchema, 
+  insertInterviewSchema, 
+  insertBookingSchema,
+  insertIndeedJobSchema,
+  insertIndeedApplicationSchema,
+  insertApifyActorSchema,
+  insertApifyRunSchema
+} from "@shared/schema";
 import { mcpServer } from "./mcp/server";
 import { setupSSE } from "./services/sse";
 import { registerWorkflowRoutes } from "./routes/workflow";
@@ -301,11 +310,449 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Apify endpoints
+  // ======================
+  // INDEED INTEGRATION API
+  // ======================
+
+  // Indeed job management
+  app.get("/api/indeed/jobs", async (req, res) => {
+    try {
+      const jobs = await storage.getIndeedJobs();
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Indeed jobs" });
+    }
+  });
+
+  app.post("/api/indeed/jobs", async (req, res) => {
+    try {
+      const jobData = insertIndeedJobSchema.parse(req.body);
+      const job = await storage.createIndeedJob(jobData);
+      
+      // TODO: Post to Indeed API when credentials available
+      // const indeedAPI = new IndeedAPI(process.env.INDEED_API_KEY);
+      // const indeedJobId = await indeedAPI.postJob(jobData);
+      // await storage.updateIndeedJob(job.id, { indeedJobId });
+      
+      res.json(job);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid job data", details: String(error) });
+    }
+  });
+
+  // Indeed application delivery (webhook from Indeed)
+  app.post("/api/indeed/applications", async (req, res) => {
+    try {
+      console.log("Indeed application received:", req.body);
+      
+      // Map Indeed payload to our schema
+      const applicationData = {
+        jobId: req.body.jobId || req.body.job_id,
+        indeedApplicationId: req.body.applicationId || req.body.application_id,
+        candidateName: req.body.candidateName || req.body.candidate_name || req.body.name,
+        candidateEmail: req.body.candidateEmail || req.body.candidate_email || req.body.email,
+        resume: req.body.resumeUrl || req.body.resume_url,
+        coverLetter: req.body.coverLetter || req.body.cover_letter,
+        screeningAnswers: req.body.screeningAnswers || req.body.screening_answers || {},
+        eeoData: req.body.eeoData || req.body.eeo_data || {},
+        appliedAt: new Date(req.body.appliedAt || req.body.applied_at || Date.now()),
+        rawPayload: req.body, // Store full payload
+      };
+      
+      const application = await storage.createIndeedApplication(applicationData);
+      
+      // Create candidate record from application
+      const candidateData = {
+        name: applicationData.candidateName,
+        email: applicationData.candidateEmail,
+        phone: req.body.phone,
+        sourceRef: applicationData.indeedApplicationId,
+        resumeUrl: applicationData.resume,
+        pipelineStage: "NEW" as const,
+        tags: ["indeed", "web-application"],
+      };
+      
+      const candidate = await storage.createCandidate(candidateData);
+      
+      // Link application to candidate
+      await storage.updateIndeedApplication(application.id, { candidateId: candidate.id });
+      
+      // Broadcast real-time update
+      if (req.app.locals.broadcastCandidateCreated) {
+        req.app.locals.broadcastCandidateCreated(candidate);
+      }
+      
+      res.json({ success: true, applicationId: application.id, candidateId: candidate.id });
+    } catch (error) {
+      console.error("Indeed application processing failed:", error);
+      res.status(500).json({ error: "Failed to process Indeed application" });
+    }
+  });
+
+  // Indeed disposition sync
+  app.put("/api/indeed/applications/:id/disposition", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { disposition } = req.body;
+      
+      const application = await storage.updateIndeedApplication(id, { disposition });
+      
+      // TODO: Send disposition back to Indeed via GraphQL
+      // const indeedAPI = new IndeedAPI(process.env.INDEED_API_KEY);
+      // await indeedAPI.sendDisposition(application.indeedApplicationId, disposition);
+      
+      // Log audit trail
+      await storage.createAuditLog({
+        actor: "system",
+        action: "disposition_sync",
+        payloadJson: { applicationId: id, disposition, syncedToIndeed: false }, // Will be true when API integrated
+        pathUsed: "api",
+      });
+      
+      res.json(application);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update disposition" });
+    }
+  });
+
+  // Indeed integration status
+  app.get("/api/indeed/status", async (req, res) => {
+    try {
+      const jobs = await storage.getIndeedJobs();
+      const applications = await storage.getIndeedApplications();
+      const recentApplications = applications.filter(
+        app => new Date(app.appliedAt).getTime() > Date.now() - 24 * 60 * 60 * 1000
+      );
+      
+      res.json({
+        connected: !!process.env.INDEED_API_KEY,
+        activeJobs: jobs.filter(j => j.status === 'active').length,
+        totalApplications: applications.length,
+        recentApplications: recentApplications.length,
+        lastApplication: applications[0]?.appliedAt,
+        endpointUrl: `${process.env.APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications`,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get Indeed status" });
+    }
+  });
+
+  // Get Indeed applications
+  app.get("/api/indeed/applications", async (req, res) => {
+    try {
+      const applications = await storage.getIndeedApplications();
+      res.json(applications);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Indeed applications" });
+    }
+  });
+
+  // ======================
+  // APIFY INTEGRATION API
+  // ======================
+
+  // Apify actors management
   app.get("/api/apify/actors", async (req, res) => {
     try {
       const actors = await storage.getApifyActors();
       res.json(actors);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Apify actors" });
+    }
+  });
+
+  app.post("/api/apify/actors", async (req, res) => {
+    try {
+      const { name, description, template, inputSchema } = req.body;
+      
+      // TODO: Create actor in Apify when API token available
+      // const ApifyClient = require('apify-client');
+      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+      // const apifyActor = await client.actors().create({
+      //   name: name,
+      //   template: template,
+      //   sourceFiles: {
+      //     'INPUT_SCHEMA.json': inputSchema
+      //   }
+      // });
+      
+      const actorData = {
+        name,
+        actorId: `ifast/${name.toLowerCase().replace(/\s+/g, '-')}`, // Generate actor ID
+        configurationJson: {
+          template,
+          inputSchema: JSON.parse(inputSchema),
+          description,
+        },
+      };
+      
+      const actor = await storage.createApifyActor(actorData);
+      
+      // Log audit trail
+      await storage.createAuditLog({
+        actor: "user",
+        action: "actor_created",
+        payloadJson: { actorId: actor.id, name },
+        pathUsed: "api",
+      });
+      
+      res.json(actor);
+    } catch (error) {
+      console.error("Actor creation failed:", error);
+      res.status(400).json({ error: "Failed to create actor", details: String(error) });
+    }
+  });
+
+  // Run Apify actor
+  app.post("/api/apify/actors/run", async (req, res) => {
+    try {
+      const { actorId, input } = req.body;
+      
+      const actor = await storage.getApifyActor(actorId);
+      if (!actor) {
+        return res.status(404).json({ error: "Actor not found" });
+      }
+      
+      // TODO: Start run in Apify when API token available
+      // const ApifyClient = require('apify-client');
+      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+      // const run = await client.actor(actor.actorId).call(input);
+      
+      // For now, create a mock run record
+      const runData = {
+        actorId: actor.id,
+        apifyRunId: `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        status: "RUNNING",
+        startedAt: new Date(),
+        inputJson: input,
+        logMessages: ["Run started", "Initializing scraper", "Processing requests..."],
+      };
+      
+      const run = await storage.createApifyRun(runData);
+      
+      // Update actor last run
+      await storage.updateApifyActor(actorId, { lastRun: new Date() });
+      
+      // Simulate run completion after delay (for demo)
+      setTimeout(async () => {
+        try {
+          await storage.updateApifyRun(run.id, {
+            status: "SUCCEEDED",
+            finishedAt: new Date(),
+            defaultDatasetId: `dataset_${Date.now()}`,
+            outputJson: { itemCount: 50, datasetId: `dataset_${Date.now()}` },
+            statsJson: {
+              requestsFinished: 50,
+              requestsFailed: 2,
+              outputValueCount: 48,
+            },
+          });
+        } catch (error) {
+          console.error("Failed to update mock run:", error);
+        }
+      }, 10000); // Complete after 10 seconds
+      
+      res.json({ runId: run.apifyRunId, status: "RUNNING" });
+    } catch (error) {
+      console.error("Run start failed:", error);
+      res.status(500).json({ error: "Failed to start actor run", details: String(error) });
+    }
+  });
+
+  // Get Apify runs for actor
+  app.get("/api/apify/runs/:actorId", async (req, res) => {
+    try {
+      const { actorId } = req.params;
+      const runs = await storage.getApifyRuns(actorId);
+      res.json(runs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch runs" });
+    }
+  });
+
+  // Get Apify run details
+  app.get("/api/apify/runs/:runId/details", async (req, res) => {
+    try {
+      const { runId } = req.params;
+      const run = await storage.getApifyRunByApifyId(runId);
+      
+      if (!run) {
+        return res.status(404).json({ error: "Run not found" });
+      }
+      
+      // TODO: Fetch live data from Apify when API available
+      // const ApifyClient = require('apify-client');
+      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+      // const liveRun = await client.run(runId).get();
+      
+      res.json(run);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch run details" });
+    }
+  });
+
+  // Get dataset items
+  app.get("/api/apify/datasets/:datasetId/items", async (req, res) => {
+    try {
+      const { datasetId } = req.params;
+      const { limit = 100 } = req.query;
+      
+      // TODO: Fetch from Apify when API available
+      // const ApifyClient = require('apify-client');
+      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+      // const dataset = await client.dataset(datasetId);
+      // const { items } = await dataset.listItems({ limit });
+      
+      // Mock dataset items for now
+      const mockItems = Array.from({ length: Number(limit) }, (_, i) => ({
+        id: `item_${i}`,
+        name: `John Doe ${i}`,
+        email: `candidate${i}@example.com`,
+        phone: `+1-555-000${i.toString().padStart(4, '0')}`,
+        company: `TechCorp ${i}`,
+        position: `Software Engineer ${i}`,
+        location: `San Francisco, CA`,
+        experience: `${3 + i} years`,
+        skills: ["JavaScript", "React", "Node.js"],
+        linkedinUrl: `https://linkedin.com/in/johndoe${i}`,
+        source: "LinkedIn",
+      }));
+      
+      res.json({ items: mockItems, count: mockItems.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch dataset items" });
+    }
+  });
+
+  // Import dataset to candidates
+  app.post("/api/apify/import", async (req, res) => {
+    try {
+      const { items } = req.body;
+      
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "Items must be an array" });
+      }
+      
+      let imported = 0;
+      let duplicates = 0;
+      
+      for (const item of items) {
+        try {
+          // Check for existing candidate by email
+          const existing = await storage.getCandidateByEmail(item.email);
+          if (existing) {
+            duplicates++;
+            continue;
+          }
+          
+          // Map dataset item to candidate
+          const candidateData = {
+            name: item.name || 'Unknown',
+            email: item.email,
+            phone: item.phone,
+            sourceRef: item.linkedinUrl || item.id,
+            resumeUrl: item.resumeUrl,
+            pipelineStage: "NEW" as const,
+            tags: [
+              "apify-import",
+              item.source?.toLowerCase() || "web-scraping",
+              ...(item.skills || []).slice(0, 5)
+            ].filter(Boolean),
+          };
+          
+          const candidate = await storage.createCandidate(candidateData);
+          imported++;
+          
+          // Broadcast real-time update
+          if (req.app.locals.broadcastCandidateCreated) {
+            req.app.locals.broadcastCandidateCreated(candidate);
+          }
+        } catch (error) {
+          console.error("Failed to import item:", item, error);
+        }
+      }
+      
+      // Log audit trail
+      await storage.createAuditLog({
+        actor: "user",
+        action: "dataset_import",
+        payloadJson: { 
+          totalItems: items.length, 
+          imported, 
+          duplicates,
+          source: "apify"
+        },
+        pathUsed: "api",
+      });
+      
+      res.json({ 
+        success: true, 
+        imported, 
+        duplicates, 
+        total: items.length,
+        message: `Successfully imported ${imported} candidates (${duplicates} duplicates skipped)`
+      });
+    } catch (error) {
+      console.error("Dataset import failed:", error);
+      res.status(500).json({ error: "Failed to import dataset" });
+    }
+  });
+
+  // Get Indeed integration status
+  app.get("/api/indeed/status", async (req, res) => {
+    try {
+      const jobs = await storage.getIndeedJobs();
+      const applications = await storage.getIndeedApplications();
+      const recentApplications = applications.filter(
+        app => new Date(app.appliedAt).getTime() > Date.now() - 24 * 60 * 60 * 1000
+      );
+      
+      res.json({
+        connected: !!process.env.INDEED_API_KEY,
+        activeJobs: jobs.filter(j => j.status === 'active').length,
+        totalApplications: applications.length,
+        recentApplications: recentApplications.length,
+        lastApplication: applications[0]?.appliedAt,
+        endpointUrl: `${process.env.APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications`,
+        webhookConfigured: true, // Will check actual webhook setup when API integrated
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get Indeed status" });
+    }
+  });
+
+  // ======================
+  // APIFY INTEGRATION API  
+  // ======================
+
+  // Enhanced Apify actors endpoint
+  app.get("/api/apify/actors", async (req, res) => {
+    try {
+      const actors = await storage.getApifyActors();
+      
+      // Enhance with run data
+      const actorsWithRuns = await Promise.all(
+        actors.map(async (actor) => {
+          const runs = await storage.getApifyRuns(actor.id);
+          const lastRun = runs[0]; // Most recent
+          
+          return {
+            ...actor,
+            lastRun: lastRun ? {
+              id: lastRun.apifyRunId,
+              status: lastRun.status,
+              startedAt: lastRun.startedAt.toISOString(),
+              finishedAt: lastRun.finishedAt?.toISOString(),
+              defaultDatasetId: lastRun.defaultDatasetId,
+              stats: lastRun.statsJson,
+            } : null,
+            totalRuns: runs.length,
+            successfulRuns: runs.filter(r => r.status === 'SUCCEEDED').length,
+          };
+        })
+      );
+      
+      res.json(actorsWithRuns);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch Apify actors" });
     }

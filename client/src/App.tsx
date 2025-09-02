@@ -8,6 +8,7 @@ import Candidates from "@/pages/candidates";
 import Interviews from "@/pages/interviews";
 import Interview from "@/pages/interview";
 import Booking from "@/pages/booking";
+import IndeedIntegration from "@/pages/indeed";
 import ApifyCenter from "@/pages/apify";
 import EmailStudio from "@/pages/email";
 import SlackPools from "@/pages/slack";
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/interviews" component={Interviews} />
       <Route path="/interview/:token" component={Interview} />
       <Route path="/booking/:token" component={Booking} />
+      <Route path="/indeed" component={IndeedIntegration} />
       <Route path="/apify" component={ApifyCenter} />
       <Route path="/email" component={EmailStudio} />
       <Route path="/slack" component={SlackPools} />

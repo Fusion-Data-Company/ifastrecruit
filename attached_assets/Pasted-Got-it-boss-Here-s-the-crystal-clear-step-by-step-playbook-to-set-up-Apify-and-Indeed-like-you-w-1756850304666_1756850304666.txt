@@ -1,0 +1,151 @@
+Got it, boss. Here’s the crystal-clear, step-by-step playbook to set up Apify and Indeed “like you were doing it on their sites,” and exactly how our app pages + MCP tools should integrate with them. I’ve split this into:
+	•	Apify (website setup → app wiring)
+	•	Indeed (website setup → app wiring)
+	•	Airtop fallback recipes (when either one flakes)
+
+I’m keeping this blueprint-style (not full code) and production-oriented.
+
+⸻
+
+APIFY — Website Setup + In-App Integration
+
+A) What you do in Apify Console
+	1.	Create an API token
+	•	Go to Apify Console → Settings → Integrations → API tokens → create a token; copy it for APIFY_TOKEN in Replit Secrets.  ￼
+	2.	Create an Actor (from template)
+	•	Console → Actors → New → choose a template (Cheerio/Puppeteer/Playwright), name it (e.g., ifast-candidate-fetcher).
+	•	Add a folder .actor/actor.json (the platform reads this as the Actor definition) and keep an INPUT_SCHEMA.json if you want console-generated form inputs (recommended).  ￼
+	3.	Define the input UI (INPUT_SCHEMA.json)
+	•	Include fields we’ll pass from our UI (keywords, geo, maxPages, contact selectors, etc.). This generates the Console form and validates inputs server-side.  ￼
+	4.	Run & retrieve results (default dataset)
+	•	In Console, Run the Actor with test inputs; when it finishes, check the default Dataset tab for items (the Actor’s defaultDatasetId). These are the items our app will pull.  ￼
+
+Notes: You can always manage actors entirely from Console (create, edit, deploy, monitor, datasets). Our app’s “Apify Command Center” mirrors these operations, but Console remains the source of truth for actor definitions and logs.  ￼
+
+⸻
+
+B) How our iFast Broker app wires to Apify
+
+COMPONENT: Apify Command Center page (/apify)
+
+PURPOSE: Create/Edit/Run/Monitor Actors, import datasets to Candidates.
+
+INPUTS (from user): actorId or new definition, input JSON, run limits.
+OUTPUTS: Imported Candidates; run logs; dataset link.
+
+BUILDER INSTRUCTIONS
+	•	Step 1: Connect with token (APIFY_TOKEN). Use the official JS client (ApifyClient) to call:
+	•	client.actor(actorId).update(...) (edit), client.actor(actorId).call(input) (run), client.run(runId).get() (status), client.dataset(defaultDatasetId).listItems() (records).  ￼
+	•	Step 2: Normalize items to our schema (name, email, phone, source_ref, resume_url, tags), dedupe by (email || phone || source_ref), then db.upsert_candidate.
+	•	Step 3: Bulk outreach (optional) → mailer.send_links({ candidateIds }).
+	•	Step 4: UI:
+	•	“Create Actor” → visual JSON editor → POST to manage_apify_actor:create.
+	•	“Run Actor” → manage_apify_actor:run (show live logs/status).
+	•	“Import Dataset” → preview table → “Import N candidates”.
+	•	Step 5: Airtop fallback: if API rate-limits or run fails, call Airtop recipe apify.run_or_fix to re-open the run in a cloud browser and finish; return dataset id when stable. Log pathUsed: 'airtop'.  ￼
+
+VALIDATION
+	•	Console run and in-app run produce the same dataset items; importing N items yields N new/updated candidates in the grid.
+
+⸻
+
+INDEED — Website Setup + In-App Integration
+
+Indeed’s Candidate integrations revolve around Apply with Indeed (application delivery to your endpoint) and Disposition Sync (sending stage outcomes back). Both are required for a complete loop.  ￼
+
+A) What you do in Indeed Partner portal / Docs
+	1.	Apply with Indeed (Application Delivery)
+	•	Ensure your Application Delivery URL is reachable (e.g., https://APP_BASE_URL/api/indeed/applications).
+	•	In the integration settings, configure delivery to your endpoint (JSON POST).
+	•	Make sure you support Screener Questions and EEO if applicable (Indeed mandates screener + disposition by April 2025).  ￼
+	•	If required, implement message signature verification as per their reference.  ￼
+	2.	Disposition Sync API (GraphQL)
+	•	You must register for Disposition Sync to send stage updates (e.g., Moved to Interview, Rejected, Hired).
+	•	Use the GraphQL endpoint/mutations Indeed documents to send dispositions for Indeed Apply and non-Indeed Apply jobs.  ￼
+
+Optional: Indeed’s site has broader docs/navigation (Job postings, Candidates). You’ll be operating within the Candidates section for Apply + Disposition.  ￼
+
+⸻
+
+B) How our iFast Broker app wires to Indeed
+
+COMPONENT: Indeed Intake & Sync
+
+PURPOSE: Receive applications, create candidates, and push back dispositions when the pipeline changes.
+
+INPUTS: JSON POST from Indeed Apply; pipeline moves from UI.
+OUTPUTS: Candidate rows; GraphQL disposition calls.
+
+BUILDER INSTRUCTIONS
+	•	Step 1: Application Delivery endpoint
+	•	POST /api/indeed/applications (Zod-validated). Persist the full payload to candidates (map fields like name/email/phone/resume).
+	•	Return an HTTP status code per Indeed’s Application delivery reference (200 OK on success).  ￼
+	•	Step 2: Screener support
+	•	Capture screener responses from the payload and store them (EEO fields if present). Indeed expects screener capabilities for Apply integrations.  ￼
+	•	Step 3: Disposition Sync
+	•	On stage change (e.g., DataGrid inline edit or Pipeline drag), call our tool process_candidate:
+	•	Update pipeline stage in DB.
+	•	If source='INDEED', post the appropriate Disposition mutation via GraphQL (e.g., partnerDisposition.send per guide). Record response.  ￼
+	•	Step 4: Error handling
+	•	If Application delivery looks malformed, store raw JSON and mark as needs_review.
+	•	If Disposition fails or API is gated, call Airtop recipe indeed.post_job / indeed.export_applicants / login flow to finish the action in the UI and unblock the run. Log pathUsed: 'airtop'.  ￼
+
+VALIDATION
+	•	Pushing a sample application JSON through Indeed → candidate appears live in our grid.
+	•	Moving a candidate to “Rejected” results in a successful Disposition call (200 OK/GraphQL success).  ￼
+
+⸻
+
+EXACT PAGE FLOWS (WHAT THE USER SEES)
+
+Page: Apify Command Center (/apify)
+	•	Top bar: Actor selector (existing actors fetched from Apify), buttons: Create, Edit, Run, Monitor, Import Dataset, Send Interview Links.
+	•	Create/Edit: Embedded JSON editor (validates against input schema spec); save pushes to Apify.  ￼
+	•	Run: Renders a “Run started” status card; poll run.status; show logs/errors. On complete, display dataset stats and “Preview & Import”.
+	•	Preview & Import: Show the first 100 dataset items; user selects all or filtered → Import maps fields → db.upsert_candidate.
+	•	Bulk Outreach: After importing, “Send Interview Links” → pick Mailjet template → trigger send_interview_links.
+
+Page: Indeed Integration (section on Dashboard)
+	•	Application delivery status: green when the last POST succeeded (latency + success rate); shows endpoint URL we gave Indeed.  ￼
+	•	Screener coverage: badge turns green when screener data present on last N apps (compliance reminder).  ￼
+	•	Disposition Sync: toggle “Auto-sync pipeline to Indeed”. When on, every stage move calls GraphQL Disposition API.  ￼
+	•	Fallback monitor: last 10 actions that used Airtop (e.g., “Exported applicants via UI automation”), with timestamps.  ￼
+
+⸻
+
+MCP TOOL BINDINGS (the ones these pages call)
+	•	manage_apify_actor
+	•	create|update (writes to Apify), run (returns runId), monitor (status/logs), dataset (list items).  ￼
+	•	launch_indeed_campaign
+	•	Creates/updates posting & ensures Application Delivery is live; if API fails, operate_browser('indeed.post_job').  ￼
+	•	process_candidate
+	•	Updates stage, recomputes fit score, calls Disposition Sync GraphQL if source=Indeed; posts to Slack pools; on fail, Airtop.  ￼
+	•	operate_browser
+	•	Recipes: apify.run_or_fix, indeed.post_job, indeed.export_applicants, site.login_flow.  ￼
+
+⸻
+
+AIRTOP FALLBACK RECIPES (how to think about them)
+	•	indeed.post_job: Start session → login → employer dashboard → post a job → confirm it’s live → capture job id/URL to return. (Use when API is missing or gated.)  ￼
+	•	indeed.export_applicants: Navigate to candidates → export/filter → parse table → return structured JSON for import.  ￼
+	•	apify.run_or_fix: Open Apify Console run → restart or re-run with same inputs → check dataset → return defaultDatasetId.  ￼
+
+⸻
+
+MINI CHECKLISTS YOU’LL FOLLOW (like on the sites)
+
+Apify (Console) → then App
+	•	Create API token (Console).  ￼
+	•	Create Actor from template, add .actor/actor.json, INPUT_SCHEMA.json.  ￼
+	•	Test run; confirm dataset has items.  ￼
+	•	In app /apify, wire CRUD + run + dataset import; on error use Airtop.  ￼
+
+Indeed (Partner portal) → then App
+	•	Set Application Delivery URL to our /api/indeed/applications.  ￼
+	•	Verify Screener Questions & (if needed) EEO in payloads.  ￼
+	•	Enable Disposition Sync API (GraphQL) on the partner side.  ￼
+	•	In app, ensure stage moves call Disposition mutations; Airtop if GraphQL gated.  ￼
+
+⸻
+
+If this matches what you mean by “tell it how to make the Apify and Indeed pages and integrations on each work like you were setting it up on their websites,” give me the go-ahead and I’ll fold these steps into the builder’s task list verbatim so it scaffolds the exact pages, API calls, and Airtop recipes out of the box.

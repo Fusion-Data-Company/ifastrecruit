@@ -3,7 +3,10 @@ import {
   candidates, 
   interviews, 
   bookings, 
-  apifyActors, 
+  apifyActors,
+  apifyRuns, 
+  indeedJobs,
+  indeedApplications,
   auditLogs,
   users,
   workflowRules,
@@ -12,6 +15,9 @@ import {
   type Interview,
   type Booking,
   type ApifyActor,
+  type ApifyRun,
+  type IndeedJob,
+  type IndeedApplication,
   type AuditLog,
   type User,
   type WorkflowRule,
@@ -20,6 +26,9 @@ import {
   type InsertInterview,
   type InsertBooking,
   type InsertApifyActor,
+  type InsertApifyRun,
+  type InsertIndeedJob,
+  type InsertIndeedApplication,
   type InsertAuditLog,
   type InsertUser,
   type InsertWorkflowRule
@@ -66,6 +75,25 @@ export interface IStorage {
   createApifyActor(actor: InsertApifyActor): Promise<ApifyActor>;
   updateApifyActor(id: string, updates: Partial<ApifyActor>): Promise<ApifyActor>;
   deleteApifyActor(id: string): Promise<void>;
+
+  // Apify Run methods
+  getApifyRuns(actorId?: string): Promise<ApifyRun[]>;
+  getApifyRun(id: string): Promise<ApifyRun | undefined>;
+  getApifyRunByApifyId(apifyRunId: string): Promise<ApifyRun | undefined>;
+  createApifyRun(run: InsertApifyRun): Promise<ApifyRun>;
+  updateApifyRun(id: string, updates: Partial<ApifyRun>): Promise<ApifyRun>;
+
+  // Indeed Job methods
+  getIndeedJobs(): Promise<IndeedJob[]>;
+  getIndeedJob(id: string): Promise<IndeedJob | undefined>;
+  createIndeedJob(job: InsertIndeedJob): Promise<IndeedJob>;
+  updateIndeedJob(id: string, updates: Partial<IndeedJob>): Promise<IndeedJob>;
+
+  // Indeed Application methods
+  getIndeedApplications(): Promise<IndeedApplication[]>;
+  getIndeedApplication(id: string): Promise<IndeedApplication | undefined>;
+  createIndeedApplication(application: InsertIndeedApplication): Promise<IndeedApplication>;
+  updateIndeedApplication(id: string, updates: Partial<IndeedApplication>): Promise<IndeedApplication>;
 
   // Audit Log methods
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
@@ -354,6 +382,78 @@ export class DatabaseStorage implements IStorage {
     console.log(`ICS file would be saved: ${filename}`);
     
     return url;
+  }
+
+  // Apify Run methods implementation
+  async getApifyRuns(actorId?: string): Promise<ApifyRun[]> {
+    if (actorId) {
+      return await db.select().from(apifyRuns).where(eq(apifyRuns.actorId, actorId)).orderBy(desc(apifyRuns.startedAt));
+    }
+    return await db.select().from(apifyRuns).orderBy(desc(apifyRuns.startedAt));
+  }
+
+  async getApifyRun(id: string): Promise<ApifyRun | undefined> {
+    const [run] = await db.select().from(apifyRuns).where(eq(apifyRuns.id, id));
+    return run || undefined;
+  }
+
+  async getApifyRunByApifyId(apifyRunId: string): Promise<ApifyRun | undefined> {
+    const [run] = await db.select().from(apifyRuns).where(eq(apifyRuns.apifyRunId, apifyRunId));
+    return run || undefined;
+  }
+
+  async createApifyRun(run: InsertApifyRun): Promise<ApifyRun> {
+    const [created] = await db.insert(apifyRuns).values(run).returning();
+    return created;
+  }
+
+  async updateApifyRun(id: string, updates: Partial<ApifyRun>): Promise<ApifyRun> {
+    const [updated] = await db.update(apifyRuns).set(updates).where(eq(apifyRuns.id, id)).returning();
+    return updated;
+  }
+
+  // Indeed Job methods implementation
+  async getIndeedJobs(): Promise<IndeedJob[]> {
+    return await db.select().from(indeedJobs).orderBy(desc(indeedJobs.createdAt));
+  }
+
+  async getIndeedJob(id: string): Promise<IndeedJob | undefined> {
+    const [job] = await db.select().from(indeedJobs).where(eq(indeedJobs.id, id));
+    return job || undefined;
+  }
+
+  async createIndeedJob(job: InsertIndeedJob): Promise<IndeedJob> {
+    const [created] = await db.insert(indeedJobs).values(job).returning();
+    return created;
+  }
+
+  async updateIndeedJob(id: string, updates: Partial<IndeedJob>): Promise<IndeedJob> {
+    const [updated] = await db
+      .update(indeedJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(indeedJobs.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Indeed Application methods implementation
+  async getIndeedApplications(): Promise<IndeedApplication[]> {
+    return await db.select().from(indeedApplications).orderBy(desc(indeedApplications.appliedAt));
+  }
+
+  async getIndeedApplication(id: string): Promise<IndeedApplication | undefined> {
+    const [application] = await db.select().from(indeedApplications).where(eq(indeedApplications.id, id));
+    return application || undefined;
+  }
+
+  async createIndeedApplication(application: InsertIndeedApplication): Promise<IndeedApplication> {
+    const [created] = await db.insert(indeedApplications).values(application).returning();
+    return created;
+  }
+
+  async updateIndeedApplication(id: string, updates: Partial<IndeedApplication>): Promise<IndeedApplication> {
+    const [updated] = await db.update(indeedApplications).set(updates).where(eq(indeedApplications.id, id)).returning();
+    return updated;
   }
 }
 
