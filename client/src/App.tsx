@@ -4,9 +4,13 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
+import Candidates from "@/pages/candidates";
+import Interviews from "@/pages/interviews";
 import Interview from "@/pages/interview";
 import Booking from "@/pages/booking";
 import ApifyCenter from "@/pages/apify";
+import EmailStudio from "@/pages/email";
+import SlackPools from "@/pages/slack";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -14,9 +18,13 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/candidates" component={Candidates} />
+      <Route path="/interviews" component={Interviews} />
       <Route path="/interview/:token" component={Interview} />
       <Route path="/booking/:token" component={Booking} />
       <Route path="/apify" component={ApifyCenter} />
+      <Route path="/email" component={EmailStudio} />
+      <Route path="/slack" component={SlackPools} />
       <Route component={NotFound} />
     </Switch>
   );
