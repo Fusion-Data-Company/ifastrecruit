@@ -818,8 +818,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(apiDocs);
   });
 
-  // 404 handler for undefined routes
-  app.use(notFoundHandler);
+  // 404 handler for undefined API routes only
+  app.use('/api/*', notFoundHandler);
 
   // Apply global error handler
   app.use(globalErrorHandler);
