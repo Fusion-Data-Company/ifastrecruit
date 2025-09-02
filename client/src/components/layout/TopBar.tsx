@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import NotificationSystem from "@/components/NotificationSystem";
 
 export default function TopBar() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,6 +33,8 @@ export default function TopBar() {
             data-testid="search-candidates"
           />
         </div>
+        <NotificationSystem />
+        
         <Button
           variant="ghost"
           size="sm"

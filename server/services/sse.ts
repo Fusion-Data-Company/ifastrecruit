@@ -59,6 +59,56 @@ export function setupSSE(app: Express) {
     });
   };
 
+  // Utility functions for specific event types
+  app.locals.broadcastCandidateCreated = (candidate: any) => {
+    app.locals.broadcastSSE("candidate-created", {
+      id: candidate.id,
+      name: candidate.name,
+      email: candidate.email,
+      pipelineStage: candidate.pipelineStage,
+      source: candidate.campaignId ? 'Indeed' : 'Manual',
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  app.locals.broadcastCandidateUpdated = (candidate: any, changes: any) => {
+    app.locals.broadcastSSE("candidate-updated", {
+      id: candidate.id,
+      name: candidate.name,
+      pipelineStage: candidate.pipelineStage,
+      changes,
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  app.locals.broadcastInterviewScheduled = (interview: any) => {
+    app.locals.broadcastSSE("interview-scheduled", {
+      id: interview.id,
+      candidateName: interview.candidateName,
+      startTs: interview.startTs,
+      type: interview.type,
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  app.locals.broadcastSystemEvent = (level: string, message: string, details?: any) => {
+    app.locals.broadcastSSE("system-event", {
+      level,
+      message,
+      details,
+      timestamp: new Date().toISOString()
+    });
+  };
+
+  app.locals.broadcastBulkOperation = (action: string, count: number, details?: any) => {
+    app.locals.broadcastSSE("bulk-operation", {
+      action,
+      count,
+      details,
+      timestamp: new Date().toISOString()
+    });
+  };
+
   // KPI updates every 30 seconds
   setInterval(async () => {
     try {
@@ -68,6 +118,11 @@ export function setupSSE(app: Express) {
       console.error("Failed to broadcast KPI updates:", error);
     }
   }, 30000);
+
+  // Send initial system event
+  setTimeout(() => {
+    app.locals.broadcastSystemEvent("info", "iFast Broker system initialized and ready");
+  }, 2000);
 
   console.log("SSE service initialized");
 }

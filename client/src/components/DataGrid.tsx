@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useReactTable,
@@ -17,17 +17,30 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
+import SearchAndFilter, { type FilterOptions } from "@/components/SearchAndFilter";
+import BulkOperations from "@/components/BulkOperations";
+import DataExportImport from "@/components/DataExportImport";
 import type { Candidate } from "@shared/schema";
 
 export default function DataGrid() {
-  const [globalFilter, setGlobalFilter] = useState("");
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
+  const [currentFilters, setCurrentFilters] = useState<FilterOptions | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
+  const { data: allCandidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
+
+  const handleFilterChange = useCallback((filtered: Candidate[], filters: FilterOptions) => {
+    setFilteredCandidates(filtered);
+    setCurrentFilters(filters);
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedRows([]);
+  }, []);
 
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Candidate> }) => {
@@ -212,18 +225,16 @@ export default function DataGrid() {
     [selectedRows, updateCandidateMutation]
   );
 
+  // Use filtered candidates for table data
+  const tableData = filteredCandidates.length > 0 || currentFilters ? filteredCandidates : allCandidates;
+
   const table = useReactTable({
-    data: candidates,
+    data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    state: {
-      globalFilter,
-    },
-    onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: "includesString",
   });
 
   const { rows } = table.getRowModel();
@@ -259,7 +270,7 @@ export default function DataGrid() {
           <h3 className="enterprise-heading text-lg font-semibold">Candidate Database</h3>
           <div className="flex items-center space-x-3">
             <span className="text-sm text-muted-foreground" data-testid="total-candidates">
-              {candidates.length.toLocaleString()} candidates
+              {allCandidates.length.toLocaleString()} candidates
             </span>
             <Button
               variant="ghost"
@@ -280,16 +291,26 @@ export default function DataGrid() {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="mb-4">
-          <Input
-            placeholder="Search all candidates..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="glass-input max-w-sm"
-            data-testid="global-search"
-          />
-        </div>
+        {/* Advanced Search and Filters */}
+        <SearchAndFilter
+          candidates={allCandidates}
+          onFilterChange={handleFilterChange}
+          className="mb-6"
+        />
+
+        {/* Bulk Operations */}
+        <BulkOperations
+          selectedCandidates={selectedRows}
+          allCandidates={allCandidates}
+          onClearSelection={clearSelection}
+          className="mb-6"
+        />
+
+        {/* Data Export/Import */}
+        <DataExportImport
+          candidates={allCandidates}
+          className="mb-6"
+        />
 
         {/* Column Headers */}
         <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground">
@@ -362,10 +383,10 @@ export default function DataGrid() {
         </div>
 
         {/* Loading indicator for additional data */}
-        {candidates.length > 100 && (
+        {tableData.length > 100 && (
           <div className="p-4 text-center text-muted-foreground text-sm">
             <i className="fas fa-spinner fa-spin mr-2"></i>
-            Virtual scrolling active - {candidates.length.toLocaleString()} candidates loaded
+            Virtual scrolling active - {tableData.length.toLocaleString()} candidates loaded
           </div>
         )}
       </div>
@@ -375,7 +396,7 @@ export default function DataGrid() {
         <div className="text-sm text-muted-foreground">
           {selectedRows.length > 0 && (
             <span data-testid="selected-count">
-              {selectedRows.length} of {candidates.length} selected
+              {selectedRows.length} of {tableData.length} selected
             </span>
           )}
         </div>

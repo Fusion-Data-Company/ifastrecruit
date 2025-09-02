@@ -94,6 +94,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const candidateData = insertCandidateSchema.parse(req.body);
       const candidate = await storage.createCandidate(candidateData);
+      
+      // Broadcast real-time update
+      if (req.app.locals.broadcastCandidateCreated) {
+        req.app.locals.broadcastCandidateCreated(candidate);
+      }
+      
       res.json(candidate);
     } catch (error) {
       res.status(400).json({ error: "Invalid candidate data", details: String(error) });
@@ -105,6 +111,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const updates = req.body;
       const candidate = await storage.updateCandidate(id, updates);
+      
+      // Broadcast real-time update
+      if (req.app.locals.broadcastCandidateUpdated) {
+        req.app.locals.broadcastCandidateUpdated(candidate, updates);
+      }
+      
       res.json(candidate);
     } catch (error) {
       res.status(500).json({ error: "Failed to update candidate" });
@@ -116,9 +128,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const interviewData = insertInterviewSchema.parse(req.body);
       const interview = await storage.createInterview(interviewData);
+      
+      // Broadcast real-time update
+      if (req.app.locals.broadcastInterviewScheduled) {
+        req.app.locals.broadcastInterviewScheduled({
+          id: interview.id,
+          candidateName: interview.candidateName || 'Unknown',
+          startTs: interview.startTs,
+          type: interview.type || 'interview'
+        });
+      }
+      
       res.json(interview);
     } catch (error) {
       res.status(400).json({ error: "Invalid interview data", details: String(error) });
+    }
+  });
+
+  // Booking endpoints
+  app.get("/api/bookings", async (req, res) => {
+    try {
+      const bookings = await storage.getBookings();
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+
+  app.post("/api/bookings", async (req, res) => {
+    try {
+      const bookingData = insertBookingSchema.parse(req.body);
+      const booking = await storage.createBooking(bookingData);
+      res.json(booking);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid booking data", details: String(error) });
     }
   });
 
@@ -137,10 +180,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const candidate = await storage.createCandidate(candidateData);
       
-      // Emit SSE update
-      req.app.locals.sseClients?.forEach((client: any) => {
-        client.write(`event: candidate-created\ndata: ${JSON.stringify(candidate)}\n\n`);
-      });
+      // Broadcast real-time update
+      if (req.app.locals.broadcastCandidateCreated) {
+        req.app.locals.broadcastCandidateCreated(candidate);
+      }
       
       res.json({ success: true, candidateId: candidate.id });
     } catch (error) {

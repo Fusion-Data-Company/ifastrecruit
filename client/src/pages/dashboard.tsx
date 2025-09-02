@@ -6,9 +6,11 @@ import KPIDashboard from "@/components/KPIDashboard";
 import DataGrid from "@/components/DataGrid";
 import PipelineBoard from "@/components/PipelineBoard";
 import ApifyStudio from "@/components/ApifyStudio";
+import Calendar from "@/components/Calendar";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import { motion } from "framer-motion";
 
-type TabType = "grid" | "pipeline" | "apify" | "calendar";
+type TabType = "grid" | "pipeline" | "apify" | "calendar" | "analytics";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>("grid");
@@ -22,12 +24,9 @@ export default function Dashboard() {
       case "apify":
         return <ApifyStudio />;
       case "calendar":
-        return (
-          <div className="glass-panel rounded-lg p-6 text-center">
-            <i className="fas fa-calendar-alt text-4xl text-primary mb-4"></i>
-            <p className="text-muted-foreground">Calendar integration coming soon</p>
-          </div>
-        );
+        return <Calendar />;
+      case "analytics":
+        return <AnalyticsDashboard />;
       default:
         return <DataGrid />;
     }
@@ -51,6 +50,7 @@ export default function Dashboard() {
                 { id: "pipeline", label: "Pipeline", icon: "fas fa-stream" },
                 { id: "apify", label: "Apify Studio", icon: "fas fa-robot" },
                 { id: "calendar", label: "Calendar", icon: "fas fa-calendar" },
+                { id: "analytics", label: "Analytics", icon: "fas fa-chart-bar" },
               ].map((tab) => (
                 <button
                   key={tab.id}
