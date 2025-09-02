@@ -13,7 +13,7 @@ export class AirtopIntegration {
       throw new Error("AIRTOP_API_KEY not configured - cannot execute recipe");
     }
     try {
-      const recipes = {
+      const recipes: Record<string, Function> = {
         "indeed.post_job": this.indeedPostJob,
         "indeed.export_applicants": this.indeedExportApplicants,
         "apify.run_or_fix": this.apifyRunOrFix,
@@ -36,7 +36,7 @@ export class AirtopIntegration {
 
       return result;
     } catch (error) {
-      throw new Error(`Airtop recipe execution failed: ${error.message}`);
+      throw new Error(`Airtop recipe execution failed: ${String(error)}`);
     }
   }
 

@@ -24,7 +24,12 @@ function generateSecureToken(): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ server: httpServer });
+  
+  // Only setup WebSocket server in production to avoid conflict with Vite's WebSocket
+  let wss: WebSocketServer | null = null;
+  if (process.env.NODE_ENV === "production") {
+    wss = new WebSocketServer({ server: httpServer });
+  }
   
   // Setup SSE for real-time updates
   setupSSE(app);
@@ -50,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await mcpServer.callTool(name, args);
       res.json(result);
     } catch (error) {
-      res.status(500).json({ error: "Tool execution failed", details: error.message });
+      res.status(500).json({ error: "Tool execution failed", details: String(error) });
     }
   });
 
@@ -70,7 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const campaign = await storage.createCampaign(campaignData);
       res.json(campaign);
     } catch (error) {
-      res.status(400).json({ error: "Invalid campaign data", details: error.message });
+      res.status(400).json({ error: "Invalid campaign data", details: String(error) });
     }
   });
 
@@ -91,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const candidate = await storage.createCandidate(candidateData);
       res.json(candidate);
     } catch (error) {
-      res.status(400).json({ error: "Invalid candidate data", details: error.message });
+      res.status(400).json({ error: "Invalid candidate data", details: String(error) });
     }
   });
 
@@ -113,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const interview = await storage.createInterview(interviewData);
       res.json(interview);
     } catch (error) {
-      res.status(400).json({ error: "Invalid interview data", details: error.message });
+      res.status(400).json({ error: "Invalid interview data", details: String(error) });
     }
   });
 

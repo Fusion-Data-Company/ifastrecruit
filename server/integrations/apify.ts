@@ -8,7 +8,7 @@ export class ApifyIntegration {
   constructor() {
     const apiKey = process.env.APIFY_API_TOKEN || "";
     if (apiKey) {
-      this.client = ApifyClient({ token: apiKey });
+      this.client = new ApifyClient({ token: apiKey });
     }
   }
 

@@ -69,7 +69,7 @@ export class OpenRouterIntegration {
         return await this.chat(prompt, "fast");
       }
       
-      throw new Error(`OpenRouter request failed: ${error.message}`);
+      throw new Error(`OpenRouter request failed: ${String(error)}`);
     }
   }
 

@@ -29,19 +29,18 @@ export class MCPServer {
       },
     });
 
-    this.tools = new Map([
-      ["launch_indeed_campaign", launchIndeedCampaign],
-      ["manage_apify_actor", manageApifyActor],
-      ["process_candidate", processCandidate],
-      ["send_interview_links", sendInterviewLinks],
-      ["create_calendar_slots", createCalendarSlots],
-      ["book_interview", bookInterview],
-      ["db.upsert_candidate", upsertCandidate],
-      ["db.write_interview", writeInterview],
-      ["update_slack_pools", updateSlackPools],
-      ["operate_browser", operateBrowser],
-      ["llm.route", llmRoute],
-    ]);
+    this.tools = new Map<string, Function>();
+    this.tools.set("launch_indeed_campaign", launchIndeedCampaign);
+    this.tools.set("manage_apify_actor", manageApifyActor);
+    this.tools.set("process_candidate", processCandidate);
+    this.tools.set("send_interview_links", sendInterviewLinks);
+    this.tools.set("create_calendar_slots", createCalendarSlots);
+    this.tools.set("book_interview", bookInterview);
+    this.tools.set("db.upsert_candidate", upsertCandidate);
+    this.tools.set("db.write_interview", writeInterview);
+    this.tools.set("update_slack_pools", updateSlackPools);
+    this.tools.set("operate_browser", operateBrowser);
+    this.tools.set("llm.route", llmRoute);
 
     this.setupHandlers();
   }
@@ -88,7 +87,7 @@ export class MCPServer {
         await storage.createAuditLog({
           actor: "mcp",
           action: `tool:${name}:error`,
-          payloadJson: { error: error.message, args },
+          payloadJson: { error: String(error), args },
         });
         
         throw error;
@@ -97,7 +96,7 @@ export class MCPServer {
   }
 
   private getToolDescription(name: string): string {
-    const descriptions = {
+    const descriptions: Record<string, string> = {
       "launch_indeed_campaign": "Launch a job posting campaign on Indeed with specified parameters",
       "manage_apify_actor": "CRUD operations on Apify actors including run, monitor, and dataset management",
       "process_candidate": "Update candidate pipeline stage, recompute score, update Indeed disposition, move Slack pools",
@@ -115,7 +114,7 @@ export class MCPServer {
 
   private getToolInputSchema(name: string): any {
     // Return JSON schema for tool inputs
-    const schemas = {
+    const schemas: Record<string, any> = {
       "launch_indeed_campaign": {
         type: "object",
         properties: {
@@ -150,16 +149,34 @@ export class MCPServer {
   }
 
   async listTools() {
-    const request = { method: "tools/list", params: {} };
-    return await this.server.request(request);
+    return {
+      tools: Array.from(this.tools.keys()).map(name => ({
+        name,
+        description: this.getToolDescription(name),
+        inputSchema: this.getToolInputSchema(name),
+      })),
+    };
   }
 
   async callTool(name: string, args: any) {
-    const request = {
-      method: "tools/call",
-      params: { name, arguments: args },
-    };
-    return await this.server.request(request);
+    if (!this.tools.has(name)) {
+      throw new Error(`Unknown tool: ${name}`);
+    }
+
+    try {
+      const tool = this.tools.get(name)!;
+      const result = await tool(args);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    } catch (error) {
+      throw new Error(`Tool execution failed: ${String(error)}`);
+    }
   }
 
   getServer() {

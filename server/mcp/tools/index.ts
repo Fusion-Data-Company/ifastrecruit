@@ -30,7 +30,7 @@ export async function launchIndeedCampaign(args: any) {
     await storage.createAuditLog({
       actor: "mcp",
       action: "launch_indeed_campaign_fallback",
-      payloadJson: { error: error.message, args },
+      payloadJson: { error: String(error), args },
       pathUsed: "airtop",
     });
 
@@ -73,7 +73,7 @@ export async function manageApifyActor(args: any) {
     await storage.createAuditLog({
       actor: "mcp",
       action: "manage_apify_actor_fallback",
-      payloadJson: { error: error.message, args },
+      payloadJson: { error: String(error), args },
       pathUsed: "airtop",
     });
 
@@ -114,7 +114,7 @@ export async function processCandidate(args: any) {
       slackPosted: true,
     };
   } catch (error) {
-    throw new Error(`Failed to process candidate: ${error.message}`);
+    throw new Error(`Failed to process candidate: ${String(error)}`);
   }
 }
 
@@ -144,7 +144,7 @@ export async function sendInterviewLinks(args: any) {
 
     return { success: true, results };
   } catch (error) {
-    throw new Error(`Failed to send interview links: ${error.message}`);
+    throw new Error(`Failed to send interview links: ${String(error)}`);
   }
 }
 
@@ -161,7 +161,7 @@ export async function createCalendarSlots(args: any) {
       count: slots.length,
     };
   } catch (error) {
-    throw new Error(`Failed to create calendar slots: ${error.message}`);
+    throw new Error(`Failed to create calendar slots: ${String(error)}`);
   }
 }
 
@@ -176,7 +176,6 @@ export async function bookInterview(args: any) {
 
     // Generate ICS file
     const calendar = ical({
-      domain: "ifast-broker.com",
       name: "iFast Broker Interviews",
     });
 
@@ -220,7 +219,7 @@ export async function bookInterview(args: any) {
       icsUrl,
     };
   } catch (error) {
-    throw new Error(`Failed to book interview: ${error.message}`);
+    throw new Error(`Failed to book interview: ${String(error)}`);
   }
 }
 
@@ -236,7 +235,7 @@ export async function upsertCandidate(args: any) {
       return { success: true, candidate: created, action: "created" };
     }
   } catch (error) {
-    throw new Error(`Failed to upsert candidate: ${error.message}`);
+    throw new Error(`Failed to upsert candidate: ${String(error)}`);
   }
 }
 
@@ -245,7 +244,7 @@ export async function writeInterview(args: any) {
     const interview = await storage.createInterview(args);
     return { success: true, interview };
   } catch (error) {
-    throw new Error(`Failed to write interview: ${error.message}`);
+    throw new Error(`Failed to write interview: ${String(error)}`);
   }
 }
 
@@ -259,7 +258,7 @@ export async function updateSlackPools(args: any) {
 
     return { success: true, message: "Slack pools updated" };
   } catch (error) {
-    throw new Error(`Failed to update Slack pools: ${error.message}`);
+    throw new Error(`Failed to update Slack pools: ${String(error)}`);
   }
 }
 
@@ -276,7 +275,7 @@ export async function operateBrowser(args: any) {
 
     return { success: true, result };
   } catch (error) {
-    throw new Error(`Browser operation failed: ${error.message}`);
+    throw new Error(`Browser operation failed: ${String(error)}`);
   }
 }
 
@@ -286,14 +285,14 @@ export async function llmRoute(args: any) {
     const response = await openrouterIntegration.chat(prompt, profile);
     return { success: true, response };
   } catch (error) {
-    throw new Error(`LLM routing failed: ${error.message}`);
+    throw new Error(`LLM routing failed: ${String(error)}`);
   }
 }
 
 // Helper functions
 function calculateCandidateScore(candidate: any, stage: string): number {
   const baseScore = candidate.score || 0;
-  const stageBonus = {
+  const stageBonus: Record<string, number> = {
     "NEW": 0,
     "FIRST_INTERVIEW": 20,
     "TECHNICAL_SCREEN": 40,
