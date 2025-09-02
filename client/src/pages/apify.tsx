@@ -251,7 +251,7 @@ export default function ApifyCommandCenter() {
             className="flex items-center justify-between"
           >
             <div>
-              <h1 className="enterprise-heading text-3xl font-bold">Apify Command Center</h1>
+              <h1 className="enterprise-heading text-3xl font-bold">Apify Integration</h1>
               <p className="text-muted-foreground">Create, manage, and run web scraping actors</p>
             </div>
             <div className="flex items-center space-x-3">
