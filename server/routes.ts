@@ -484,6 +484,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Audit logs endpoint
+  app.get("/api/audit-logs", intelligentCaching(60), async (req, res) => {
+    try {
+      const { action, actor, limit = 100, offset = 0 } = req.query;
+      
+      // Get audit logs from storage with filtering
+      const auditLogs = await storage.getAuditLogs({
+        action: action as string,
+        actor: actor as string,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+      });
+
+      res.json(auditLogs);
+    } catch (error) {
+      console.error("Failed to fetch audit logs:", error);
+      res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+
   // Performance monitoring endpoints
   app.get("/api/performance/metrics", intelligentCaching(60), async (req, res) => {
     try {

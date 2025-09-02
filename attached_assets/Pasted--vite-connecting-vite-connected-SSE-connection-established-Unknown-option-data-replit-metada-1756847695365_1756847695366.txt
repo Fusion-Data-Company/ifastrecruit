@@ -1,0 +1,82 @@
+[vite] connecting...
+[vite] connected.
+SSE connection established
+Unknown option 'data-replit-metadata'
+Unknown option 'data-component-name'
+Unknown option 'data-testid'
+A  must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=55a5698f:871:13
+at renderWithHooks (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:11548:26)
+at updateForwardRef (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:14325:28)
+at beginWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:15946:22)
+at HTMLUnknownElement.callCallback2 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3674:22)
+at Object.invokeGuardedCallbackDev (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3699:24)
+at invokeGuardedCallback (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3733:39)
+at beginWork$1 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19765:15)
+at performUnitOfWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19198:20)
+at workLoopSync (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19137:13)
+A  must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=55a5698f:871:13
+at renderWithHooks (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:11548:26)
+at updateForwardRef (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:14325:28)
+at beginWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:15946:22)
+at HTMLUnknownElement.callCallback2 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3674:22)
+at Object.invokeGuardedCallbackDev (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3699:24)
+at invokeGuardedCallback (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3733:39)
+at beginWork$1 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19765:15)
+at performUnitOfWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19198:20)
+at workLoopSync (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19137:13)
+A  must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=55a5698f:871:13
+at renderWithHooks (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:11548:26)
+at updateForwardRef (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:14325:28)
+at beginWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:15946:22)
+at HTMLUnknownElement.callCallback2 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3674:22)
+at Object.invokeGuardedCallbackDev (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3699:24)
+at invokeGuardedCallback (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:3733:39)
+at beginWork$1 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19765:15)
+at performUnitOfWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19198:20)
+at workLoopSync (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=55a5698f:19137:13)
+A  must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+The above error occurred in the <SelectItem> component:
+
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=55a5698f:844:7
+    at _c11 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/src/components/ui/select.tsx:208:13)
+    at div
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-V54TMEDA.js?v=55a5698f:42:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-EVLBUYTV.js?v=55a5698f:79:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-EVLBUYTV.js?v=55a5698f:56:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKA7LSZL.js?v=55a5698f:39:15
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=55a5698f:755:13
+    at div
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-EVLBUYTV.js?v=55a5698f:79:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-EVLBUYTV.js?v=55a5698f:56:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKA7LSZL.js?v=55a5698f:39:15
+    at Provider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=55a5698f:38:15)
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=55a5698f:298:58
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-EVLBUYTV.js?v=55a5698f:79:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-EVLBUYTV.js?v=55a5698f:56:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-V54TMEDA.js?v=55a5698f:42:13
+    at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-GSOZXB6V.js?v=55a5698f:258:22
+    at SelectPortal
+    at _c7 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/src/components/ui/select.tsx:123:12)
+    at Provider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=55a5698f:38:15)
+    at Provider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=55a5698f:38:15)
+    at CollectionProvider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DKA7LSZL.js?v=55a5698f:29:13)
+    at Provider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=55a5698f:38:15)
+    at Provider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=55a5698f:38:15)
+    at Popper (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-HNBHLYIQ.js?v=55a5698f:1921:11)
+    at Select (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=55a5698f:86:5)
+    at div
+    at div
+    at div
+    at _c (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at AuditLogs (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/src/components/AuditLogs.tsx:45:37)
+    at div
+    at MotionComponent (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=55a5698f:6536:40)
+    at div
+    at div
+    at div
+    at Dashboard (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/src/pages/dashboard.tsx:34:37)
+    at Route…

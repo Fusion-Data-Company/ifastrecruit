@@ -52,8 +52,8 @@ export default function AuditLogs({ className }: AuditLogsProps) {
       log.actor.toLowerCase().includes(searchTerm.toLowerCase()) ||
       JSON.stringify(log.payloadJson).toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesAction = !selectedAction || log.action === selectedAction;
-    const matchesActor = !selectedActor || log.actor === selectedActor;
+    const matchesAction = !selectedAction || selectedAction === 'all' || log.action === selectedAction;
+    const matchesActor = !selectedActor || selectedActor === 'all' || log.actor === selectedActor;
     
     return matchesSearch && matchesAction && matchesActor;
   });
@@ -150,7 +150,7 @@ export default function AuditLogs({ className }: AuditLogsProps) {
                 <SelectValue placeholder="All actions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All actions</SelectItem>
+                <SelectItem value="all">All actions</SelectItem>
                 {ACTION_TYPES.map(action => (
                   <SelectItem key={action} value={action}>
                     <div className="flex items-center space-x-2">
@@ -170,7 +170,7 @@ export default function AuditLogs({ className }: AuditLogsProps) {
                 <SelectValue placeholder="All actors" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All actors</SelectItem>
+                <SelectItem value="all">All actors</SelectItem>
                 {ACTOR_TYPES.map(actor => (
                   <SelectItem key={actor} value={actor}>
                     {actor}
@@ -185,8 +185,8 @@ export default function AuditLogs({ className }: AuditLogsProps) {
               variant="outline"
               onClick={() => {
                 setSearchTerm('');
-                setSelectedAction('');
-                setSelectedActor('');
+                setSelectedAction('all');
+                setSelectedActor('all');
               }}
               className="glass-input w-full"
               data-testid="clear-filters"
