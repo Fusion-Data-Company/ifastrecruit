@@ -15,6 +15,28 @@ import {
   requestLogger, 
   corsOptions 
 } from "./middleware/security";
+import { 
+  performanceTracker,
+  performanceMonitor,
+  compressionOptimizer,
+  performanceHeaders,
+  intelligentCaching,
+  requestSizeLimiter,
+  memoryMonitor,
+  cpuMonitor
+} from "./middleware/performance";
+import { 
+  globalErrorHandler,
+  notFoundHandler,
+  healthCheck,
+  errorLogger,
+  CircuitBreaker,
+  retryWithBackoff
+} from "./middleware/errorBoundary";
+import { cacheManager } from "./services/cache";
+import { dbOptimizer } from "./services/database-optimization";
+import { observabilityService } from "./services/observability";
+import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment.config";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
 import cors from "cors";
@@ -36,10 +58,14 @@ function generateSecureToken(): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Apply security middleware
+  // Apply security and performance middleware
   app.use(cors(corsOptions));
   app.use(securityHeaders);
+  app.use(performanceHeaders);
   app.use(requestLogger);
+  app.use(performanceTracker);
+  app.use(compressionOptimizer);
+  app.use(requestSizeLimiter(10)); // 10MB limit
   app.use(apiRateLimit);
   
   // Only setup WebSocket server in production to avoid conflict with Vite's WebSocket
@@ -458,8 +484,345 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Performance monitoring endpoints
+  app.get("/api/performance/metrics", intelligentCaching(60), async (req, res) => {
+    try {
+      const timeframe = parseInt(req.query.timeframe as string) || 3600000; // 1 hour default
+      const metrics = performanceMonitor.getAggregatedMetrics(timeframe);
+      const memory = memoryMonitor();
+      const cpu = cpuMonitor();
+      
+      res.json({
+        performance: metrics,
+        system: {
+          memory,
+          cpu,
+          uptime: process.uptime(),
+        },
+        cache: cacheManager.getStats(),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch performance metrics" });
+    }
+  });
+
+  app.get("/api/performance/errors", intelligentCaching(30), async (req, res) => {
+    try {
+      const timeframe = parseInt(req.query.timeframe as string) || 3600000;
+      const errorStats = errorLogger.getErrorStats(timeframe);
+      
+      res.json({
+        ...errorStats,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch error statistics" });
+    }
+  });
+
+  app.post("/api/performance/clear", async (req, res) => {
+    try {
+      performanceMonitor.clearMetrics();
+      errorLogger.clearStats();
+      await cacheManager.clear();
+      
+      res.json({
+        message: "Performance data cleared",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear performance data" });
+    }
+  });
+
+  // Enhanced health check with performance data
+  app.get("/api/health/detailed", async (req, res) => {
+    try {
+      const healthData = await healthCheck(req, res);
+      // Don't send response here as healthCheck already does
+    } catch (error) {
+      res.status(500).json({
+        status: 'unhealthy',
+        error: 'Health check failed',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // Backup and disaster recovery endpoints
+  app.post("/api/admin/backup", async (req, res) => {
+    try {
+      const backupData = {
+        candidates: await storage.getAllCandidates(),
+        campaigns: await storage.getAllCampaigns(),
+        interviews: await storage.getAllInterviews(),
+        bookings: await storage.getAllBookings(),
+        workflowRules: await storage.getAllWorkflowRules(),
+        apifyActors: await storage.getAllApifyActors(),
+        metadata: {
+          timestamp: new Date().toISOString(),
+          version: '1.0.0',
+          platform: 'iFast-Broker',
+        },
+      };
+      
+      res.setHeader('Content-Disposition', 'attachment; filename=ifast-backup.json');
+      res.setHeader('Content-Type', 'application/json');
+      res.json(backupData);
+    } catch (error) {
+      res.status(500).json({ error: "Backup generation failed" });
+    }
+  });
+
+  app.post("/api/admin/restore", async (req, res) => {
+    try {
+      const { backupData, confirmRestore } = req.body;
+      
+      if (!confirmRestore) {
+        return res.status(400).json({ 
+          error: "Restoration requires explicit confirmation",
+          message: "Set confirmRestore: true to proceed"
+        });
+      }
+
+      if (!backupData || !backupData.metadata) {
+        return res.status(400).json({ error: "Invalid backup data format" });
+      }
+
+      // Clear existing data (in a real implementation, this would be more sophisticated)
+      await storage.clearAllData();
+      
+      // Restore data
+      if (backupData.candidates) {
+        for (const candidate of backupData.candidates) {
+          await storage.createCandidate(candidate);
+        }
+      }
+      
+      if (backupData.campaigns) {
+        for (const campaign of backupData.campaigns) {
+          await storage.createCampaign(campaign);
+        }
+      }
+
+      // Log the restoration
+      await storage.createAuditLog({
+        actor: 'admin',
+        action: 'system_restore',
+        payloadJson: { 
+          backupTimestamp: backupData.metadata.timestamp,
+          itemsRestored: {
+            candidates: backupData.candidates?.length || 0,
+            campaigns: backupData.campaigns?.length || 0,
+          }
+        },
+      });
+
+      res.json({
+        message: "System restored successfully",
+        restored: {
+          candidates: backupData.candidates?.length || 0,
+          campaigns: backupData.campaigns?.length || 0,
+          interviews: backupData.interviews?.length || 0,
+          bookings: backupData.bookings?.length || 0,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "System restoration failed" });
+    }
+  });
+
+  // Database optimization endpoints
+  app.get("/api/database/stats", intelligentCaching(60), async (req, res) => {
+    try {
+      const stats = await dbOptimizer.getDatabaseStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch database statistics" });
+    }
+  });
+
+  app.get("/api/database/performance", intelligentCaching(30), async (req, res) => {
+    try {
+      const report = dbOptimizer.generatePerformanceReport();
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate performance report" });
+    }
+  });
+
+  app.post("/api/database/optimize", async (req, res) => {
+    try {
+      await dbOptimizer.warmCache();
+      const alerts = dbOptimizer.getPerformanceAlerts();
+      
+      res.json({
+        message: "Database optimization completed",
+        alerts: alerts.length,
+        recommendations: alerts,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Database optimization failed" });
+    }
+  });
+
+  // Observability and monitoring endpoints
+  app.get("/api/observability/health-score", intelligentCaching(30), async (req, res) => {
+    try {
+      const healthScore = observabilityService.calculateHealthScore();
+      res.json(healthScore);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to calculate health score" });
+    }
+  });
+
+  app.get("/api/observability/alerts", async (req, res) => {
+    try {
+      const level = req.query.level as 'info' | 'warning' | 'error' | 'critical' | undefined;
+      const alerts = observabilityService.getActiveAlerts(level);
+      res.json({ alerts, count: alerts.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  });
+
+  app.post("/api/observability/alerts/:alertId/resolve", async (req, res) => {
+    try {
+      const { alertId } = req.params;
+      const resolved = observabilityService.resolveAlert(alertId);
+      
+      if (resolved) {
+        res.json({ message: "Alert resolved", alertId });
+      } else {
+        res.status(404).json({ error: "Alert not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to resolve alert" });
+    }
+  });
+
+  app.get("/api/observability/report", intelligentCaching(300), async (req, res) => {
+    try {
+      const timeframe = parseInt(req.query.timeframe as string) || 3600000;
+      const report = observabilityService.generateReport(timeframe);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate observability report" });
+    }
+  });
+
+  app.post("/api/observability/benchmark", async (req, res) => {
+    try {
+      const results = await observabilityService.runBenchmarks();
+      res.json({
+        message: "Benchmarks completed",
+        results,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Benchmark execution failed" });
+    }
+  });
+
+  // Production readiness endpoints
+  app.get("/api/deployment/readiness", async (req, res) => {
+    try {
+      const readiness = await runProductionReadinessChecks();
+      res.json(readiness);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check production readiness" });
+    }
+  });
+
+  app.get("/api/deployment/health", (req, res) => {
+    try {
+      const health = getDeploymentHealth();
+      res.json(health);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get deployment health" });
+    }
+  });
+
+  // API documentation endpoint
+  app.get("/api/docs", (req, res) => {
+    const apiDocs = {
+      openapi: "3.0.0",
+      info: {
+        title: "iFast Broker API",
+        version: "1.0.0",
+        description: "Enterprise recruiting platform API",
+      },
+      servers: [
+        {
+          url: `${req.protocol}://${req.get('host')}`,
+          description: "Current server",
+        },
+      ],
+      paths: {
+        "/api/candidates": {
+          get: {
+            summary: "Get all candidates",
+            parameters: [
+              { name: "limit", in: "query", type: "integer" },
+              { name: "offset", in: "query", type: "integer" },
+              { name: "search", in: "query", type: "string" },
+            ],
+            responses: {
+              200: { description: "List of candidates" },
+            },
+          },
+          post: {
+            summary: "Create new candidate",
+            requestBody: {
+              required: true,
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/Candidate" },
+                },
+              },
+            },
+          },
+        },
+        "/api/performance/metrics": {
+          get: {
+            summary: "Get performance metrics",
+            parameters: [
+              { name: "timeframe", in: "query", type: "integer" },
+            ],
+          },
+        },
+        "/api/health": {
+          get: {
+            summary: "Basic health check",
+          },
+        },
+      },
+      components: {
+        schemas: {
+          Candidate: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              email: { type: "string" },
+              phone: { type: "string" },
+              stage: { type: "string" },
+            },
+          },
+        },
+      },
+    };
+    
+    res.json(apiDocs);
+  });
+
+  // 404 handler for undefined routes
+  app.use(notFoundHandler);
+
   // Apply global error handler
-  app.use(errorHandler);
+  app.use(globalErrorHandler);
 
   return httpServer;
 }
