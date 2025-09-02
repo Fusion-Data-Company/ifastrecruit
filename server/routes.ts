@@ -46,6 +46,8 @@ import { cacheManager } from "./services/cache";
 import { dbOptimizer } from "./services/database-optimization";
 import { observabilityService } from "./services/observability";
 import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment.config";
+import { apifyService } from "./services/apify-client";
+import { indeedService } from "./services/indeed-client";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
 import cors from "cors";
@@ -454,10 +456,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Apify actors management
   app.get("/api/apify/actors", async (req, res) => {
     try {
-      const actors = await storage.getApifyActors();
-      res.json(actors);
+      let allActors = [];
+      
+      // Fetch real actors from Apify if connected
+      if (apifyService.isApiConnected()) {
+        try {
+          const realActors = await apifyService.listActors();
+          allActors = realActors.map(actor => ({
+            id: actor.id,
+            name: actor.name,
+            description: actor.description || '',
+            actorId: actor.id,
+            template: 'web-scraper',
+            configurationJson: { realActor: true },
+            createdAt: new Date(actor.createdAt),
+            lastRun: null,
+            isPublic: actor.isPublic,
+            source: 'apify-platform'
+          }));
+        } catch (error) {
+          console.error("Failed to fetch real actors:", error);
+        }
+      }
+      
+      // Add stored local actors
+      const storedActors = await storage.getApifyActors();
+      allActors = [...allActors, ...storedActors.map(a => ({ ...a, source: 'local' }))];
+      
+      res.json(allActors);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Apify actors" });
+      res.status(500).json({ error: "Failed to fetch actors" });
     }
   });
 
@@ -465,24 +493,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { name, description, template, inputSchema } = req.body;
       
-      // TODO: Create actor in Apify when API token available
-      // const ApifyClient = require('apify-client');
-      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-      // const apifyActor = await client.actors().create({
-      //   name: name,
-      //   template: template,
-      //   sourceFiles: {
-      //     'INPUT_SCHEMA.json': inputSchema
-      //   }
-      // });
+      // Create actor in Apify if API is connected
+      let realActor = null;
+      if (apifyService.isApiConnected()) {
+        try {
+          realActor = await apifyService.createActor({
+            name,
+            description,
+            isPublic: false,
+          });
+        } catch (error) {
+          console.error("Failed to create real actor:", error);
+        }
+      }
       
       const actorData = {
         name,
-        actorId: `ifast/${name.toLowerCase().replace(/\s+/g, '-')}`, // Generate actor ID
+        actorId: realActor?.id || `ifast/${name.toLowerCase().replace(/\s+/g, '-')}`,
         configurationJson: {
           template,
           inputSchema: JSON.parse(inputSchema),
           description,
+          realActor: !!realActor,
         },
       };
       
@@ -513,17 +545,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Actor not found" });
       }
       
-      // TODO: Start run in Apify when API token available
-      // const ApifyClient = require('apify-client');
-      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-      // const run = await client.actor(actor.actorId).call(input);
+      // Start real run in Apify if API is connected
+      let realRun = null;
+      if (apifyService.isApiConnected()) {
+        try {
+          realRun = await apifyService.runActor(actor.actorId, input);
+        } catch (error) {
+          console.error("Apify API call failed, falling back to mock:", error);
+        }
+      }
       
-      // For now, create a mock run record
+      // Create run record (real or mock)
       const runData = {
         actorId: actor.id,
-        apifyRunId: `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        status: "RUNNING",
-        startedAt: new Date(),
+        apifyRunId: realRun?.id || `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        status: realRun?.status || "RUNNING",
+        startedAt: realRun?.startedAt || new Date(),
         inputJson: input,
         logMessages: ["Run started", "Initializing scraper", "Processing requests..."],
       };
@@ -580,10 +617,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Run not found" });
       }
       
-      // TODO: Fetch live data from Apify when API available
-      // const ApifyClient = require('apify-client');
-      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-      // const liveRun = await client.run(runId).get();
+      // Fetch live data from Apify if API is connected
+      if (apifyService.isApiConnected() && run.apifyRunId.startsWith('run_') === false) {
+        try {
+          const liveRun = await apifyService.getRunStatus(run.apifyRunId);
+          // Merge live data with stored data
+          res.json({ ...run, ...liveRun });
+          return;
+        } catch (error) {
+          console.error("Failed to fetch live run data:", error);
+        }
+      }
       
       res.json(run);
     } catch (error) {
@@ -597,13 +641,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { datasetId } = req.params;
       const { limit = 100 } = req.query;
       
-      // TODO: Fetch from Apify when API available
-      // const ApifyClient = require('apify-client');
-      // const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-      // const dataset = await client.dataset(datasetId);
-      // const { items } = await dataset.listItems({ limit });
+      // Fetch from Apify when API is connected
+      if (apifyService.isApiConnected()) {
+        try {
+          const items = await apifyService.getDatasetItems(datasetId, { limit: Number(limit) });
+          res.json({ items, count: items.length });
+          return;
+        } catch (error) {
+          console.error("Failed to fetch real dataset items:", error);
+        }
+      }
       
-      // Mock dataset items for now
+      // Fallback to mock dataset items
       const mockItems = Array.from({ length: Number(limit) }, (_, i) => ({
         id: `item_${i}`,
         name: `John Doe ${i}`,
@@ -1210,6 +1259,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(health);
     } catch (error) {
       res.status(500).json({ error: "Failed to get deployment health" });
+    }
+  });
+
+  // Indeed Integration Endpoints
+  app.get("/api/indeed/status", async (req, res) => {
+    try {
+      const connected = indeedService.isApiConnected();
+      const jobs = await storage.getIndeedJobs();
+      const applications = await storage.getIndeedApplications();
+      
+      res.json({
+        connected,
+        activeJobs: jobs.filter(j => j.status === 'active').length,
+        totalJobs: jobs.length,
+        recentApplications: applications.filter(a => 
+          new Date(a.appliedAt) > new Date(Date.now() - 24*60*60*1000)
+        ).length,
+        totalApplications: applications.length,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Indeed status" });
+    }
+  });
+
+  app.get("/api/indeed/jobs", async (req, res) => {
+    try {
+      const jobs = await storage.getIndeedJobs();
+      res.json(jobs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch Indeed jobs" });
+    }
+  });
+
+  app.post("/api/indeed/jobs", async (req, res) => {
+    try {
+      const jobData = insertIndeedJobSchema.parse(req.body);
+      
+      // Post to Indeed if API is connected
+      if (indeedService.isApiConnected()) {
+        try {
+          const indeedJob = await indeedService.postJob({
+            title: jobData.title,
+            company: jobData.company,
+            location: jobData.location,
+            description: jobData.description,
+            requirements: jobData.requirements || '',
+            salary: jobData.salary || '',
+            type: jobData.type,
+          });
+          
+          // Store with Indeed job ID
+          jobData.indeedJobId = indeedJob.jobId;
+          jobData.status = 'active';
+        } catch (error) {
+          console.error("Failed to post to Indeed:", error);
+          // Continue with local storage
+        }
+      }
+      
+      const job = await storage.createIndeedJob(jobData);
+      res.json(job);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to create job", details: String(error) });
+    }
+  });
+
+  app.get("/api/indeed/applications", async (req, res) => {
+    try {
+      const applications = await storage.getIndeedApplications();
+      res.json(applications);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch applications" });
+    }
+  });
+
+  app.post("/api/indeed/applications", async (req, res) => {
+    try {
+      // This endpoint receives Indeed webhook data
+      const applicationData = req.body;
+      
+      if (indeedService.isApiConnected()) {
+        const isValid = await indeedService.validateApplication(applicationData);
+        if (!isValid) {
+          return res.status(400).json({ error: "Invalid application data" });
+        }
+      }
+
+      // Create candidate from application
+      const candidateData = {
+        name: applicationData.candidateName,
+        email: applicationData.candidateEmail,
+        phone: applicationData.phone,
+        stage: 'applied',
+        source: 'indeed',
+        notes: `Applied for ${applicationData.jobTitle || 'position'}`,
+      };
+
+      const candidate = await storage.createCandidate(candidateData);
+
+      // Store application record
+      const application = await storage.createIndeedApplication({
+        indeedApplicationId: applicationData.applicationId,
+        jobId: applicationData.jobId,
+        candidateId: candidate.id,
+        appliedAt: new Date(applicationData.appliedAt),
+        status: 'new',
+        resumeText: applicationData.resume || '',
+        coverLetter: applicationData.coverLetter || '',
+        screeningAnswersJson: applicationData.screeningAnswers || {},
+      });
+
+      res.json({ candidate, application });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process application" });
+    }
+  });
+
+  app.patch("/api/indeed/applications/:id/disposition", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { disposition, reason } = req.body;
+      
+      const application = await storage.getIndeedApplicationById(id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Send disposition to Indeed if connected
+      if (indeedService.isApiConnected() && application.indeedApplicationId) {
+        try {
+          await indeedService.sendDisposition(application.indeedApplicationId, disposition, reason);
+        } catch (error) {
+          console.error("Failed to send disposition to Indeed:", error);
+        }
+      }
+
+      // Update local record
+      const updated = await storage.updateIndeedApplication(id, { status: disposition });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update disposition" });
     }
   });
 

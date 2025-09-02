@@ -1,0 +1,4628 @@
+""" Contact info of the team owning this API. """
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+"""Allow any of the given clients"""
+directive @allowClients(
+  """
+  Service mesh clients and/or 2-legged OAuth clients
+  A subClient can be added after a colon ':'
+  Example: [ "special-client", "another-client:specific-sub-client" ]
+  """
+  names: [String!]!
+) repeatable on FIELD_DEFINITION | OBJECT
+
+directive @denyClients(names: [String!]!) repeatable on FIELD_DEFINITION
+
+directive @inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @indeedPrivate on FIELD_DEFINITION
+
+directive @link(url: String, as: String) repeatable on SCHEMA
+
+directive @requireClientRoles(anyOf: [String!]!) repeatable on FIELD_DEFINITION
+
+directive @tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCHEMA
+
+"""
+Input object to add an interviewee to an event.
+
+Child of `UpdateVirtualInterviewEventInput`.
+"""
+input AddVirtualInterviewEventIntervieweeInput {
+  """ID of the `VirtualInterviewEvent`."""
+  id: ID!
+
+  """Details about the interviewee to add to the `VirtualInterviewEvent`."""
+  interviewee: VirtualInterviewIntervieweeInput!
+}
+
+"""
+Alternate identifiers for a job disposition signal. Typically used when standard identifiers are not available.
+"""
+type AlternateJobIdentifier {
+  """Identifier for the job associated with this disposition."""
+  jobIdentifier: JobIdentifier
+
+  """Identifier for the job seeker associated with this disposition."""
+  jobSeekerIdentifier: JobSeekerIdentifier
+}
+
+"""Specifies alternate identifiers for a job disposition signal."""
+input AlternateJobIdentifierInput {
+  """Identifier for the job related to this disposition."""
+  jobIdentifier: JobIdentifierInput!
+
+  """Identifier for the job seeker related to this disposition."""
+  jobSeekerIdentifier: JobSeekerIdentifierInput!
+}
+
+"""
+An alternate way to identify a job based on the company's name, requisition ID and application ID.
+"""
+type ATSApplicationIdentifier {
+  """
+  Requisition or job ID, specific to the non-Indeed system that tracks this application.
+  """
+  requisitionId: ID!
+
+  """Name of the company associated with the job."""
+  companyName: String!
+
+  """
+  Optional unique identifier for the application associated with this job, specific to the non-Indeed system that tracks this application.
+  Used to distinguish between multiple applications for the same requisition.
+  """
+  applicationId: ID
+}
+
+"""
+Identifies a job by company name, requisition ID and optional application ID.
+"""
+input ATSApplicationIdentifierInput {
+  """
+  Requisition or job ID, specific to the non-Indeed system that tracks this application.
+  """
+  requisitionId: ID!
+
+  """
+  Name of the hiring company for this application. Must exactly match the company name in the `company` field in the XML feed.
+  """
+  companyName: String!
+
+  """
+  An optional identifier for the application associated with this job, specific to the non-Indeed system tracking the application.
+  It helps distinguish between multiple applications for the same requisition.
+  """
+  applicationId: ID
+}
+
+input AtsSyncCandidateSyncApplicantDetailsInput {
+  """Full name of the applicant"""
+  name: String!
+
+  """
+  Street address of the applicant including street name and number, city, administrative region (state, province, prefecture, etc.), and postal code
+  
+  **Example (USA)** 10721 Domain Dr, Austin, TX 78758
+  **Example (UK)** 20 Farringdon Rd, London EC1M 3HE
+  
+  This field will be used to generate geolocation data for the applicant, so it should be as accurate as possible.
+  """
+  streetAddress: String
+
+  """Postal code for the applicant's address"""
+  postalCode: String
+
+  """Contact email address of the applicant"""
+  email: EmailAddress!
+
+  """Contact phone number of the applicant"""
+  phone: PhoneNumber
+
+  """Country of residence of the applicant"""
+  country: CountryCode
+
+  """
+  File attachments for this application
+  
+  May include multiple resumes, cover letters, and other attachments. Only the resume marked as 'primary' will be
+  parsed and used for matching/ranking applicants.
+  """
+  attachments: [AtsSyncCandidateSyncApplicationAttachmentInput!]! = []
+
+  """
+  Additional information about an application that may not fit into any other category of data provided
+  """
+  additionalInfo: [String!]! = []
+
+  """Awards achieved by the applicant"""
+  awards: [AtsSyncCandidateSyncApplicationAwardInput!]! = []
+
+  """Education history of the applicant"""
+  education: [AtsSyncCandidateSyncApplicationEducationInput!]! = []
+
+  """Applicant's membership in groups"""
+  groups: [AtsSyncCandidateSyncApplicationGroupInput!]! = []
+
+  """Languages known by the applicant"""
+  languageProficiencies: [AtsSyncCandidateSyncApplicationLanguageProficienciesInput!]! = []
+
+  """Licenses and certifications achieved by the applicant"""
+  certifications: [AtsSyncCandidateSyncApplicationCertificationInput!]! = []
+
+  """Links to social media sites, blogs, etc. provided by the applicant"""
+  links: [AtsSyncCandidateSyncApplicationLinkInput!]! = []
+
+  """Current and prior work experience of the applicant"""
+  workExperience: AtsSyncCandidateSyncApplicationWorkExperienceInput
+
+  """Skills held by the applicant"""
+  skills: [AtsSyncCandidateSyncApplicationSkillInput!]! = []
+
+  """Military commendations achieved by the applicant"""
+  military: AtsSyncCandidateSyncApplicationMilitaryDetailsInput
+}
+
+type AtsSyncCandidateSyncApplicationAttachment {
+  """
+  Type of file attached to an application (e.g. resume, cover letter, or other)
+  """
+  fileType: AtsSyncCandidateSyncApplicationFileType!
+
+  """Name of the file attachment"""
+  fileName: String!
+
+  """Original media type of the file attachment"""
+  contentType: String!
+
+  """Content length of the file attachment"""
+  contentLength: Int64!
+
+  """
+  MD5 checksum of all bytes of the file attachment, encoded as a 32-character hexadecimal string (hex ASCII)
+  
+  Used to verify file integrity prior to publishing to Indeed.
+  """
+  checksumMd5: String!
+
+  """
+  Presigned URL to which partners are expected to upload application file contents to prior to submitting the
+  application for processing
+  
+  Partners should execute a PUT request to this URL and supply the `Content-MD5` header on requests to ensure data
+  integrity during upload.
+  """
+  url: WebUrl!
+}
+
+input AtsSyncCandidateSyncApplicationAttachmentInput {
+  """
+  Type of file attached to an application (e.g. resume, cover letter, or other)
+  """
+  fileType: AtsSyncCandidateSyncApplicationFileTypeInput!
+
+  """Name of the file attachment"""
+  fileName: String!
+
+  """Original media type of the file attachment"""
+  contentType: String!
+
+  """Content length of the file attachment"""
+  contentLength: Int64!
+
+  """
+  MD5 checksum of all bytes of the file attachment, encoded as a 32-character hexadecimal string (hex ASCII)
+  
+  Used to verify file integrity prior to publishing to Indeed.
+  """
+  checksumMd5: String!
+}
+
+input AtsSyncCandidateSyncApplicationAwardInput {
+  """Name of the award"""
+  name: String
+
+  """Description of the award"""
+  description: String
+
+  """Date at which the award was issued"""
+  dateIssued: Date
+}
+
+input AtsSyncCandidateSyncApplicationCertificationInput {
+  """Name of the certification or license"""
+  name: String
+
+  """Type of the certification or license"""
+  type: String
+
+  """Description or additional details about this certification or license"""
+  description: String
+
+  """Country where the certification or license was attained"""
+  country: CountryCode
+
+  """Date at which the certification or license was issued"""
+  dateIssued: Date
+
+  """Date at which the certification or license expires"""
+  expirationDate: Date
+}
+
+input AtsSyncCandidateSyncApplicationDispositionInput {
+  """Indeed disposition status to which the raw disposition status maps"""
+  dispositionStatus: IndeedDispositionStatus!
+
+  """Raw application disposition status from the ATS"""
+  rawDispositionStatus: String!
+
+  """
+  Optional additional details about the application disposition status from the ATS
+  """
+  rawDispositionDetails: String
+}
+
+input AtsSyncCandidateSyncApplicationEducationInput {
+  """Type of degree (e.g. "Bachelor of Science")"""
+  degree: String
+
+  """Minor field of study for this education history"""
+  minor: String
+
+  """Major field of study for this education history"""
+  fieldOfStudy: String
+
+  """Name of the school attended"""
+  school: String
+
+  """Location (address) where the applicant attended"""
+  location: String
+
+  """Date at which this education began"""
+  startDate: Date
+
+  """Date at which this education ended"""
+  endDate: Date
+}
+
+enum AtsSyncCandidateSyncApplicationFileType {
+  """Primary (or only) resume for an application"""
+  RESUME
+
+  """Additional resume attached to an application"""
+  OTHER_RESUME
+
+  """Primary (or only) cover letter attached to an application"""
+  COVER_LETTER
+
+  """Additional cover letter attached to an application"""
+  OTHER_COVER_LETTER
+
+  """Uncategorized additional attachment on an application"""
+  OTHER
+}
+
+enum AtsSyncCandidateSyncApplicationFileTypeInput {
+  """Primary (or only) resume for an application"""
+  RESUME
+
+  """Additional resume attached to an application"""
+  OTHER_RESUME
+
+  """Primary (or only) cover letter attached to an application"""
+  COVER_LETTER
+
+  """Additional cover letter attached to an application"""
+  OTHER_COVER_LETTER
+
+  """Uncategorized additional attachment on an application"""
+  OTHER
+}
+
+type AtsSyncCandidateSyncApplicationFindLatestStatusesConnection {
+  """A list of application version statuses and their cursors"""
+  edges: [AtsSyncCandidateSyncApplicationFindLatestStatusesEdge!]!
+
+  """The relay connection pageinfo about the response"""
+  pageInfo: PageInfo!
+
+  """A list of application version statuses"""
+  applicationVersionStatuses: [AtsSyncCandidateSyncApplicationVersionStatus!]!
+}
+
+type AtsSyncCandidateSyncApplicationFindLatestStatusesEdge {
+  """The application version status"""
+  node: AtsSyncCandidateSyncApplicationVersionStatus!
+
+  """The cursor for the node in the query set"""
+  cursor: String!
+}
+
+input AtsSyncCandidateSyncApplicationFindLatestStatusesFilterInput {
+  """
+  Optional list of unique identifiers representing the references between Indeed employers and Partner employers
+  
+  Provided to Partners during registration.
+  
+  Used to filter the returned list of application versions to only those for any of the specified registration IDs.
+  """
+  indeedRegistrationIds: [ID!]! = []
+
+  """
+  Optional list of applications
+  
+  Used to filter the returned list of application versions to only those of any of the specified applications.
+  """
+  applications: [AtsSyncCandidateSyncApplicationIdentifierInput!]! = []
+
+  """
+  Optional list of application version status types
+  
+  Used to filter the returned list of application versions to only those for any of the specified version status types.
+  """
+  applicationVersionStatusTypes: [AtsSyncCandidateSyncApplicationVersionStatusTypeInput!]! = []
+}
+
+input AtsSyncCandidateSyncApplicationFindLatestStatusesInput {
+  """
+  Filter criteria to search for statuses of the latest version of applications
+  """
+  filter: AtsSyncCandidateSyncApplicationFindLatestStatusesFilterInput! = {indeedRegistrationIds: [], applications: [], applicationVersionStatusTypes: []}
+}
+
+type AtsSyncCandidateSyncApplicationFindStatusesConnection {
+  """A list of application version statuses and their cursors"""
+  edges: [AtsSyncCandidateSyncApplicationFindStatusesEdge!]!
+
+  """The relay connection pageinfo about the response"""
+  pageInfo: PageInfo!
+
+  """A list of application version statuses"""
+  applicationVersionStatuses: [AtsSyncCandidateSyncApplicationVersionStatus!]!
+}
+
+type AtsSyncCandidateSyncApplicationFindStatusesEdge {
+  """The application version status"""
+  node: AtsSyncCandidateSyncApplicationVersionStatus!
+
+  """The cursor for the node in the query set"""
+  cursor: String!
+}
+
+input AtsSyncCandidateSyncApplicationFindStatusesFilterInput {
+  """
+  Optional list of unique identifiers representing the references between Indeed employers and Partner employers
+  
+  Provided to Partners during registration.
+  
+  Used to filter the returned list of application versions to only those for any of the specified registration IDs.
+  """
+  indeedRegistrationIds: [ID!]! = []
+
+  """
+  Optional list of applications
+  
+  Used to filter the returned list of application versions to only those of any of the specified applications.
+  """
+  applications: [AtsSyncCandidateSyncApplicationIdentifierInput!]! = []
+
+  """
+  Optional list of application version IDs
+  
+  Used to filter the returned list of application versions to only the specified versions.
+  """
+  applicationVersionIds: [ID!]! = []
+
+  """
+  Optional list of application version status types
+  
+  Used to filter the returned list of application versions to only those for any of the specified version status types.
+  """
+  applicationVersionStatusTypes: [AtsSyncCandidateSyncApplicationVersionStatusTypeInput!]! = []
+}
+
+input AtsSyncCandidateSyncApplicationFindStatusesInput {
+  """Filter criteria to search for statuses of application versions"""
+  filter: AtsSyncCandidateSyncApplicationFindStatusesFilterInput! = {indeedRegistrationIds: [], applications: [], applicationVersionIds: [], applicationVersionStatusTypes: []}
+}
+
+input AtsSyncCandidateSyncApplicationGroupInput {
+  """Name of the group"""
+  name: String
+
+  """Description of the group"""
+  description: String
+
+  """Start date of the group membership"""
+  startDate: Date
+
+  """End date of the group membership"""
+  endDate: Date
+}
+
+type AtsSyncCandidateSyncApplicationIdentifier {
+  """
+  Unique identifier to represent the reference between an Indeed employer and a Partner employer
+  
+  Provided to Partners during registration.
+  """
+  indeedRegistrationId: ID!
+
+  """
+  Optional identifier for a candidate profile associated with one or more applications in the ATS
+  """
+  atsCandidateId: ID
+
+  """Unique identifier for the application in the ATS"""
+  atsApplicationId: ID!
+
+  """
+  Information about the job posting
+  
+  This information allows Indeed to associate imported application data with jobs published via Job Sync API or an XML feed.
+  """
+  jobMetadata: AtsSyncCandidateSyncJobMetadata!
+}
+
+input AtsSyncCandidateSyncApplicationIdentifierInput {
+  """
+  Unique identifier to represent the reference between an Indeed employer and a Partner employer
+  
+  Provided to Partners during registration.
+  """
+  indeedRegistrationId: ID!
+
+  """
+  Optional identifier for a candidate profile associated with one or more applications in the ATS
+  """
+  atsCandidateId: ID
+
+  """Unique identifier for the application in the ATS"""
+  atsApplicationId: ID!
+
+  """
+  Information about the job posting
+  
+  This information allows Indeed to associate imported application data with jobs published via Job Sync API or an XML feed.
+  """
+  jobMetadata: AtsSyncCandidateSyncJobMetadataInput!
+}
+
+input AtsSyncCandidateSyncApplicationLanguageProficienciesInput {
+  """Name of the language"""
+  name: LanguageCode!
+
+  """Level of proficiency with the language"""
+  proficiency: String
+}
+
+input AtsSyncCandidateSyncApplicationLinkInput {
+  """Type of link associated with the URL (e.g. "X", "Facebook", etc.)"""
+  type: String
+
+  """URL for the applicant's link"""
+  url: WebUrl
+}
+
+input AtsSyncCandidateSyncApplicationMilitaryDetailsInput {
+  """Military commendations received by the applicant"""
+  militaryCommendations: String
+
+  """Details about military service for this applicant"""
+  militaryServices: [AtsSyncCandidateSyncApplicationMilitaryServiceInput!]! = []
+}
+
+input AtsSyncCandidateSyncApplicationMilitaryServiceInput {
+  """Military branch"""
+  branch: String
+
+  """Country of military service"""
+  country: CountryCode
+
+  """Description of military service"""
+  description: String
+
+  """Military rank"""
+  rank: String
+
+  """Start date of military service"""
+  startDate: Date
+
+  """End date of military service"""
+  endDate: Date
+}
+
+type AtsSyncCandidateSyncApplicationMutations {
+  """
+  Stages an application version to be published to Indeed. Application versions with file attachments will have presigned S3 URLs
+  generated, to which partners are expected to upload application file contents prior to submitting the application version
+  for processing.
+  
+  The application version will not be published to Indeed until it is submitted. After staging, the application version
+  must be submitted within 5 minutes.
+  
+  Initialization attempts for applications that have already been deleted will be rejected.
+  """
+  initialize(input: InitializeAtsSyncCandidateSyncApplicationInput!): InitializeAtsSyncCandidateSyncApplicationPayload
+
+  """
+  Submits an application version to be published to Indeed. Publishing of application versions is asynchronous, but will be processed
+  in the order in which they are submitted.
+  """
+  submit(input: SubmitAtsSyncCandidateSyncApplicationInput!): SubmitAtsSyncCandidateSyncApplicationPayload
+
+  """
+  Permanently deletes an application and all of its versions from Indeed. This is a terminal operation for the application specified,
+  and no further updates may be made to this application after deletion.
+  """
+  delete(input: DeleteAtsSyncCandidateSyncApplicationInput!): DeleteAtsSyncCandidateSyncApplicationPayload
+}
+
+type AtsSyncCandidateSyncApplicationQueries {
+  """Finds the statuses of your application versions."""
+  findStatuses(
+    """The input to use when searching for application version statuses."""
+    input: AtsSyncCandidateSyncApplicationFindStatusesInput! = {filter: {indeedRegistrationIds: [], applications: [], applicationVersionIds: [], applicationVersionStatusTypes: []}}
+
+    """The page size when using forward pagination"""
+    first: Int
+
+    """
+    The cursor from which to start searching when using forward pagination. Use null to retrieve the first page.
+    """
+    after: String
+
+    """The page size when using backwards pagination"""
+    last: Int
+
+    """The cursor from which to start searching backwards"""
+    before: String
+  ): AtsSyncCandidateSyncApplicationFindStatusesConnection
+
+  """Finds the statuses of the latest version of your applications."""
+  findLatestStatuses(
+    """
+    The filter to use when searching for the latest application version statuses
+    """
+    input: AtsSyncCandidateSyncApplicationFindLatestStatusesInput! = {filter: {indeedRegistrationIds: [], applications: [], applicationVersionStatusTypes: []}}
+
+    """The page size when using forward pagination"""
+    first: Int
+
+    """
+    The cursor from which to start searching when using forward pagination. Use null to retrieve the first page.
+    """
+    after: String
+
+    """The page size when using backwards pagination"""
+    last: Int
+
+    """The cursor from which to start searching backwards"""
+    before: String
+  ): AtsSyncCandidateSyncApplicationFindLatestStatusesConnection
+}
+
+input AtsSyncCandidateSyncApplicationQuestionAndAnswerInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """Optional answer to the question."""
+  answer: String
+}
+
+input AtsSyncCandidateSyncApplicationSkillInput {
+  """Name of the skill"""
+  name: String
+
+  """Level of proficiency with the skill"""
+  proficiency: String
+
+  """Months of experience with the skill"""
+  monthsOfExperience: Int
+}
+
+type AtsSyncCandidateSyncApplicationVersionStatus {
+  """Unique identifier tracking an application version"""
+  applicationVersionId: ID!
+
+  """Unique identifier for the application on Indeed"""
+  applicationIdentifier: AtsSyncCandidateSyncApplicationIdentifier!
+
+  """Current status of the application version"""
+  status: AtsSyncCandidateSyncApplicationVersionStatusType!
+}
+
+enum AtsSyncCandidateSyncApplicationVersionStatusType {
+  """
+  Application has been initialized. No processing status will be available until it has been submitted.
+  """
+  INITIALIZED
+
+  """
+  Application has been submitted. Processing status will be available once publishing completes.
+  """
+  SUBMITTED
+
+  """
+  Application has been submitted for deletion. Processing status will be available once deletion completes.
+  """
+  DELETED
+}
+
+enum AtsSyncCandidateSyncApplicationVersionStatusTypeInput {
+  """
+  Application has been initialized. No processing status will be available until it has been submitted.
+  """
+  INITIALIZED
+
+  """
+  Application has been submitted. Processing status will be available once publishing completes.
+  """
+  SUBMITTED
+
+  """
+  Application has been submitted for deletion. Processing status will be available once deletion completes.
+  """
+  DELETED
+}
+
+input AtsSyncCandidateSyncApplicationWorkExperienceDetailsInput {
+  """Title held at the position"""
+  title: String
+
+  """Company at which this position was held"""
+  company: String
+
+  """Description or additional details about this work experience"""
+  description: String
+
+  """Location (address) where the applicant worked"""
+  location: String
+
+  """Start date of the work experience"""
+  startDate: Date
+
+  """End date of the work experience"""
+  endDate: Date
+}
+
+input AtsSyncCandidateSyncApplicationWorkExperienceInput {
+  """Most relevant job title held by the applicant"""
+  mostRelevantTitle: String
+
+  """
+  Company associated with the most relevant job title held by the applicant
+  """
+  mostRelevantCompany: String
+
+  """Full employment history for the applicant"""
+  workHistory: [AtsSyncCandidateSyncApplicationWorkExperienceDetailsInput!]! = []
+}
+
+type AtsSyncCandidateSyncJobMetadata {
+  """
+  Information about the source of the job, whether a company, agency, franchise, and so on
+  
+  Leading and trailing spaces will be stripped from this value.
+  """
+  jobSource: String!
+
+  """
+  Unique identifier for the job within the applicant tracking system (ATS)
+  
+  Historically, this value is known as the reference number. This UTF-8-encoded field cannot contain 4-byte characters
+  (including characters outside Unicode's Basic Multilingual Plane, such as Emoji).
+  
+  Leading and trailing spaces will be stripped from this value.
+  """
+  jobPostingId: ID!
+
+  """
+  Requisition ID for the job in your applicant tracking system (ATS)
+  
+  This value does not need to be unique.
+  """
+  jobRequisitionId: ID
+}
+
+input AtsSyncCandidateSyncJobMetadataInput {
+  """
+  Information about the source of the job, whether a company, agency, franchise, and so on
+  
+  Leading and trailing spaces will be stripped from this value.
+  """
+  jobSource: String!
+
+  """
+  Unique identifier for the job within the applicant tracking system (ATS)
+  
+  Historically, this value is known as the reference number. This UTF-8-encoded field cannot contain 4-byte characters
+  (including characters outside Unicode's Basic Multilingual Plane, such as Emoji).
+  
+  Leading and trailing spaces will be stripped from this value.
+  """
+  jobPostingId: ID!
+
+  """
+  Requisition ID for the job in your applicant tracking system (ATS)
+  
+  This value does not need to be unique.
+  """
+  jobRequisitionId: ID
+}
+
+"""Mutations related to ATS Sync - Candidate Sync"""
+type AtsSyncCandidateSyncMutations {
+  """Mutations on or related to the AtsSyncCandidateSyncApplication type"""
+  application: AtsSyncCandidateSyncApplicationMutations
+}
+
+"""Queries related to ATS Sync - Candidate Sync"""
+type AtsSyncCandidateSyncQueries {
+  """Queries on or related to the AtsSyncCandidateSyncApplication type"""
+  application: AtsSyncCandidateSyncApplicationQueries
+}
+
+"""Information about errors."""
+type AttributeUpdateError {
+  """A short message that describes the error."""
+  message: String! @deprecated(reason: "In case of error, the error information will be in the standard GraphQL errors array")
+
+  """Details about the error."""
+  detail: String @deprecated(reason: "In case of error, the error information will be in the standard GraphQL errors array")
+
+  """Suggestion to help recover from the error."""
+  suggestion: String @deprecated(reason: "In case of error, the error information will be in the standard GraphQL errors array")
+}
+
+"""
+Standard GraphQL error code that
+[MUST report standardized error codes for commonly encountered errors [229]](https://api-wg.pages.corp.indeed.com/api-recommendations/recommendations/graphql/errors/errors/#must-report-standardized-error-codes-for-commonly-encountered-errors-229) describes.
+"""
+enum AttributeUpdateResponseCode {
+  OK
+
+  """
+  The operation was not attempted because the request did not
+  include sufficient authentication credentials for the operation.
+  This error code is the GraphQL equivalent of the HTTP `401 Unauthorized` response status code.
+  """
+  UNAUTHENTICATED
+
+  """
+  Valid authentication credentials are present but insufficient to perform the associated operation.
+  This error code is the GraphQL equivalent of the HTTP `403 Forbidden` response status code.
+  """
+  FORBIDDEN
+
+  """
+  The value of an input parameter is invalid.
+  This error code applies to input validation performed beyond the standard
+  GraphQL client and server libraries non-null and type checking.
+  """
+  BAD_USER_INPUT
+
+  """
+  The server encountered an unexpected failure and did not provide a response.
+  Use this generic error for failures that the server cannot handle.
+  """
+  INTERNAL_SERVER_ERROR
+
+  """
+  Partial-success if the response contains only part of successful response
+  because of some failures.
+  """
+  PARTIAL_SUCCESS
+
+  """The query exceeded the allowed complexity for a single request."""
+  QUERY_TOO_COMPLEX
+}
+
+"""Scalar representation of a Java BigDecimal"""
+scalar BigDecimal
+
+"""Input object to cancel an event."""
+input CancelVirtualInterviewEventInput {
+  """ID of the `VirtualInterviewEvent` to cancel."""
+  id: ID!
+}
+
+"""Return type for the `cancelVirtualInterviewEvent` mutation."""
+type CancelVirtualInterviewEventPayload {
+  """The canceled event."""
+  event: VirtualInterviewEvent!
+}
+
+input ClassifyOccupationsForJobDetailsInput {
+  """
+  Job description
+  Either description or job title should be non-empty
+  """
+  description: String
+
+  """
+  Job title
+  Either description or job title should be non-empty
+  """
+  jobTitle: String
+
+  """Company name"""
+  companyName: String
+
+  """
+  Filter by CustomClasses.
+  Leave it as empty if unnecessary.
+  """
+  customClassFilter: CustomClassFilterInput
+
+  """
+  A 2-character country code. The value is encoded as an ISO_3166-1 - alpha 2 formatted string
+  """
+  countryCode: CountryCode
+
+  """
+  A 2-character language code. The value is encoded as an ISO_639 formatted string
+  """
+  languageCode: LanguageCode
+
+  """Set to true to keep TaxonomyConcepts that are deprecated."""
+  includeDeprecated: Boolean
+}
+
+type ClassifyOccupationsForJobDetailsPayload {
+  """
+  Occupations are returned ranked order, highest to lowest. When the rank is a tie the order is not
+  guaranteed. The rank represents the confidence that the Occupation is applicable to the input.
+  """
+  occupations: [TaxonomyConcept!]!
+
+  """
+  All of the ancestors are returned ranked order.
+  The rank of a derived ancestor is the same as the original occupation.
+  """
+  ancestors: [TaxonomyConcept!]!
+  responseStatus: MdsResponseStatus!
+}
+
+input ConditionConstraintInput {
+  """
+  Unique ID for the question whose value should be leveraged as part of a condition.
+  """
+  id: ID!
+
+  """
+  Values that if the question of `id` has a matching value will satisfy the condition
+  """
+  values: [String!]!
+}
+
+"""
+2-Letter country code. Specification: [ISO 3166-1](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements)
+"""
+scalar CountryCode
+
+"""Country specific data"""
+input CountrySpecificEmployerAttributesInput {
+  """
+  An ISO 3166-1 - alpha 2-encoded country code string, such as, `US` or `JP`.
+  """
+  country: CountryCode!
+
+  """
+  Deprecated. If the data the global default, set `isGlobalDefault=true`.
+  If `isGlobalDefault=true` in addition to its normal locale, data is also written to `ww_WW` internally.
+  This field is deprecated because it is always `true` for `CountrySpecificEmployerAttributes`.
+  """
+  isGlobalDefault: Boolean! = true @deprecated(reason: "it will always be true for CountrySpecificEmployerAttributes.")
+
+  """
+  The root website of the `employer`&mdash;for example, `indeed.com`.
+  If the employer is a franchise, use the brand website.
+  
+  Limit is 400 characters. Must be a valid URL.
+  """
+  websiteUrl: String
+
+  """
+  Deprecated. Employer's official phone number. Use the `phoneNumber` field instead.
+  """
+  phoneNum: String @deprecated(reason: "Changed to phoneNumber")
+
+  """
+  Employer's official phone number.
+  
+  The value must follow the standard [E.164](https://en.wikipedia.org/wiki/E.164) format. 
+  
+  For example, `+17895551234`.
+  """
+  phoneNumber: PhoneNumber
+
+  """
+  Employer's tax identifier.
+  
+  Limit is 100 characters.
+  
+  **Market-specific documentation**
+  
+  | Market | Example value |
+  |:-------|:--------------|
+  | Japan | If [`employerType`](/api/employer/objects/EmployerAttributesInput) is `JURIDICAL_PERSON`, set this field to the corporate number (法人番号) to correctly identify the company.<br/><br/>If `employerType` is `NATURAL_PERSON`, this field is optional. |  
+  """
+  taxId: String
+
+  """
+  List of Indeed sector (industry) short unique identifiers (SUIDs). 
+  
+  The maximum number of SUIDs is 3. Each value must be a valid SUID. 
+  
+  See this table:
+  
+  **Market-specific documentation**
+  
+  | Market | Example value |
+  |:-------|:--------------|
+  | Japan  | [Valid company sector SUID values](https://docs.indeed.com/employers/reference/company-sector). |
+  """
+  sectorSUIDs: [ID!]
+
+  """
+  Size of the employer's workforce.
+  
+  Allowed values are:
+  
+  | Value             | Number of employees |
+  |:------------------|--------------------:|
+  | `ERv1_1`          | 1                   |
+  | `ERv1_2_10`       | From 2 to 10        |
+  | `ERv1_11_50`      | From 11 to 50       |
+  | `ERv1_1_50`       | From 1 to 50        |
+  | `ERv1_51_200`     | From 51 to 200      |
+  | `ERv1_201_500`    | From 201 to 500     |
+  | `ERv1_501_1000`   | From 501 to 1000    |
+  | `ERv1_1001_5000`  | From 1001 to 5000   |
+  | `ERv1_5001_10000` | From 5001 to 10000  |
+  | `ERv1_10000_PLUS` | 10000+ employees    |
+  """
+  employees: String
+}
+
+"""Input object with job data for the submitted or updated job posting."""
+input CreateSourcedJobPostingInput {
+  """Job description."""
+  body: SourcedJobPostingBodyInput!
+
+  """Information about the job posting."""
+  metadata: SourcedJobPostingMetadataInput!
+
+  """How to apply to the job."""
+  applyMethod: SourcedJobPostingApplyMethodInput
+}
+
+"""
+An intermediary type. A null `jobPosting` indicates a problem occurred during job creation. The GraphQL errors object indicates the problem for each null value by indicating the index in the error object.
+
+This object might be updated with additional fields later that would be associated with each posting in a request, regardless of whether it was successful.
+"""
+type CreateSourcedJobPostingResult {
+  jobPosting: SourcedJobPosting
+}
+
+"""Base input object for the `createSourcedJobPostings` mutation."""
+input CreateSourcedJobPostingsInput {
+  """Job postings to be created."""
+  jobPostings: [CreateSourcedJobPostingInput!]!
+}
+
+type CreateSourcedJobPostingsPayload {
+  """
+  Return type for each job posting in the `createSourcedJobPostings` mutation.
+  
+  The values in the array cannot be null. However, the corresponding `jobPosting` object can be null inside each value.
+  
+  A null `jobPosting` object indicates that Indeed did not accept the job.
+  
+  For rejected job postings, see the returned `Error` object.
+  """
+  results: [CreateSourcedJobPostingResult!]!
+}
+
+"""Input object for the `createVirtualInterviewEvent` mutation."""
+input CreateVirtualInterviewEventInput {
+  """
+  One or more interviewer email addresses.
+  
+  **Notes:**
+  
+  * When you schedule an event, the API automatically adds you as an interviewer to the event.
+  * You can add an interviewee and interviewers to an event after you schedule it.
+  
+  **Validation error:** If the total number of interviewers exceeds 49, a validation error occurs.
+  """
+  interviewers: [VirtualInterviewInterviewerInput!]!
+
+  """
+  Interview start time, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  """
+  startTime: DateTime!
+
+  """
+  Interview end time, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  
+  **Validation error:** If the interview duration is greater than 24 hours, a validation error occurs. That is, if the `endTime` value minus `startTime` value is greater than 24 hours.
+  """
+  endTime: DateTime!
+
+  """
+  Time zone for the interview, in [IANA Time Zone Database](https://www.iana.org/time-zones) format. Displays the time zone in the event for both the interviewee and interviewers. The time zone value is separate from the `startTime` and `endTime` offset.
+  """
+  timezone: TimeZone!
+
+  """Title of the interview, which is usually the calendar event title."""
+  title: String!
+
+  """
+  Name and email of the interviewee.
+  
+  If you don’t have the name of the interviewee, omit this field.
+  
+  To add the interviewee to the interview event later, use the `updateVirtualInterviewEvent` mutation.
+  """
+  interviewee: VirtualInterviewIntervieweeInput
+
+  """
+  Information about the request:
+  
+  * Partner application, which is usually an application tracking system (ATS), from which the request was sent.
+  * Employer name, if available.
+  """
+  requestMetadata: VirtualInterviewRequestMetadataInput!
+
+  """
+  Language code, in lowercase.
+  
+  If you provide `countryCode`, `languageCode` is required.
+  
+  **Validation error:** If you provide `countryCode` without `languageCode`, a validation error occurs.
+  
+  If you omit both `languageCode` and `countryCode`, the default `languageCode` value is `en` and the default `countryCode` value is `US`.
+  
+  If you include `languageCode` and omit `countryCode`, `languageCode` is the value you specify and `countryCode` is null.
+  """
+  languageCode: LanguageCode
+
+  """
+  Country code, in uppercase.
+  
+  If you provide `countryCode`, `languageCode` is required.
+  
+  **Validation error:** If you provide `countryCode` without `languageCode`, a validation error occurs.
+  
+  If you omit both `languageCode` and `countryCode`, the default `languageCode` value is `en` and the default `countryCode` value is `US`.
+  
+  If you include `languageCode` and omit `countryCode`, `languageCode` is the value you specify and `countryCode` is null.
+  """
+  countryCode: CountryCode
+}
+
+"""Return type for the `createVirtualInterviewEvent` mutation."""
+type CreateVirtualInterviewEventPayload {
+  """Created event."""
+  event: VirtualInterviewEvent!
+}
+
+"""
+3-Letter currency code. The value should be encoded as a 3-character string conforming to the ISO_4217 specification
+"""
+scalar CurrencyCode
+
+"""
+Indicates how clients would want to get TaxoConcepts by CustomClass Filter.
+"""
+input CustomClassFilterInput {
+  """
+  Use this field to only keep TaxonomyConcepts belong to the CustomClasses.
+  """
+  customClasses: [ID!]!
+
+  """The way of joining multiple `CustomClass`. Default is AND."""
+  operation: CustomClassFilterOperation
+}
+
+enum CustomClassFilterOperation {
+  AND
+  OR
+}
+
+type CustomTaxonomyClass {
+  """
+  SUID(Short UID) of TaxonomyConcept.
+  Used as the primary key.
+  """
+  key: ID!
+
+  """
+  UUID of TaxonomyConcept.
+  Will be finally replaced with SUID.
+  """
+  uuid: ID!
+
+  """
+  Preferred label of CustomClass.
+  This field will only be in English and not be localized.
+  """
+  label: String!
+}
+
+"""
+Example schema.
+
+GraphQL Schema Basics: https://www.apollographql.com/docs/apollo-server/schema/schema/
+Indeed API Recommendations: https://link.indeed.tech/api-recommendations
+
+Need help designing your schema? Check out the schema designer tool: https://graphql-schema-designer.sandbox.indeed.net/
+"""
+scalar Date
+
+input DateQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """
+  This screener question type requires either the dd/MM/yyyy format or a locale-specific format that meets Unicode CLDR formatting.
+  
+  Indeed uses the `SimpleDateFormat`. You must format the month as MM. Using mm results in misconfiguration.
+  
+  The format of `type=date` impacts how the application is passed to the ATS and how the minimum and maximum values are parses. The job seeker still enters the date based on their locale, not the specified format, and validation error messages are in their locale’s format. To prevent confusion, use yyyy instead of yy in the format.
+  """
+  format: String!
+
+  """The date the answer must be on or after."""
+  minDate: DateTime
+
+  """The date the answer must be on or before."""
+  maxDate: DateTime
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input DateQuestionQualificationInput {
+  """
+  Indicates the type of qualification in regards to the effect on the user’s application in the Indeed Apply flow.
+  """
+  type: QuestionQualificationImplicationType!
+
+  """
+  Indicates the evaluation method for this question is range, meaning that the user’s answers must fall within the range defined by the provided min and/or max values.
+  """
+  range: QualificationDateRangeConfigurationInput!
+}
+
+input DateScreenerQuestionInput {
+  """The date question formatting and metadata"""
+  questionInput: DateQuestionInput
+
+  """
+  A qualification criterion for this question.
+  
+  Questions that ask applicants for qualifications that may be required for the job. These qualifications need to meet conditions provided by the employer. If the question type is non-blocking, then all applications regardless of meeting the qualification criteria will be delivered to the employer.
+  """
+  qualification: DateQuestionQualificationInput
+}
+
+"""Datetime as RFC-3339"""
+scalar DateTime
+
+input DecimalTextQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """The minimum value for the answer."""
+  minValue: Float
+
+  """The maximum value for the answer."""
+  maxValue: Float
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input DecimalTextScreenerQuestionInput {
+  """The decimal based question formatting and metadata"""
+  questionInput: DecimalTextQuestionInput
+
+  """
+  A qualification criterion for this question.
+  
+  Questions that ask applicants for qualifications that may be required for the job. These qualifications need to meet conditions provided by the employer. If the question type is non-blocking, then all applications regardless of meeting the qualification criteria will be delivered to the employer.
+  """
+  qualification: TextDecimalQualificationQuestionInput
+}
+
+input DeleteAtsSyncCandidateSyncApplicationInput {
+  """Unique identifier for the application on Indeed"""
+  applicationIdentifier: AtsSyncCandidateSyncApplicationIdentifierInput!
+
+  """The time at which this application was deleted"""
+  deletedAt: DateTime!
+}
+
+type DeleteAtsSyncCandidateSyncApplicationPayload {
+  """
+  Unique identifier tracking the deletion of this application
+  
+  This identifier references the final version of this now deleted application.
+  """
+  applicationVersionId: ID!
+}
+
+input DemographicQuestionsBodyInput {
+  """
+  A question that requires a long-form answer. Appears as a multi-line text entry field.
+  """
+  textarea: TextAreaQuestionInput
+
+  """
+  A question that requires a short answer. Appears as a single-line text entry field.
+  
+  For more information on the available formats for text questions, see the following examples and the [JSON questions parameters](https://docs.indeed.com/indeed-apply/screener-questions#json-questions-parameters). The formats are `integer`, `decimal`, and `numeric_text`.
+  """
+  text: TextQuestionInput
+
+  """
+  A question with multiple choice answers. Appears as a dropdown list that enables the applicant to select a single answer.
+  
+  If you include from one to five answers, each answer appears with a radio button. If you include more than five answers, they appear in a dropdown list.
+  """
+  select: SelectQuestionInput
+
+  """
+  A question that has multiple answers. Appears as a list of checkboxes that enables the applicant to select multiple answers. 
+  """
+  multiselect: MultiselectQuestionInput
+
+  """
+  A question that has a date as an answer. Appears as a text field that accepts a date.
+  
+  This screener question type requires either the dd/MM/yyyy format or a locale-specific format that meets Unicode CLDR formatting.
+  
+  Indeed uses the `SimpleDateFormat`. You must format the month as MM. Using mm results in misconfiguration.
+  
+  The format of `type=date` impacts how the application is passed to the ATS and how the minimum and maximum values are parses. The job seeker still enters the date based on their locale, not the specified format, and validation error messages are in their locale’s format. To prevent confusion, use yyyy instead of yy in the format.
+  """
+  date: DateQuestionInput
+
+  """
+  A text display that does not require a response. Appears as explanatory text or section headings.
+  For details, see [information](https://docs.indeed.com/indeed-apply/screener-questions#information).
+  """
+  information: InformationQuestionInput
+
+  """
+  Groups questions on a page. Questions defined between two pagebreak types appear on the same page. You can group up to 20 questions on a page. By default, Indeed shows three questions on a page on desktop and groups all questions on a page for mobile.
+  """
+  pageBreak: PageBreakQuestionInput
+}
+
+"""An RFC-822 compliant email address string."""
+scalar EmailAddress @specifiedBy(url: "https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address")
+
+"""Input object that contains employer attributes that you can update."""
+input EmployerAttributesInput {
+  """
+  Employer type.
+  
+  **Market-specific documentation**
+  
+  | Market | Example value |
+  |:-------|:--------------|
+  | Japan  | Use the field to specify 企業区分: 法人 or 個人. |
+  """
+  employerType: EmployerType
+
+  """Employer attributes that can differ by country."""
+  countrySpecificAttributes: [CountrySpecificEmployerAttributesInput!]
+
+  """Employer attributes that can differ by locale (`lang` + `country`)."""
+  localeSpecificAttributes: [LocaleSpecificEmployerAttributesInput!]
+
+  """Employer attributes that are specific to JP New-Grads."""
+  jpNewGradsAttributes: JpNewGradsEmployerAttributesInput
+}
+
+"""
+Employer identifier that uniquely defines an employer.
+
+Clients that have Indeed employer key:
+
+```
+{
+  "type": "INDEED_EMPLOYER",
+  "id": "<Indeed employerKey>"
+}
+```
+
+Other types of employer identifiers are communicated **individually**.
+"""
+input EmployerIdentifiersInput {
+  """
+  A magic string that indicates the identifier type.
+  
+  - Indeed internal clients can check valid types on [`EmployerIdentifierType`](https://link.indeed.tech/cd-patch-employer).
+  - Otherwise, the type is communicated individually.
+  """
+  type: String!
+
+  """ID."""
+  id: ID!
+}
+
+"""Stub of the federated EmployerJob entity"""
+type EmployerJob implements Node {
+  """The employer job id for this job."""
+  id: ID!
+
+  """
+  The job data that is associated with the EmployerJob in our system, appropriate to the user requesting this data.
+  """
+  jobData: EmployerJobData
+
+  """URLs for employer management of jobs"""
+  managementUrls: EmployerJobManagementUrls!
+
+  """
+  Paginated connection containing job seats
+  first: Connection page size
+  after: Cursor for relay pagination
+  """
+  seatsConnection(first: Int, after: String): EmployerJobSeatsConnection
+}
+
+"""Interface for the types of job data recorded in indeed."""
+interface EmployerJobData {
+  """The ID of the job posting record."""
+  id: ID!
+
+  """Title of the job posting."""
+  title: String!
+
+  """Date and time when the job posting was published on Indeed."""
+  datePostedOnIndeed: DateTime
+
+  """Date and time when the job posting was created."""
+  dateCreated: DateTime!
+
+  """The job posting description."""
+  description: String!
+
+  """Name of the hiring company. The maximum length is 200 characters."""
+  company: String!
+
+  """Job salary period and range amounts."""
+  salary: JobSalary
+
+  """
+  Localized, formatted information about the physical location of the job.
+  """
+  jobLocation: JobLocation
+
+  """
+  URL of the job posting on a website other than Indeed, such as the employer's website.
+  """
+  externalJobPageUrl: WebUrl
+
+  """Metadata for the job provided by external posting sources."""
+  externalPostingMetadata: EmployerJobExternalPostingMetadata
+}
+
+"""EmployerJob metadata provided by an external posting source."""
+type EmployerJobExternalPostingMetadata {
+  """
+  Posting ID provided to identify the job. Also known as referenceNumber or refnum.
+  """
+  jobPostingId: ID
+
+  """
+  Requisition ID provided for the job. Also known as clientReferenceNumber and sometimes (confusingly) as external job id.
+  This is not the same thing as ExternalJobPost.id and is not a job key.
+  """
+  jobRequisitionId: ID
+
+  """
+  Identifiers used to group related jobs for the purposes of building sponsored job campaigns.
+  """
+  campaignCategories: [String!]!
+
+  """Tracking URLs for the job."""
+  trackingUrls: [WebUrl!]!
+
+  """
+  Raw location data coming directly from the job feed combined into a single string
+  value. Components of the raw location include any street addresses followed by any
+  cityRegionPostal values each separated by ",".
+  
+  Example (USA): 1600 Pennsylvania Ave, Washington, District of Columbia, 20500
+  Example (UK): 20 Farringdon Rd, Mayfair, London, W1J
+  Example (Japan): 2-7-2, 100-8994 東京都千代田区丸の内
+  """
+  rawInputLocation: String
+}
+
+type EmployerJobManagementUrls {
+  """The URL for the employer view of their job"""
+  viewJob: WebUrl!
+}
+
+"""Seat for an EmployerJob"""
+type EmployerJobSeat {
+  """The job post for this seat"""
+  jobPost: JobPost
+}
+
+"""Represents a single page of EmployerJob seats"""
+type EmployerJobSeatsConnection {
+  """List of edges containing the EmployerJobSeat nodes for this connection"""
+  edges: [EmployerJobSeatsEdge!]!
+
+  """Pagination data for this connection"""
+  pageInfo: PageInfo!
+
+  """List of EmployerJobSeats for this connection"""
+  seats: [EmployerJobSeat!]!
+}
+
+"""Associates an EmployerJobSeat with a cursor used for pagination"""
+type EmployerJobSeatsEdge {
+  """This edge's EmployerJobSeat"""
+  node: EmployerJobSeat
+
+  """Cursor representing this edge for relay pagination"""
+  cursor: String!
+}
+
+"""Employer type (used in Japanese market)."""
+enum EmployerType {
+  """
+  Juridical Person
+  
+  企業区分:法人
+  - 公法人 (地方公共団体, 独立行政法人, 特殊法人)
+  - 私法人 (非営利法人, 営利法人)
+  """
+  JURIDICAL_PERSON
+
+  """
+  An individual that is operating a business without registration as a corporation.
+  個人は法人としての届け出を行わず事業を行っているところ
+  """
+  NATURAL_PERSON
+
+  """
+  Other uncategorized entity that isn't registered as a corporation. Entity who can't issue the taxid should use this employer type.
+  個人事業者を除く民法上の組合, ㈲事業責任組合など. 法人番号を発行できない組織はこちらを選択ください
+  """
+  OTHER
+}
+
+"""
+Data from the associated `ExpireSourcedJobByJobPostingIdAndSourceInput`.
+"""
+type ExpireSourcedJobByJobPostingIdAndSourceInfo {
+  jobPostingId: String!
+  sourceName: String!
+}
+
+"""Data from the associated `ExpireSourcedJobBySourcedPostingIdInput`."""
+type ExpireSourcedJobBySourcedPostingIdInfo {
+  sourcedPostingId: String!
+}
+
+"""Input object that contains Indeed Employer Job ID."""
+input ExpireSourcedJobBySourcedPostingIdInput {
+  """
+  Indeed Employer Job ID (UUID4 value).
+  
+  Indeed generates this unique ID for each submitted job posting, and ATS can get it from the response of job creation.
+  
+  Use this ID to expire the job posting.
+  """
+  sourcedPostingId: ID!
+}
+
+type ExpireSourcedJobResult {
+  """
+  Return type for `ExpireSourcedJobsBySourcedPostingIdPayload`.
+  
+  Internal tracking ID from logrepo.
+  """
+  trackingKey: String!
+
+  """
+  Input values associate with this result. Value is null in the case of an error.
+  """
+  inputData: ExpireSourcedJobResultInfo
+}
+
+union ExpireSourcedJobResultInfo = ExpireSourcedJobBySourcedPostingIdInfo | ExpireSourcedJobByJobPostingIdAndSourceInfo
+
+"""
+Base input object for the `expireSourcedJobsBySourcedPostingId` mutation.
+
+Supports bulk expiration of multiple jobs.
+"""
+input ExpireSourcedJobsBySourcedPostingIdInput {
+  """Jobs to be expired, by `sourcedPostingId`."""
+  jobs: [ExpireSourcedJobBySourcedPostingIdInput!]!
+}
+
+type ExpireSourcedJobsBySourcedPostingIdPayload {
+  """The payload for the `expireSourcedJobsByPostingId` mutation."""
+  results: [ExpireSourcedJobResult!]!
+}
+
+"""Details about a disposition that failed to be processed."""
+type FailedPartnerDisposition {
+  """
+  Identifier details for this disposition. Reflects the value provided in the input.
+  """
+  identifiedBy: PartnerDispositionIdentifier!
+
+  """Explanation for or reason why this disposition failed to be processed."""
+  rationale: String!
+}
+
+input FileQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """
+  The supported file formats for the file upload. Omitting this field will allow any file format.
+  """
+  format: [String!]
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+
+  """The minimum number of files that can be uploaded."""
+  min: Int
+
+  """The maximum number of files that can be uploaded."""
+  max: Int
+}
+
+"""Response object for the `findEmployerJobsPartner` query."""
+type FindEmployerJobsPartnerConnection {
+  """The employer jobs information."""
+  employerJobs: [EmployerJob]!
+
+  """The total number of job postings estimated to be in the response."""
+  estimatedTotalResultsCount: Int!
+
+  """Pagination information."""
+  pageInfo: PageInfo!
+}
+
+"""Filters the job postings in the response."""
+input FindEmployerJobsPartnerFilterInput {
+  """
+  Primarily intended for ad agency partners.
+  
+  `legacySourceId` is an alphanumeric source ID that the Sponsored Jobs API returns.
+  
+  [`findEmployerJobsPartner`](/api/job/queries/findEmployerJobsPartner) returns a list of job postings that share this ID.
+  
+  If you omit the `legacySourceId` field, [`findEmployerJobsPartner`](/api/job/queries/findEmployerJobsPartner) lists job postings for the employer associated with the access token with which you call the API.
+  """
+  legacySourceId: ID
+
+  """
+  An optional field that defaults to false. If true returns jobs that were originally created on Indeed. If false
+  returns jobs that were originally created externally (eg. via an ATS).
+  """
+  createdOnIndeed: Boolean
+}
+
+"""Top-level input object for the `findEmployerJobsPartner` query."""
+input FindEmployerJobsPartnerInput {
+  """Filters the job postings in the response."""
+  filters: FindEmployerJobsPartnerFilterInput
+
+  """Sorts the job postings in the response."""
+  sort: [FindEmployerJobsPartnerSortInput!]
+}
+
+"""Sort direction, which is ascending or descending order."""
+enum FindEmployerJobsPartnerSortDirection {
+  """
+  Default. Sorts in ascending order, from the lowest value to highest value.
+  """
+  ASC
+
+  """Sorts in descending order, from the highest value to the lowest value."""
+  DESC
+}
+
+"""
+The employer job fields on which you can sort the job postings in the response.
+"""
+enum FindEmployerJobsPartnerSortField {
+  """
+  Sorts the job postings in the response by the time when the job posting was published on Indeed.
+  """
+  datePostedOnIndeed
+}
+
+"""
+Input object that defines the sort direction and sort field for the `findEmployerJobsPartner` query.
+"""
+input FindEmployerJobsPartnerSortInput {
+  """
+  Sort direction.
+  
+  Value is `ASC` or `DESC`. Default is `ASC`, which sorts the job postings in the response from the lowest value to highest value.
+  """
+  sortDirection: FindEmployerJobsPartnerSortDirection
+
+  """
+  Sort field. If you omit `sortField`, the `sortDirection` field has no effect.
+  """
+  sortField: FindEmployerJobsPartnerSortField
+}
+
+"""Input object for the `findVirtualInterviewEvents` query."""
+input FindVirtualInterviewEventsInput {
+  """Start time of the time range of the event."""
+  startTime: VirtualInterviewEventDateTimeRangeFilterInput
+
+  """End time of the time range of the event."""
+  endTime: VirtualInterviewEventDateTimeRangeFilterInput
+
+  """Ordered array of sort options. A lower index takes higher priority."""
+  sort: [VirtualInterviewEventSortOptionInput!]
+}
+
+"""
+<!--
+NOTE: the following fields should be added in the future as part of the 1.1, 1.2 and 1.3 IA update
+
+# The minimum amount of characters accepted for the answer.
+minCharCount: Int @Min(value: 0)
+-->
+"""
+input FreeformTextQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """The minimum character limit for the answer."""
+  minCharCount: Int
+
+  """The maximum character limit for the answer."""
+  maxCharCount: Int
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input HierarchicalOptionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The list of options available."""
+  options: [SelectOptionInput!]!
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+}
+
+input HierarchicalQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """The list of available options."""
+  options: [SelectOptionInput!]!
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+
+  """
+  A question that displays additional questions and responses based on previously selected answers. For example, you might ask an applicant to choose a state. Then, depending on what they select, you could offer them a dropdown list of cities within that state. Each hierarchical question is limited to three levels
+  """
+  hierarchicalOptions: [HierarchicalOptionInput!]!
+}
+
+"""
+Values for required and optional resume fields.
+
+See [Indeed Resume JSON object fields](https://docs.indeed.com/indeed-apply/application-data#indeed-resume-json-object-fields). This API has the same support.
+"""
+enum IndeedApplyConfigurationResumeField {
+  PHONE
+  LOCATION
+  POSITIONS
+  EDUCATION
+  SKILLS
+  LANGUAGES
+  CERTIFICATIONS
+  NAME_PRONUNCIATION
+  DATE_OF_BIRTH
+  GENDER
+}
+
+enum IndeedApplyNameFormatType {
+  """Show two fields for an applicant's first and last name"""
+  FIRST_LAST_NAME
+
+  """Show a single field for an applicant's full name"""
+  FULL_NAME
+}
+
+input IndeedApplyQuestionsDetailsInput {
+  """
+  Screener questionnaire definition for the Indeed Apply application process, aligned to the V1.x standard. See [documentation](https://docs.indeed.com/indeed-apply/screener-questions) for more details.
+  """
+  questions: IndeedApplyScreenerQuestionsDefinitionInput
+}
+
+input IndeedApplyScreenerQuestionsDefinitionInput {
+  """
+  The screener questions are a list of general, well-formatted questions that pertain to the underlying job, such as work experience, skills, certifications, and so on. This list cannot contain demographic questions, such as question about ethnicity, gender, or disability. Certain jurisdictions regulate questions related to *protected classes* of people. Indeed systems, and potentially your systems, must handle these questions in special ways.
+  """
+  screenerQuestions: [ScreenerQuestionBodyInput!]!
+
+  """
+  The demographic questions are a list of specific, well-formatted questions that pertain to the job applicant's *protected class*. That is, ethnicity, gender, disability, and so on. Certain jurisdictions must regulate these questions. Indeed systems, and potentially your systems, must handle these questions in special ways. 
+  
+  These questions are limited to U.S.-based jobs for EEO compliance.
+  
+  Do not include general screener questions, such as those that pertain to work experience, skills, or certifications, in this list. Instead place them in the `screenerQuestions` list.
+  """
+  demographicQuestions: [DemographicQuestionsBodyInput!]!
+}
+
+"""Supported Indeed disposition statuses."""
+enum IndeedDispositionStatus {
+  NEW
+  REVIEW
+  LIKED
+  CONTACTED
+  INTERVIEW
+  BACKGROUND_CHECK
+  WITHDRAWN
+  HIRED
+  INCOMPLETE
+  UNABLE_TO_MAP
+  SCREEN
+  VERIFY_ELIGIBILITY
+  NOT_SELECTED
+  OFFER_DECLINED
+  ASSESS_QUALIFICATIONS
+  OFFER_MADE
+  ONBOARDED
+  POSITIVELY_SCREENED
+  JOB_INACTIVE
+  JOB_CLOSED
+}
+
+input InformationQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """Text that applicants see."""
+  text: String!
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+}
+
+input InitializeAtsSyncCandidateSyncApplicationInput {
+  """Unique identifier for the application on Indeed"""
+  applicationIdentifier: AtsSyncCandidateSyncApplicationIdentifierInput!
+
+  """Indeed Apply ID to uniquely identify an Indeed job application"""
+  indeedApplyId: ID
+
+  """Indeed Tracking ToKen (ITTK) to track an Indeed job application"""
+  ittk: ID
+
+  """
+  Direct link to the candidate profile (or similar entity) in the ATS
+  
+  This is intended to allow users to redirect from Indeed to the candidate profile in their browser.
+  """
+  candidateLink: WebUrl
+
+  """
+  Direct link to the application in the ATS
+  
+  This is intended to allow users to redirect from Indeed to the application details in their browser.
+  """
+  applicationLink: WebUrl!
+
+  """
+  Source of the application, such as a job board, career site, search firm, or social network
+  """
+  applicationSourceName: String
+
+  """Information about the applicant this application is for"""
+  applicant: AtsSyncCandidateSyncApplicantDetailsInput!
+
+  """Screener questions and answers provided on the application"""
+  questionsAndAnswers: [AtsSyncCandidateSyncApplicationQuestionAndAnswerInput!]! = []
+
+  """Current disposition status of the application"""
+  disposition: AtsSyncCandidateSyncApplicationDispositionInput!
+
+  """The time at which this application was last updated"""
+  updatedAt: DateTime!
+}
+
+type InitializeAtsSyncCandidateSyncApplicationPayload {
+  """
+  Unique identifier tracking the initialization and submission of an application version
+  
+  Each initialization of an application version produces this identifier, which should be used to submit the version
+  once all attachments have been uploaded.
+  """
+  applicationVersionId: ID!
+
+  """
+  Attachments associated with this application version
+  
+  Includes presigned S3 URLs for upload.
+  """
+  attachments: [AtsSyncCandidateSyncApplicationAttachment!]!
+}
+
+"""64-bit signed integer"""
+scalar Int64
+
+input IntegerTextQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """The minimum value for the answer."""
+  minValue: Int
+
+  """The maximum value for the answer."""
+  maxValue: Int
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input IntegerTextScreenerQuestionInput {
+  """The integer based question formatting and metadata"""
+  questionInput: IntegerTextQuestionInput
+
+  """
+  A qualification criterion for this question.
+  
+  Questions that ask applicants for qualifications that may be required for the job. These qualifications need to meet conditions provided by the employer. If the question type is non-blocking, then all applications regardless of meeting the qualification criteria will be delivered to the employer.
+  """
+  qualification: TextIntegerQualificationQuestionInput
+}
+
+enum JobHasProbationaryPeriod {
+  UNKNOWN
+  NO
+  YES
+}
+
+"""
+Unique identifier for a job, which is Indeed's public job key, a combination of company name and requisition ID, or a reserved ID for internal use.
+"""
+type JobIdentifier {
+  """Indeed's public job key."""
+  indeedJobKey: ID
+
+  """
+  Identifies a job using the `ID` of an `EmployerJob`, often referred to as an EJID
+  """
+  employerJobId: ID
+
+  """
+  Identifies a job by company name, requisition ID and optional application ID.
+  """
+  atsApplicationIdentifier: ATSApplicationIdentifier
+}
+
+"""
+Identifies the job for which you are sending a disposition. The order of preference is `indeedJobKey`, `employerJobId`, and then `atsApplicationIdentifier`.
+"""
+input JobIdentifierInput {
+  """
+  Identifies a job based on Indeed's public job key, also known as `jobkey`. This field is the primary identifier for external users.
+  """
+  indeedJobKey: ID
+
+  """
+  Identifies a job using the `ID` of an `EmployerJob`, often referred to as an EJID
+  """
+  employerJobId: ID
+
+  """
+  Identifies a job by company name, requisition ID and optional application ID.
+  """
+  atsApplicationIdentifier: ATSApplicationIdentifierInput
+}
+
+"""A job's physical location."""
+type JobLocation {
+  """The country code of the job's location"""
+  countryCode: String!
+
+  """The city of the job's location"""
+  city: String
+
+  """The postal code of the job's location"""
+  postalCode: String
+
+  """The full version of the formatted job's location"""
+  fullAddress: String
+}
+
+"""
+Represents Indeed's system view of a job object, connecting
+the employer-provided job data and the post-level data displayed to jobseekers
+"""
+type JobPost implements Node {
+  """IRI of job key"""
+  id: ID!
+  status(input: JobPostStatusInput): JobPostStatus
+}
+
+type JobPostGlobalStatus {
+  """The current processing state of the job"""
+  lifecycleStatus: JobPostLifecycleStatus
+}
+
+"""Lifecycle statuses within the Indeed system"""
+enum JobPostLifecycleStatus {
+  """ The job is the job is still processing """
+  PENDING
+
+  """ The job is the job has been processed """
+  ACTIVE
+
+  """ The job is no longer active """
+  INACTIVE
+}
+
+"""
+the status of a job post including searchability, sponsorship requirements, messaging tags, etc.
+"""
+type JobPostStatus {
+  """
+  Global baseline job status, overriding per-surface status when lower
+  Example: if globalStatus == HIDDEN and surface status == ORGANIC, then
+  surface status is overridden to be HIDDEN.
+  """
+  globalStatus: JobPostGlobalStatus
+
+  """Status specific to each surface."""
+  surfaceStatuses: [JobPostSurfaceStatus!]!
+}
+
+input JobPostStatusCommunicationSettingsInput {
+  """translation language, e.g ja, fr"""
+  communicationLocale: String
+
+  """
+  the name of the interface displaying status communication messages, e.g: myJobBoardName
+  this name is the combination of locale and name control which message set to retrieve
+  """
+  communicationInterfaceName: String
+}
+
+input JobPostStatusInput {
+  """List of surface contexts for which to retrieve the job post's status"""
+  surfaceContexts: [JobPostSurfaceContextInput!]
+}
+
+input JobPostSurfaceContextInput {
+  placementId: String
+
+  """translation language and message type"""
+  statusCommunicationSettings: JobPostStatusCommunicationSettingsInput
+}
+
+"""The status of a job post on a specific surface which included"""
+type JobPostSurfaceStatus {
+  isRejected: Boolean
+
+  """
+  Requires sponsorship to be searchable on this surface.
+  Typically only relevant to Indeed-hosted surfaces. Other surfaces
+  would not require sponsorship or sponsorship is not a feature on
+  on these surfaces.
+  """
+  isSponsorshipRequired: Boolean!
+
+  """
+  Is this job rejected due to it not having sponsorship applied or targeted
+  """
+  isMissingRequiredSponsorship: Boolean!
+}
+
+"""Job requirements"""
+enum JobRequirement {
+  """The field will not be shown on the application form."""
+  NO
+
+  """
+  The field will be shown the an application form as an optional field.
+  Job Seeker can skip it to complete an application.
+  """
+  OPTIONAL
+
+  """
+  The field will be shown on the application form as a required field.
+  Job Seeker must fill it in to complete an application.
+  """
+  YES
+}
+
+"""The job salary"""
+type JobSalary {
+  """Period to pay"""
+  period: JobSalaryPeriod!
+
+  """Maximum amount in LOCAL MINOR CURRENCY"""
+  maximumMinor: Long
+
+  """Minimum amount in LOCAL MINOR CURRENCY"""
+  minimumMinor: Long
+
+  """ISO 4217 currency code"""
+  currency: CurrencyCode
+
+  """Maximum amount in local MAJOR currency"""
+  maximumMajor: BigDecimal
+
+  """Minimum amount in local MAJOR currency"""
+  minimumMajor: BigDecimal
+
+  """
+  Whether the employer explicitly indicated that the pay they’re inputting is a base pay
+  """
+  basePaySpecified: Boolean
+}
+
+"""The job salary's period"""
+enum JobSalaryPeriod {
+  DAY
+  HOUR
+  MILE
+  MONTH
+  WEEK
+  YEAR
+}
+
+"""
+Unique identifier for a job seeker, which is based on the Indeed's job seeker key or email.
+"""
+type JobSeekerIdentifier {
+  """Indeed job seeker key."""
+  indeedJobSeekerKey: ID
+
+  """Email address of the job seeker."""
+  emailAddress: EmailAddress
+}
+
+"""
+Identifies the job seeker for which you are sending a disposition. The preferred field is `indeedJobSeekerKey`.
+"""
+input JobSeekerIdentifierInput {
+  """Indeed job seeker key."""
+  indeedJobSeekerKey: ID
+
+  """Email address of the job seeker."""
+  emailAddress: EmailAddress
+}
+
+type JobsIngestMutations {
+  """
+  Updates data for a sourced job. The caller must have claimed the job source.
+  
+  Although the mutation accepts an array of input objects, the mutation accepts only one update. 
+  
+  If you specify more than one update, an error occurs.
+  """
+  updateSourcedJobPostings(input: UpdateSourcedJobPostingsInput!): UpdateSourcedJobPostingsPayload
+
+  """
+  Submit a job posting for ingestion into Indeed.
+  
+  Successful responses indicate that Indeed received the job posting. It will be indexed and available (pending spam and fraud detection) at a later time (minutes to hours).
+  
+  If a job is not accepted, the corresponding `SourcedJobPostingPayload` will have a null aggregationId, with an error in the standard GraphQL errors object.
+  """
+  createSourcedJobPostings(input: CreateSourcedJobPostingsInput): CreateSourcedJobPostingsPayload
+
+  """
+  Expires a job posting.
+  
+  Specify the `sourcePostingId` from the submitted job posting.
+  
+  Indeed does not verify that the job exists before responding, so the response is always `ACCEPTED`.
+  """
+  expireSourcedJobsBySourcedPostingId(input: ExpireSourcedJobsBySourcedPostingIdInput!): ExpireSourcedJobsBySourcedPostingIdPayload
+}
+
+"""Employer attributes that are specific to JP New-Grads"""
+input JpNewGradsEmployerAttributesInput {
+  """
+  A list of schools from which the employer has previously hired graduates.
+  Each school name must be fewer than 100 characters, and the total number of schools cannot exceed 1000.
+  """
+  schoolsWithHiringRecords: [String!]
+}
+
+"""
+2-Letter language code. Specification: [ISO 639-1](https://en.wikipedia.org/wiki/ISO_639-1)
+"""
+scalar LanguageCode
+
+"""Leader's information."""
+input LeaderInput {
+  """Leader's name"""
+  name: String!
+}
+
+"""Attributes that are bound to specific locales"""
+input LocaleSpecificEmployerAttributesInput {
+  """
+  An ISO 3166-1 alpha 2-encoded country code string&mdash;for example, `US` or `JP`.
+  
+  `ww_WW` is not accepted for worldwide default data. All data must set a valid country and language.
+  """
+  country: CountryCode!
+
+  """
+  An ISO 639-1 - alpha 2-encoded language code string&mdash;for example, `en` or `ja`.
+  
+  `ww_WW` is not accepted for worldwide default data. All data must set a valid country and language.
+  """
+  language: LanguageCode!
+
+  """If `true`, defines the data as the global default. """
+  isGlobalDefault: Boolean! = true
+
+  """
+  Employer name in the locale.
+  
+  Length is from 1 to 60 characters.
+  
+  :::note
+  If the request uses the `Ignore` operation to omit this field but provides `employerName`, then the global `localizedName` field is set to the [`employerName`](/api/employer/objects/PatchEmployerInput) field value.
+  :::
+  
+  **Examples**
+  
+  | Field           | Example value          |
+  |:----------------|:-----------------------|
+  | `name`          | Yamada Kyujin          |
+  | `localizedName` | 山田求人 (ja_JP)        |
+  | `phoneticName`  | ヤマダキュウジン (ja_JP) |
+  
+  | Field           | Example value          |
+  |:----------------|:-----------------------|
+  | `name`          | Google                 |
+  | `localizedName` | グーグル (ja_JP)        |
+  | `phoneticName`  | グーグル (ja_JP)        |
+  
+  | Field           | Example value          |
+  |:----------------|:-----------------------|
+  | `name`          | Rakuten                |
+  | `localizedName` | 楽天 (ja_JP)            |
+  | `phoneticName`  | ラクテン (ja_JP)        |
+  """
+  localizedName: String
+
+  """
+  Phonetic name of the employer.
+  
+  Limit is 250 characters.
+  
+  **Examples**
+  
+  | Field           | Example value          |
+  |:----------------|:-----------------------|
+  | `name`          | Yamada Kyujin          |
+  | `localizedName` | 山田求人 (ja_JP)        |
+  | `phoneticName`  | ヤマダキュウジン (ja_JP) |
+  
+  | Field           | Example value          |
+  |:----------------|:-----------------------|
+  | `name`          | Google                 |
+  | `localizedName` | グーグル (ja_JP)        |
+  | `phoneticName`  | グーグル (ja_JP)        |
+  
+  | Field           | Example value          |
+  |:----------------|:-----------------------|
+  | `name`          | Rakuten                |
+  | `localizedName` | 楽天 (ja_JP)            |
+  | `phoneticName`  | ラクテン (ja_JP)        |
+  """
+  phoneticName: String
+
+  """Description of the employer."""
+  description: String
+
+  """
+  Base64-encoded square logo. Must be a square image with these dimensions:
+  
+  * **Minimum**: 256x256 pixels
+  * **Maximum**: 4096x4096 pixels
+  """
+  squareLogo: String
+
+  """Headquarter address. Referenced as 本社所在地住所 in Japan's market."""
+  headquarterAddress: String
+
+  """Leader's information."""
+  leader: LeaderInput
+}
+
+"""64-bit integer scalar"""
+scalar Long
+
+enum MatchStrategy {
+  """
+  Indicates that the applicant’s answer must match all of the provided values.
+  """
+  ALL
+
+  """
+  Indicates that the applicant’s answer can match any of the provided values.
+  """
+  ANY
+}
+
+"""
+Standard GraphQL error code described in https://wiki.indeed.com/display/Microservices/API+Recommendations#APIRecommendations-229
+"""
+enum MdsResponseCode {
+  OK
+
+  """
+  The operation was not attempted because the request did not
+  include sufficient authentication credentials for the operation.
+  This error code is the GraphQL equivalent of the HTTP response status 401 Unauthorized.
+  """
+  UNAUTHENTICATED
+
+  """
+  Valid authentication credentials are present but insufficient to perform the associated operation.
+  This error code is the GraphQL equivalent of the HTTP response status 403 Forbidden.
+  """
+  FORBIDDEN
+
+  """
+  The value of an input parameter is invalid.
+  This error code applies to input validation performed beyond the standard
+  GraphQL client and server libraries Non-Null and type checking.
+  """
+  BAD_USER_INPUT
+
+  """
+  The server encountered an unexpected failure and did not provide a response.
+  Use this generic error only for failures that the server cannot handle.
+  """
+  INTERNAL_SERVER_ERROR
+
+  """
+  It's partial-success if the response contains only part of successful response
+  because of some failures.
+  """
+  PARTIAL_SUCCESS
+
+  """The query exceeded the allowed complexity for a single request."""
+  QUERY_TOO_COMPLEX
+}
+
+type MdsResponseStatus {
+  responseCode: MdsResponseCode!
+  errorMessage: String
+}
+
+type MetadataTaxonomyAttribute {
+  """The attribute extracted from the input."""
+  attribute: TaxonomyConcept!
+
+  """
+  The location where the attribute was found.
+  Only included if requireLocationAndSectionInfo was set to true
+  """
+  extractedLocation: MetadataTaxonomyExtractedLocation!
+}
+
+enum MetadataTaxonomyDocumentSectionType {
+  UNKNOWN
+  JOB_DESCRIPTION
+  JOB_TITLE
+  JOB_LOCATION
+}
+
+type MetadataTaxonomyExtractedLocation {
+  """DocumentSection of where the Attribute was found."""
+  documentSectionType: MetadataTaxonomyDocumentSectionType!
+
+  """Begin offset in the text."""
+  begin: Int!
+
+  """End offset in the text."""
+  end: Int!
+}
+
+type MetadataTaxonomyTextContent {
+  text: String!
+
+  """Document section type of the text."""
+  documentSectionType: MetadataTaxonomyDocumentSectionType!
+}
+
+input MultiSelectQualificationQuestionInput {
+  """
+  Indicates the type of qualification in regards to the effect on the user’s application in the Indeed Apply flow.
+  """
+  type: QuestionQualificationImplicationType!
+
+  """Indicates the evaluation method for this question is match."""
+  match: QualificationMultiValueTextMatchConfigurationInput!
+}
+
+"""
+<!--
+NOTE: the following fields should be added in the future as part of the 1.1, 1.2 and 1.3 IA update
+# If set, configures the minimum amount of options that can be selected
+minSelectionCount: Int
+# If set, configures the maximum amount of options that can be selected
+maxSelectionCount: Int
+-->
+"""
+input MultiselectQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """The list of options available."""
+  options: [SelectOptionInput!]!
+
+  """If set, configures the minimum amount of options that can be selected."""
+  minSelectionCount: Int
+
+  """If set, configures the maximum amount of options that can be selected."""
+  maxSelectionCount: Int
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input MultiselectScreenerQuestionInput {
+  """The multi select question formatting and metadata"""
+  questionInput: MultiselectQuestionInput
+
+  """
+  A qualification criterion for this question.
+  
+  Questions that ask applicants for qualifications that may be required for the job. These qualifications need to meet conditions provided by the employer. If the question type is non-blocking, then all applications regardless of meeting the qualification criteria will be delivered to the employer.
+  """
+  qualification: MultiSelectQualificationQuestionInput
+}
+
+"""
+Example schema.
+
+GraphQL Schema Basics: https://www.apollographql.com/docs/apollo-server/schema/schema/
+Indeed API Recommendations: https://link.indeed.tech/api-recommendations
+
+Need help designing your schema? Check out the schema designer tool: https://graphql-schema-designer.sandbox.indeed.net/
+"""
+type Mutation {
+  """Mutations related to the Candidate Sync feature of ATS Sync"""
+  atsSyncCandidateSync: AtsSyncCandidateSyncMutations!
+
+  """
+  Creates or updates an employer.
+  
+  * If Indeed resolves `input.id` to an employer, it updates the specified fields for that employer.
+  
+  * If Indeed cannot resolve `input.id` to an employer, it creates an employer.
+  
+  If the request succeeds, the API returns the `employerKey` for the updated or new employer.
+  
+  Depending on the client type, some Indeed employers are marked as *protected*.
+  
+  You can update only:
+  
+  - Non-protected Indeed employers
+  - Protected Indeed employers created by the same client
+  
+  You cannot update protected Indeed employers that other clients created.
+  If you try to do so, the API returns the `FORBIDDEN` error.
+  
+  When you call the Indeed PLUS APIs, initiate a timeout after 5,000 milliseconds.
+  """
+  patchEmployer(input: PatchEmployerInput!): PatchEmployerPayload
+  jobsIngest: JobsIngestMutations
+
+  """Namespace for partner dispositions-related mutations."""
+  partnerDisposition: PartnerDispositionMutations!
+
+  """
+  Mutation that creates a virtual interview event, which is a scheduled virtual event that includes 1, or no, interviewee, and from 1 to 49 interviewers. When you schedule an event, the API automatically adds you as an interviewer to the event.
+  
+  Get the URL for the interviewee from the `VirtualInterviewInterviewee` return type in the `interviewRecordsConnection` list.
+  """
+  createVirtualInterviewEvent(input: CreateVirtualInterviewEventInput!): CreateVirtualInterviewEventPayload
+
+  """Mutation that cancels a virtual interview event."""
+  cancelVirtualInterviewEvent(input: CancelVirtualInterviewEventInput!): CancelVirtualInterviewEventPayload
+
+  """Mutation that updates the details of a virtual interview event."""
+  updateVirtualInterviewEvent(input: UpdateVirtualInterviewEventInput!): UpdateVirtualInterviewEventPayload
+}
+
+"""
+Node interface for the Relay specification.
+For more info on the Relay spec, see: https://relay.dev/graphql/objectidentification.htm
+"""
+interface Node {
+  """
+  Gets the globally unique ID of the node.
+  See: https://relay.dev/graphql/objectidentification.htm#sec-Node-Interface
+  """
+  id: ID!
+}
+
+input NumericTextQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input PageBreakQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+}
+
+"""Information about pagination in a connection."""
+type PageInfo {
+  """
+  When paginating forwards, the cursor to continue. Null if there is no next page
+  """
+  endCursor: String
+
+  """Indicates if there are more pages to fetch"""
+  hasNextPage: Boolean!
+
+  """Indicates if there are any pages prior to the current page"""
+  hasPreviousPage: Boolean!
+
+  """
+  When paginating backwards, the cursor to continue. Null if there is no previous page
+  """
+  startCursor: String
+}
+
+"""The identifier for a partner disposition."""
+type PartnerDispositionIdentifier {
+  """Identifier for Indeed Apply-related dispositions."""
+  indeedApplyID: ID
+
+  """Indeed tracking token for identification."""
+  ittk: ID
+
+  """
+  Unique identifier for the job application in a standard format, such as Indeed Apply ID, Indeed Tracking Token Key, or ApplyID.
+  """
+  universalApplyId: ID
+
+  """Alternate set of identifiers for job disposition signals."""
+  alternateIdentifier: AlternateJobIdentifier
+}
+
+"""
+Input object that defines the method for identifying a job application's disposition.
+Provide only ONE of these IDs: Indeed Apply ID, ITTK, Universal Apply ID, or alternate job identifiers.
+Providing more than one or none results in an error.
+"""
+input PartnerDispositionIdentifierInput {
+  """Indeed Apply ID to uniquely identify a job application."""
+  indeedApplyID: ID
+
+  """Indeed Tracking Token Key (ITTK) to track the job application."""
+  ittk: ID
+
+  """
+  Unique identifier for the job application in a standard format, such as Indeed Apply ID, Indeed Tracking Token Key, or ApplyID.
+  """
+  universalApplyId: ID
+
+  """
+  Alternate set of identifiers to specify the job and job seeker for which you are sending a disposition.
+  """
+  alternateIdentifier: AlternateJobIdentifierInput
+}
+
+"""
+Input object that defines the disposition signal for a job application. The disposition is identified using Indeed Apply ID, ITTK, Universal Apply ID, or an alternate set of identifiers.
+"""
+input PartnerDispositionInput {
+  """
+  Identifier. Can be an Indeed Apply ID, ITTK, Universal Apply ID, or an alternate set of identifiers.
+  """
+  identifiedBy: PartnerDispositionIdentifierInput!
+
+  """Indeed disposition status to which the raw disposition status maps."""
+  dispositionStatus: IndeedDispositionStatus!
+
+  """Raw application disposition status from the ATS."""
+  rawDispositionStatus: String!
+
+  """
+  Optional. Additional details about the application disposition status from the ATS.
+  """
+  rawDispositionDetails: String
+
+  """ATS name."""
+  atsName: String!
+
+  """
+  The date and time when the application status changed, in <a href="https://datatracker.ietf.org/doc/html/rfc3339">RFC3339</a>-recommended format.
+  """
+  statusChangeDateTime: DateTime!
+
+  """
+  The source of the application, used to identify where an application comes from, such as a job board, career site, search firm, or social network.
+  If not specified, it's assumed that the application came from Indeed.
+  """
+  applicationSourceName: String
+}
+
+"""Represents the mutations for partner dispositions."""
+type PartnerDispositionMutations {
+  """
+  Sends disposition data for Indeed Apply jobs. Identify dispositions by Indeed Apply ID, ITTK, Universal Apply ID, or an alternate set of identifiers.
+  """
+  send(input: SendPartnerDispositionInput!): SendPartnerDispositionPayload
+}
+
+"""
+To partially update employer attributes:
+
+* `{websiteUrl: <not-provided>}`: Does not update the attribute.
+* `{websiteUrl: null}`: Removes the attribute.
+* `{websiteUrl: "http://example.com"}`: Overwrites the attribute with the specified value.
+
+For fields that are array types&mdash;for example, `sectorSUIDs`:
+
+* `{sectorSUIDs: <not-provided>}`: Does not update the attribute.
+* `{sectorSUIDs: []}`: Removes the attribute.
+* `{sectorSUIDs: [<some-values>]}`: Overwrites the attribute with the specified values.
+
+An example request is:
+
+```
+{
+  "id": {
+    "type": "INDEED_EMPLOYER_KEY",
+    "id": "Employer key"
+  },
+  "employerName": "Example company",
+  "employerAttributes": {
+    "countrySpecificAttributes": [{
+      "country": "US",
+      "sectorSUIDs": ["SUID-of-some-indeed-sector"]
+    }],
+    "localeSpecificAttributes": [{
+      "country": "US",
+      "language": "en",
+      "isGlobalDefault": true,
+      "description": "Description of example company",
+      "squareLogo": "Base64-encoded-string"
+    }]
+  }
+}
+```
+"""
+input PatchEmployerInput {
+  """
+  The globally unique Internationalized Resource Identifier (IRI) for the employer.
+  """
+  id: EmployerIdentifiersInput!
+
+  """
+  Official employer name, which is required to create an Indeed employer key, and optional to submit employer data.
+  
+  Limit is 255 UTF-16-encoded characters. Cannot include the email address or eight consecutive digits.
+  
+  :::note
+  The value of `employerName` is copied to the **global** [`localizedName`](/api/employer/objects/LocaleSpecificEmployerAttributesInput) field, except when the request explicitly sets the **global** [`localizedName`](/api/employer/objects/LocaleSpecificEmployerAttributesInput) field.
+  ::: 
+  """
+  employerName: String
+
+  """
+  Employer attributes to update. If null, no employer attributes are updated.
+  """
+  employerAttributes: EmployerAttributesInput
+}
+
+"""Response for `patchEmployer`."""
+type PatchEmployerPayload {
+  """Response code."""
+  responseCode: AttributeUpdateResponseCode! @deprecated(reason: "In case of success, no special response code will be used. In case of error, the error codes will be in the standard GraphQL errors array")
+
+  """If `true`, the employer attribute was updated,. Otherwise, `false`."""
+  attributeUpdated: Boolean!
+
+  """
+  List of errors.
+  
+  If no errors occur, returns an empty array.
+  """
+  errors: [AttributeUpdateError!]! @deprecated(reason: "In case of error, the error information will be in the standard GraphQL errors array")
+}
+
+"""A phone number string formatted using E.164 format (e.g. +12024561111)"""
+scalar PhoneNumber
+
+input QualificationDateRangeConfigurationInput {
+  """The minimum value of the accepted range."""
+  minValue: DateTime
+
+  """The maximum value of the accepted range."""
+  maxValue: DateTime
+}
+
+input QualificationDecimalRangeConfigurationInput {
+  """The minimum value of the accepted range."""
+  minValue: Float
+
+  """The maximum value of the accepted range."""
+  maxValue: Float
+}
+
+input QualificationIntegerRangeConfigurationInput {
+  """The minimum value of the accepted range."""
+  minValue: Int
+
+  """The maximum value of the accepted range."""
+  maxValue: Int
+}
+
+input QualificationMatchAnyTextConfigurationInput {
+  """The values that the applicant must match."""
+  values: [String!]!
+}
+
+input QualificationMultiValueTextMatchConfigurationInput {
+  """
+  Indicates if the applicant’s answer must match “any” or “all” of the provided values.
+  """
+  type: MatchStrategy!
+
+  """The values that the applicant must match."""
+  values: [String!]!
+}
+
+"""
+Example schema.
+
+GraphQL Schema Basics: https://www.apollographql.com/docs/apollo-server/schema/schema/
+Indeed API Recommendations: https://link.indeed.tech/api-recommendations
+
+Need help designing your schema? Check out the schema designer tool: https://graphql-schema-designer.sandbox.indeed.net/
+"""
+type Query {
+  """Queries related to the Candidate Sync feature of ATS Sync."""
+  atsSyncCandidateSync: AtsSyncCandidateSyncQueries
+
+  """
+  Find job postings by source ID, or list all of an employer's job postings. For more information, see [Job Sync API guide - List job postings](https://docs.indeed.com/job-sync-api/job-sync-api-guide#list-job-postings).
+  """
+  findEmployerJobsPartner(
+    """
+    Input field for the `findEmployerJobsPartner` query. Filters and sorts the job postings in the response.
+    """
+    input: FindEmployerJobsPartnerInput
+
+    """Number of items to return. The maximum is 1,000."""
+    first: Int! = 10
+
+    """
+    Gets items with a cursor value before this cursor value. You can get pagination information from [`pageInfo`](https://docs.indeed.com/api/job/objects/FindEmployerJobsPartnerConnection) in the response.
+    """
+    before: String
+
+    """
+    Gets items with a cursor value after this cursor value. You can get pagination information from [`pageInfo`](https://docs.indeed.com/api/job/objects/FindEmployerJobsPartnerConnection) in the response.
+    """
+    after: String
+  ): FindEmployerJobsPartnerConnection
+
+  """
+  Returns a reference to an entity that implements the Node interface by extracting its type (__typename) from
+  the supplied id, which should be an IRI. (https://docs.indeed.com/api/common/objects/ID)
+  """
+  node(id: ID!): Node
+
+  """
+  Returns a list of references to entities that implements the Node interface by extracting their type (__typename)
+  from the supplied ids, which should be IRIs. (https://docs.indeed.com/api/common/objects/ID)
+  """
+  nodes(ids: [ID!]!): [Node]!
+
+  """Returns details about the given TaxonomyConcepts by multiple filters."""
+  taxonomyConcepts(input: TaxonomyConceptsInput!): TaxonomyConceptsPayload
+
+  """
+  Returns the best list of Occupations based on the input information.  Some scenarios will not return
+  useful information, such as passing in only a company.
+  """
+  classifyOccupationsForJobDetails(input: ClassifyOccupationsForJobDetailsInput!): ClassifyOccupationsForJobDetailsPayload
+
+  """Get related concepts to a given concept in a given relationship."""
+  relatedTaxonomyConcepts(input: RelatedTaxonomyConceptsInput!): RelatedTaxonomyConceptsPayload
+
+  """Returns the list of Attributes found in the given text"""
+  taxonomyAttributesForJobData(input: TaxonomyAttributesForJobDataInput!): TaxonomyAttributesExtractionPayload
+
+  """Query that lists virtual interview events, by IDs."""
+  virtualInterviewEvents(input: VirtualInterviewEventsInput!): VirtualInterviewEventsPayload
+
+  """
+  Query that lists interview events. Optionally, you can filter this query.
+  """
+  findVirtualInterviewEvents(first: Int = 10, after: String, input: FindVirtualInterviewEventsInput!): VirtualInterviewEventsConnection
+}
+
+enum QuestionQualificationImplicationType {
+  """
+  NON_BLOCKING will allow the applicant to move to the next section in the apply flow even if the answer does not meet the specification defined in the qualification. The application will be delivered in this case.
+  """
+  NON_BLOCKING
+}
+
+input RelatedTaxonomyConceptsInput {
+  """
+  You can specify the UUID or SUID of a custom relation (See
+  https://wiki.indeed.com/display/MetadataTaxonomy/Custom+Relations to know the available
+  custom relation list)
+  """
+  relationshipId: ID!
+
+  """Concept's UUID or SUID"""
+  conceptId: ID
+
+  """
+  Use this field to only keep TaxonomyConcepts belonging to the CustomClasses.
+  """
+  customClassId: ID
+
+  """
+  A 2-character country code. The value is encoded as an ISO_3166-1 - alpha 2 formatted string
+  """
+  countryCode: CountryCode
+
+  """
+  A 2-character language code. The value is encoded as an ISO_639 formatted string
+  """
+  languageCode: LanguageCode
+
+  """Set to true to keep TaxonomyConcepts that are deprecated."""
+  includeDeprecated: Boolean
+}
+
+type RelatedTaxonomyConceptsPayload {
+  """TaxonomyConcepts details."""
+  taxonomyConcepts: [TaxonomyConcept!]
+  responseStatus: MdsResponseStatus!
+}
+
+"""
+Input object to reschedule events.
+
+Child of `UpdateVirtualInterviewEventInput`.
+"""
+input RescheduleVirtualInterviewEventInput {
+  """ID of the `VirtualInterviewEvent`."""
+  id: ID!
+
+  """
+  Updated scheduled start time for the event, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  """
+  startTime: DateTime!
+
+  """
+  Updated scheduled end time for the event, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  """
+  endTime: DateTime!
+}
+
+input ScreenerQuestionBodyInput {
+  """
+  A question that requires a long-form answer. Appears as a multi-line text entry field.
+  """
+  textarea: TextAreaQuestionInput
+
+  """
+  A question that requires a short answer. Appears as a single-line text entry field.
+  
+  For more information on the available formats for text questions, see the following examples and the [JSON questions parameters](https://docs.indeed.com/indeed-apply/screener-questions#json-questions-parameters). The formats are `integer`, `decimal`, and `numeric_text`.
+  """
+  text: TextScreenerQuestionInput
+
+  """
+  A question that has multiple-choice answers. Appears as a select menu that enables the applicant to select a single answer.
+  
+  If you include from one to five answers, each answer appears with a radio button. If you include more than five answers, they appear in a dropdown list.
+  """
+  select: SelectScreenerQuestionInput
+
+  """
+  A question that has multiple answers. Appears as a list of checkboxes that enables the applicant to select multiple answers. 
+  """
+  multiselect: MultiselectScreenerQuestionInput
+
+  """
+  A question that shows additional questions and answers based on previously selected answers. For example, you might ask an applicant to choose a state. After they choose a state, you can show a dropdown list of cities within that state. Each hierarchy of questions is limited to three levels. For example: state, city, and county.
+  
+  A hierarchy of questions are similar to conditional questions. However, a hierarchy of questions are better suited to question types where an initial selection defines potential answers to subsequent questions. Using the hierarchy functionality reduces the number of questions needed to get related information.
+  """
+  hierarchical: HierarchicalQuestionInput
+
+  """
+  A question that has a date as an answer. Appears as a text field that accepts a date.
+  
+  This screener question type requires either the dd/MM/yyyy format or a locale-specific format that meets Unicode CLDR formatting.
+  
+  Indeed uses the `SimpleDateFormat`. You must format the month as MM. Using mm results in misconfiguration.
+  
+  The format of `type=date` impacts how the application is passed to the ATS and how the minimum and maximum values are parses. The job seeker still enters the date based on their locale, not the specified format, and validation error messages are in their locale’s format. To prevent confusion, use yyyy instead of yy in the format.
+  """
+  date: DateScreenerQuestionInput
+
+  """
+  A question that requires a file upload as an answer, such as certifications, portfolios, or example work. Appears as a file upload interface. The answer returned in the JSON `POST` request contains these fields: `contentType`, `data`, and `fileName`.
+  
+  Valid files types are:
+  doc
+  docx
+  gif
+  jfif
+  jif
+  jpe
+  jpeg
+  jpg
+  pdf
+  png
+  rtf
+  tif
+  tiff
+  txt
+  """
+  file: FileQuestionInput
+
+  """
+  A text display that does not require a response. Appears as explanatory text or section headings.
+  For details, see [information](https://docs.indeed.com/indeed-apply/screener-questions#information).
+  """
+  information: InformationQuestionInput
+
+  """
+  Groups questions on a page. Questions defined between two pagebreak types appear on the same page. You can group up to 20 questions on a page. By default, Indeed shows three questions on a page on desktop and groups all questions on a page for mobile.
+  """
+  pageBreak: PageBreakQuestionInput
+}
+
+input SelectOptionInput {
+  """The value corresponding to each option."""
+  value: String!
+
+  """The text corresponding to each option."""
+  label: String!
+}
+
+input SelectQualificationQuestionInput {
+  """
+  Indicates the type of qualification in regards to the effect on the user’s application in the Indeed Apply flow.
+  """
+  type: QuestionQualificationImplicationType!
+
+  """Indicates the evaluation method for this question is match."""
+  match: QualificationMatchAnyTextConfigurationInput!
+}
+
+input SelectQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """The list of options available."""
+  options: [SelectOptionInput!]!
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input SelectScreenerQuestionInput {
+  """The select question formatting and metadata"""
+  questionInput: SelectQuestionInput
+
+  """
+  A qualification criterion for this question.
+  
+  Questions that ask applicants for qualifications that may be required for the job. These qualifications need to meet conditions provided by the employer. If the question type is non-blocking, then all applications regardless of meeting the qualification criteria will be delivered to the employer.
+  """
+  qualification: SelectQualificationQuestionInput
+}
+
+"""
+Input object to send a batch of partner dispositions. Each disposition can be identified by either Indeed Apply ID, ITTK, Universal Apply ID, or an alternate identifier.
+"""
+input SendPartnerDispositionInput {
+  """An array of partner dispositions to send."""
+  dispositions: [PartnerDispositionInput!]!
+}
+
+"""
+Return type for the `send` mutation, which provides information about the sent dispositions.
+"""
+type SendPartnerDispositionPayload {
+  """The count of successfully processed dispositions."""
+  numberGoodDispositions: Int!
+
+  """
+  List of dispositions that failed to be processed with corresponding reason for failure.
+  """
+  failedDispositions: [FailedPartnerDisposition!]!
+}
+
+"""Sort direction"""
+enum SortDirection {
+  ASC
+  DESC
+}
+
+"""
+Return type for an accepted job posting. Indeed considers a job as accepted if it is a complete job that is accepted for indexing.
+
+Even if accepted, it might not appear on Indeed if it does not adhere to the Indeed [Job Posting Standards](https://indeedinc.my.site.com/employerSupport1/s/article/115005915763).
+
+If an accepted job does not appear on Indeed, see [My job is not shown on Indeed](https://indeedinc.my.site.com/employerSupport1/s/article/115005915763).
+"""
+type SourcedJobPosting {
+  """
+  UUID for the job, or the Indeed Employer Job ID.
+  
+  Indeed generates this unique ID for each submitted job posting.
+  
+  Use this ID to expire the job posting.
+  """
+  sourcedPostingId: ID!
+
+  """
+  The EmployerJob entity ID associated with the sourced job posting.
+  
+  This entity ID is equivalent to a sourcedPostingId, but it is in the base-64 encoded Indeed Resource Identifier format.
+  
+  Thus, this entity ID can be used to query the posting as an EmployerJob via the node & nodes queries.
+  """
+  employerJobId: ID!
+}
+
+"""Input object with information about how to apply to the job."""
+input SourcedJobPostingApplyMethodInput {
+  """Apply through Indeed Apply."""
+  indeedApply: SourcedJobPostingIndeedApplyInput
+}
+
+input SourcedJobPostingBodyInput {
+  """
+  Job title. Do not include other types of information, such as employment type, job location, job descriptions, copies, or headlines.
+  """
+  title: String!
+
+  """
+  Subheader for the job title.
+  
+  **Example**: "A bright and pleasant workplace"
+  """
+  subtitle: String
+
+  """
+  Description for the job posting.
+  
+  This field is limited to 65000 bytes. ASCII characters are 1 byte, while other characters are from 2 to 3 bytes.
+  
+  Ensure that the information in this field matches the details on the URL in your `SourcedJobPostingMetadataInput.url` field.
+  
+  This field is the source of the raw text that Indeed shows to job seekers. Includes all job-relevant information, including text that can also be provided in other fields in the XML, such as education or experience.
+  
+  **Note:** Job descriptions require HTML formatting. For a list of supported HTML elements, see [Enterprise ATS Integration with Indeed: Formatting guidelines](https://developer.indeed.com/docs/indeed-apply/enterprise-ats/#formatting_guidelines).
+  """
+  description: String!
+
+  """
+  How to parse description.
+  
+  You can use an HTML-formatted job description by passing `RICH_FORMATTING`. In the HTML job description, there are
+  additional constraints on the HTML attributes and element order.
+  """
+  descriptionFormatting: SourcedJobPostingFormattingType! = TEXT
+
+  """Structured salary information for this job."""
+  salary: SourcedJobPostingSalaryInput
+
+  """Indicates whether the job has a probationary period."""
+  hasProbationaryPeriod: JobHasProbationaryPeriod! = UNKNOWN
+
+  """
+  Probationary period with a specific salary.
+  
+  In Japan, some jobs have probationary periods with different salaries. Use this entity only for jobs in Japan with a probationary period. If your job is not in Japan or is in Japan and does not have a probationary period, do not include this entity. It might lead to your job being moderated.
+  """
+  probationaryPeriod: SourcedJobPostingProbationaryPeriodInput
+
+  """
+  Job location.
+  
+  If creating a job with `seats`, specify the country of all seats ONLY.
+  
+  For jobs with multiple seats in multiple locations, all locations MUST be in the same country.
+  """
+  location: SourcedJobPostingLocationInput!
+
+  """
+  A list of benefits associated with the job.
+  
+  Specify separate, distinct benefits as multiple strings in the list.
+  
+  If the job does not have explicit non-salary benefits, specify an empty list.
+  """
+  benefits: [String!]!
+}
+
+"""
+Input object with information about automatically extracted taxonomy attributes
+"""
+input SourcedJobPostingExtractedAttributesInput {
+  """
+  One or more SUIDs or strings that represent taxonomy attributes that were automatically extracted and accepted by the employer.
+  """
+  employerAcceptedAttributes: [String!]
+
+  """
+  One or more SUIDs or strings that represent taxonomy attributes that were automatically extracted and rejected by the employer.
+  """
+  employerRejectedAttributes: [String!]
+}
+
+"""
+Input object with salary information for the job.
+
+Use minor currency units, such as cents, pence, or yen, for salary values.
+"""
+input SourcedJobPostingFineGrainedJobSalaryInput {
+  """
+  The total salary of a job for the specified period, in minor currency units.
+  
+  **Examples**:
+  
+  `$102.50 -> 10250`
+  
+  `€102.50 -> 10250`
+  
+  `£102.50 -> 10250`
+  
+  `¥10250 -> 10250`
+  """
+  totalSalaryMinor: Int64
+
+  """
+  Expected number of hours of work expected per period. This is not necessarily a maximum number of hours a worker can
+  work during the `period`, but an expected minimum.
+  
+  Examples:
+  
+  - if `period` is `HOUR` and `totalSalaryMinor` is the amount of wage per hour, then this field should be set to 1.
+  - if `period` is `MONTH`, then this field should be set to the total working hours per month.
+  """
+  workingHours: Float
+
+  """
+  Total maximum overtime work hours for this job in the specified period, through `period`.
+  """
+  totalOvertimeHours: Float
+
+  """
+  Statutory overtime work hours in the specified period, through `period`.
+  
+  Accepts fractions of an hour.
+  """
+  statutoryOvertimeHours: Float
+
+  """
+  If the overtime pay, `fixedOvertimePay`, is not included in the pay and is a fixed value, specify it in this field.
+  
+  **Examples**:
+  
+  `$102.50 -> 10250`
+  
+  `€102.50 -> 10250`
+  
+  `£102.50 -> 10250`
+  
+  `¥10250 -> 10250`
+  """
+  fixedOvertimeSalaryMinor: Int64
+
+  """
+  If a base salary already presumes a certain number of overtime hours without pay, a job must positively affirm this in this field.
+  
+  **Example**: In the US, jobs that meet certain requirements can be designated as _overtime exempt_.
+  
+  For more information, see the [US Department of Labor website](https://www.dol.gov/agencies/whd/fact-sheets/17a-overtime).
+  
+  **Example**: In Japan, fixed overtime means that the overtime wage is already fixed into the salary. For details, see [pay](https://www.nsasia.co.jp/jsj/jobseeker/knowledge/what-is-fixed-overtime-pay).
+  """
+  fixedOvertimePay: Boolean! = false
+}
+
+"""Types for formatting."""
+enum SourcedJobPostingFormattingType {
+  RICH_FORMATTING
+  TEXT
+}
+
+"""
+Input object of Indeed Apply information for the job.
+
+<!--
+The following indeed-apply parameters are gathered from other parts of the schema:
+indeed-apply-jobUrl - (JobMetadataInput.postUrl) The canonical URL to the complete job description.
+indeed-apply-jobId - (JobMetadataInput.jobPostingId) The ID of the job, used for your own internal tracking.
+indeed-apply-jobCompanyName - (JobSourceInput.companyName) The name of the company. If you do not include a companyName, we derive this from other information in JobSourceInput.
+indeed-apply-jobLocation - (PendingJob.location - repeated) The location of the job.
+indeed-apply-jobTitle - (JobBodyInput.title) The title of the job to display externally.
+-->
+"""
+input SourcedJobPostingIndeedApplyInput {
+  """
+  Additional information.
+  
+  This information is not displayed externally, but it is sent when using the apply through the `POST` URL.
+  """
+  jobMeta: String
+
+  """
+  URL to which Indeed posts the application data. Encode this URL. Must be HTTPS.
+  """
+  postUrl: WebUrl!
+
+  """
+  Indicates whether the phone number field is displayed on the job.
+  
+  Default is `OPTIONAL`.
+  """
+  phoneRequired: JobRequirement = OPTIONAL
+
+  """
+  Indicates whether the message or cover letter field is required.
+  
+  Default is `OPTIONAL`.
+  """
+  coverLetterRequired: JobRequirement = OPTIONAL
+
+  """
+  Indicates whether a resume is required (`YES`) or optional (`OPTIONAL`), or whether to hide the resume upload option from the user (`NO`).
+  
+  If you specify optional or hidden (`NO`), you must include screener questions. You must support .pdf, .doc, .docx, .rtf, and .txt formats for resumes.
+  
+  Default is `YES`.
+  """
+  resumeRequired: JobRequirement = YES
+
+  """
+  List of resume fields that the job seeker's resume must include.
+  
+  This field overwrites the phone configuration parameters, if provided.
+  """
+  resumeFieldsRequired: [IndeedApplyConfigurationResumeField!]
+
+  """
+  List of resume fields that the job seeker's resume can include.
+  
+  This field overwrites the phone configuration parameters, if provided.
+  """
+  resumeFieldsOptional: [IndeedApplyConfigurationResumeField!]
+
+  """
+  Indicates whether a single field for the full name is sufficient in the apply form, or the full name must be split into first and last name.
+  """
+  nameFormat: IndeedApplyNameFormatType
+
+  """
+  URL that returns a JSON-formatted string of questions to ask during the Indeed Apply application process.
+  """
+  applyQuestions: URI
+
+  """Screener questions schema for Indeed Apply application process"""
+  applyQuestionsDetails: IndeedApplyQuestionsDetailsInput
+
+  """
+  API token. Required for Indeed Apply. For more details, see [Generate an API token](https://docs.indeed.com/indeed-apply/enterprise-ats#generate-an-api-token).
+  """
+  apiToken: ID!
+}
+
+input SourcedJobPostingJobContactInfoInput {
+  """
+  Email address of the contact for the job.
+  
+  Required by the Indeed Search Quality team.
+  
+  Indeed recommends that the contact email domain be the same email domain as the URL of the company, or the `companyWebsite`.
+  """
+  contactEmail: EmailAddress!
+
+  """Name for the client's contact."""
+  contactName: String
+
+  """Phone number for the client's contact."""
+  contactPhone: PhoneNumber
+}
+
+"""
+Input object that lists job contacts.
+
+Provides users access to the job in some systems on Indeed.
+"""
+input SourcedJobPostingJobContactInput {
+  """
+  Closest roles that the contact has:
+  
+  * `contact`. For the primary contact information for the job.
+  * `hiring manager`. For the hiring manager.
+  * `recruiter`. For a recruiter.
+  * `user`. For other users, such as interviewers or coordinators.
+  * Both `contact` and `recruiter`. If the contact for a job is also the recruiter, for instance.
+  """
+  contactType: [String!]!
+
+  """Information about how to reach the contact."""
+  contactInfo: SourcedJobPostingJobContactInfoInput!
+}
+
+input SourcedJobPostingJobSourceInput {
+  """Name of the company where the job is performed."""
+  companyName: String!
+
+  """
+  Root website of the company. For example, `https://www.indeed.com`. If the company is a franchise, use the brand website.
+  """
+  companyWebsite: WebUrl
+
+  """
+  The name of the parent organization that is hiring for the role. For example, if subsidiaries or franchises with multiple-branded locations under the same company exist, those jobs have the same value in the `sourceName` field. The `sourceName` must be unique across all job groups, and a `sourceName` can have only one `sourceType`, which is the type of organization.
+  
+  When a user claims their jobs on Indeed, this identifier determines the granular group of jobs that are associated with their account.
+  """
+  sourceName: String!
+
+  """
+  Type of organization that is hiring for this role:
+  
+  * `Employer`. Direct employer, ad agency acting on behalf of the direct employer, or recruitment process outsourcer (RPO).
+  * `Job Board`. Job board.
+  * `Staffing Agency`. Staffing agency or recruitment firm.
+  """
+  sourceType: String!
+
+  """Replaces `externalEmployerId` and `employerKey`."""
+  employerIds: [EmployerIdentifiersInput!]
+
+  """
+  Is a job for placement business.
+  
+  * If true, field `sourceType` must be `Staffing Agency`
+  * Default is false.
+  """
+  isPlacement: Boolean! = false
+
+  """
+  The name or identifier of the system where the job originated.
+  Used for distinguishing between systems where one partner brings jobs from multiple origin systems.
+  """
+  originFeedSystemName: String
+}
+
+"""
+Implementation detail: We'll need to format this info into the existing detailed_location UDDT.
+"""
+input SourcedJobPostingLocationInput {
+  """Latitude of the location where the job is performed."""
+  latitude: Float
+
+  """Longitude of the location where the job is performed."""
+  longitude: Float
+
+  """
+  Country code of the country where this job is located. For the list of country codes, see [Supported language codes, country codes, and locales](#supported-language-codes-country-codes-and-locales).
+  
+  Corresponds to GIS admin0.
+  """
+  country: CountryCode!
+
+  """
+  Street address of the primary work location for the job. Include the street name and number.
+  
+  **Example (USA)**: 1600 Pennsylvania Ave
+  
+  **Example (Japan)**: 2-7-2
+  """
+  streetAddress: String
+
+  """
+  City and administrative region for your country, such as state, county, or prefecture, and postal code.
+  
+  **Example (USA)**: Washington, District of Columbia, 20500
+  
+  **Example (Japan)**: 100-8994 東京都千代田区丸の内
+  
+  **Example (UK)**: Mayfair, London, W1J
+  """
+  cityRegionPostal: String
+}
+
+input SourcedJobPostingMetadataInput {
+  """
+  Information about the source of the job, whether a company, agency, franchise, and so on.
+  """
+  jobSource: SourcedJobPostingJobSourceInput!
+
+  """
+  A unique identifier for the job within the applicant tracking system (ATS). Historically, this value is known as the _reference number_.
+  
+  If defining seats in `SourcedJobPostingBodyInput.seats`, the individual
+  `SourcedJobPostingSeatInput.seatPostingId` values will be each job posts' _reference number_.
+  When defining a job with seats, `jobPostingId` is a grouping of one or more seats that become
+  individual job posts in Indeed.
+  """
+  jobPostingId: String!
+
+  """
+  Requisition ID for the job in your applicant tracking system (ATS). This value does not need to be unique.
+  """
+  jobRequisitionId: String
+
+  """
+  Evergreen requisition ID for the job in your ATS. Use this value when there are multiple job postings over time for the same job.
+  """
+  evergreenRequisitionId: String
+
+  """
+  Talent pool ID. Use this value to track the talent pool applications to which this job should be tagged.
+  """
+  talentPoolId: String
+
+  """Classification of the job within Indeed."""
+  taxonomyClassification: SourcedJobPostingTaxonomyInput
+
+  """
+  Date when this job was, or is to be, first published.
+  
+  For some use cases, this could be in the future. If so, this represents when the job
+  will be "published" and available through <https://indeed.com> or other API endpoints.
+  
+  **DO NOT** set this in the future, unless Indeed has communicated that a client's jobs
+  are eligible for delayed publishing. If Indeed has **NOT** communicated this, and the `publishDate`
+  is in the future, the job will not become available on <https://indeed.com> or other API endpoints.
+  
+  **Note:** If your site publishes the publication date, this date must match the date on your site.
+  """
+  datePublished: DateTime!
+
+  """
+  URL for this job posting on your site. Use the URL for the job description page, not the application page. Include the `source=Indeed` token URL parameter to track clicks from Indeed.
+  """
+  url: WebUrl!
+
+  """
+  Number of people to be hired for this job posting.
+  
+  If the number of people to be hired is unknown, leave this `null`. Do not specify a value.
+  
+  If the number if people to be hired is undecided, but may be known in the future, specify `-1`.
+  """
+  numberOfHires: Int
+
+  """
+  Date when hiring expires for this posting.
+  
+  If provided and not changed by a future request, the job can be removed from Indeed.
+  """
+  expirationDate: DateTime
+
+  """Photos for the job."""
+  photos: [SourcedJobPostingPhotoInput!]
+
+  """
+  User and contact information for the job.
+  
+  Must include exactly one contact with a `contactType` that includes `contact`.
+  """
+  contacts: [SourcedJobPostingJobContactInput!]!
+
+  """
+  Identifier for use by clients internally to help identify their own business units
+  """
+  billingId: String
+}
+
+input SourcedJobPostingPhotoInput {
+  """URL of the photo associated with the job."""
+  photoUrl: WebUrl!
+}
+
+input SourcedJobPostingProbationaryPeriodInput {
+  """
+  Text description of the probationary period. Add here the detail on working conditions (e.g. salary,
+  working hours, employment types) during the probationary period if it is different from one after the probation.
+  """
+  probationaryConditions: String
+
+  """Salary information for the probationary period."""
+  probationarySalary: SourcedJobPostingSalaryInput
+}
+
+"""
+Input object of structured salary information for the job. Use the minor currency units for your locale.
+
+In the US, cents is the most minor unit.
+
+In Japan, Yen is the most minor unit.
+
+Use `maximumMinor` and `minimumMinor` to express a salary range.
+
+If your salary is fixed, set both `maximumMinor` and `minimumMinor` to the same value. If your salary has a minimum, set only `minimumMinor`.
+
+The `currency` field uses [ISO-4217 codes](https://en.wikipedia.org/wiki/ISO_4217#Active_codes_(List_One)). For example, `USD` or `JPY`.
+
+The `salaryFrequency` field accepts hour, day, week, month, mile, or year.
+"""
+input SourcedJobPostingSalaryInput {
+  currency: CurrencyCode!
+
+  """Maximum amount in the local minor currency."""
+  maximumMinor: Int64
+
+  """Minimum amount in the local minor currency."""
+  minimumMinor: Int64!
+
+  """
+  Period to pay.
+  
+  This value also applies to other fields within this input object. For example, if `period == MONTHLY`, then working
+  hours under `fineGrainedSalaryInformation` are the expected number of working hours per month.
+  
+  To ensure your job appears on Indeed, one of the following values is recommended:
+  * `DAY`
+  * `HOUR`
+  * `MILE`
+  * `MONTH`
+  * `WEEK`
+  * `YEAR`
+  * `TASK`
+  * `SHIFT`
+  
+  Note: If `TASK` is selected, field `taskBasedSalaryInformation` must also be provided.
+  """
+  period: String!
+
+  """Additional information related to the salary for the job."""
+  fineGrainedSalaryInformation: SourcedJobPostingFineGrainedJobSalaryInput
+
+  """Additional information related to the task for the job."""
+  taskBasedSalaryInformation: SourcedJobPostingTaskBasedSalaryInput
+}
+
+"""Input object with task information for the job."""
+input SourcedJobPostingTaskBasedSalaryInput {
+  """Duration of task."""
+  taskLengthMinutes: Int64
+
+  """
+  Description for task.
+  
+  This field is limited to 65000 bytes. ASCII characters are 1 byte, while other characters are from 2 to 3 bytes.
+  """
+  taskDescription: String!
+}
+
+input SourcedJobPostingTaxonomyInput {
+  """Type or types of job, such as full- or part-time or contract."""
+  jobTypes: [String!]
+
+  """
+  List of job categories that help job seekers when searching. Indeed highly recommends that you include this field for job management, to help clients sponsor jobs based on a category, or to reflect additional information from the job details page. For example, you might find it useful to include facility or department information in this field.
+  """
+  categories: [String!]
+
+  """
+  Location flexibility.
+  
+  Use one of the following strings to best describe this role's location flexibility.
+  
+  * **Fully Remote**. Job can be performed remotely. No on-site work is required.
+  * **Hybrid Remote**. Job involves a mix of on-site and remote days, typically within the same week.
+  
+  **Note:** The data collected from this field does not determine location.
+  """
+  remoteType: String
+
+  """Desired education level for this job."""
+  education: String
+
+  """Desired experience for this job."""
+  experience: String
+
+  """Occupation or occupations applicable to this job."""
+  occupations: [String!]
+
+  """One or more SUIDs or strings that represent taxonomy attributes."""
+  attributes: [String!]
+
+  """
+  Information about taxonomy attributes that were automatically extracted
+  """
+  extractedAttributes: SourcedJobPostingExtractedAttributesInput
+}
+
+"""
+Return type for an accepted job posting update.
+
+Even if accepted, changes might not appear on Indeed right away.
+"""
+type SourcedJobPostingUpdate {
+  """Unique ID for a job post (UUID)."""
+  sourcedPostingId: ID!
+
+  """The Employer Job ID (base64 encrypted IRI)"""
+  employerJobId: ID!
+}
+
+input SubmitAtsSyncCandidateSyncApplicationInput {
+  """
+  Unique identifier to represent the reference between an Indeed employer and a Partner employer
+  
+  Provided to Partners during registration.
+  """
+  indeedRegistrationId: ID!
+
+  """
+  Unique identifier tracking the initialization and submission of an application version
+  
+  Each initialization of an application version produces this identifier, which should be used to submit the version
+  once all attachments have been uploaded.
+  """
+  applicationVersionId: ID!
+}
+
+type SubmitAtsSyncCandidateSyncApplicationPayload {
+  """
+  Unique identifier tracking the initialization and submission of an application version
+  
+  Each initialization of an application version produces this identifier, which should be used to submit the version
+  once all attachments have been uploaded.
+  """
+  applicationVersionId: ID!
+}
+
+type TaxonomyAttributesExtractionPayload {
+  """The extracted attributes."""
+  attributes: [MetadataTaxonomyAttribute!]!
+
+  """The text contents extracted from the input."""
+  textContent: [MetadataTaxonomyTextContent!]!
+}
+
+input TaxonomyAttributesForJobDataInput {
+  """Job description."""
+  description: String
+
+  """Job title."""
+  title: String
+
+  """The company of the job."""
+  company: String
+
+  """The location of the job."""
+  location: String
+
+  """
+  A 2-character country code. The value is encoded as an ISO_3166-1 - alpha 2 formatted string
+  """
+  countryCode: CountryCode
+
+  """
+  A 2-character language code. The value is encoded as an ISO_639 formatted string
+  """
+  languageCode: LanguageCode
+}
+
+"""
+Taxonomy Concept.
+Has 3 types now, ATTRIBUTE, OCCUPATION and COMPANY_SECTION.
+"""
+type TaxonomyConcept {
+  """
+  SUID(Short UID) of TaxonomyConcept.
+  Used as the primary key.
+  """
+  key: ID!
+
+  """
+  UUID of TaxonomyConcept.
+  Will be finally replaced with SUID.
+  """
+  uuid: ID!
+
+  """Preferred label of TaxonomyConcept."""
+  label: String!
+
+  """Alternative Labels of TaxonomyConcept."""
+  alternativeLabels: [String!]!
+
+  """Mobile Label of TaxonomyConcept."""
+  mobileLabel: String!
+
+  """Definitions of TaxonomyConcept."""
+  definitions: [String!]!
+
+  """
+  Return a path from the TaxonomyConcept itself to the root in the Taxonomy Tree.
+  """
+  pathToRoot: [TaxonomyConcept!]!
+
+  """List of direct children of the TaxonomyConcept in the Taxonomy Tree."""
+  children: [TaxonomyConcept!]!
+
+  """List of CustomClasses that this TaxonomyConcept belongs to."""
+  customClasses: [CustomTaxonomyClass!]!
+
+  """
+  Type of TaxonomyConcept.
+  Consider removing this field if there is no obvious usage right now.
+  """
+  taxonomyConceptType: TaxonomyConceptType!
+
+  """
+  Indicates whether this TaxonomyConcept is a verified attribute for Job.
+  This field should only be requested for ATTRIBUTE concept type.
+  """
+  isVerifiedJobAttribute: Boolean!
+
+  """
+  Indicates whether this TaxonomyConcept is a verified attribute for Resume.
+  This field should only be requested for ATTRIBUTE concept type.
+  """
+  isVerifiedResumeAttribute: Boolean!
+}
+
+input TaxonomyConceptsInput {
+  """
+  Filter by TaxoomyConceptType that clients are requesting, e.g. ATTRIBUTE, OCCUPATION.
+  Leave it as empty if unnecessary.
+  """
+  conceptTypeFilter: TaxonomyConceptType
+
+  """
+  Filter by Taxonomy Concepts UUIDs or SUIDs, both are supported.
+  Leave it as empty if unnecessary.
+  """
+  conceptIdFilter: [ID!]!
+
+  """
+  Filter by CustomClasses.
+  Leave it as empty if unnecessary.
+  """
+  customClassFilter: CustomClassFilterInput!
+
+  """Set to true to keep TaxonomyConcepts that apply Internationally."""
+  global: Boolean = false
+
+  """
+  A 2-character country code. The value is encoded as an ISO_3166-1 - alpha 2 formatted string
+  """
+  countryCode: CountryCode
+
+  """
+  A 2-character language code. The value is encoded as an ISO_639 formatted string
+  """
+  languageCode: LanguageCode
+
+  """Set to true to keep TaxonomyConcepts that are deprecated."""
+  includeDeprecated: Boolean
+}
+
+type TaxonomyConceptsPayload {
+  """TaxonomyConepts details."""
+  taxonomyConcepts: [TaxonomyConcept!]
+
+  """
+  Unique transaction Id for the request used for debug and analysis usage.
+  """
+  transactionId: ID!
+  responseStatus: MdsResponseStatus!
+}
+
+enum TaxonomyConceptType {
+  ATTRIBUTE
+  OCCUPATION
+  COMPANY_SECTOR
+  CUSTOM_CLASS
+  CROWTAG_OQVT_OCCUPATIONS
+  CROWTAG_OQVT_TAG
+  CROWTAG_MATCH_TAG
+  CROWTAG_OQVT_QUESTION
+  CROWTAG_OQVT_QUESTION_VAL
+}
+
+"""
+<!--
+NOTE: the following fields should be added in the future as part of the 1.1, 1.2 and 1.3 IA update
+
+# The minimum amount of characters accepted for the answer.
+minCharCount: Int @Min(value: 0)
+-->
+"""
+input TextAreaQuestionInput {
+  """Unique ID for this question."""
+  id: ID!
+
+  """The question text that applicants see."""
+  question: String!
+
+  """The minimum character limit for the answer."""
+  minCharCount: Int
+
+  """The maximum character limit for the answer."""
+  maxCharCount: Int
+
+  """
+  Marks a question as conditional. A conditional question depends on the answer to a previous question. Specify the ID of the previous question and the option value that activates this question.
+  For example, if an applicant responds `yes` to the question of whether they served in the military, show a conditional question that asks in which branch they served.
+  """
+  condition: ConditionConstraintInput
+
+  """
+  Set to `true` to define the question as required. Set to `false` to define the question as optional. If the candidate chooses not to answer an optional question, Indeed sends an answer value of "".
+  """
+  required: Boolean! = false
+}
+
+input TextDecimalQualificationQuestionInput {
+  """
+  Indicates the type of qualification in regards to the effect on the user’s application in the Indeed Apply flow.
+  """
+  type: QuestionQualificationImplicationType!
+
+  """
+  Indicates the evaluation method for this question is range, meaning that the user’s answers must fall within the range defined by the provided min and/or max values.
+  """
+  range: QualificationDecimalRangeConfigurationInput!
+}
+
+input TextIntegerQualificationQuestionInput {
+  """
+  Indicates the type of qualification in regards to the effect on the user’s application in the Indeed Apply flow.
+  """
+  type: QuestionQualificationImplicationType!
+
+  """
+  Indicates the evaluation method for this question is range, meaning that the user’s answers must fall within the range defined by the provided min and/or max values.
+  """
+  range: QualificationIntegerRangeConfigurationInput!
+}
+
+input TextQuestionInput {
+  """A question that expects an integer answer."""
+  integer: IntegerTextQuestionInput
+
+  """A question that expects an decimal / floating-point number answer."""
+  decimal: DecimalTextQuestionInput
+
+  """
+  A question that expects an numeric text answer, such as numeric identifiers with leading zeros.
+  """
+  numeric: NumericTextQuestionInput
+
+  """A question that expects an freeform text answer."""
+  freeform: FreeformTextQuestionInput
+}
+
+input TextScreenerQuestionInput {
+  """
+  This question accepts only integers as answers, does not allow for decimals or leading zeroes
+  """
+  integer: IntegerTextScreenerQuestionInput
+
+  """
+  This question accepts numbers as answers, allows for leading zeroes and decimals
+  """
+  decimal: DecimalTextScreenerQuestionInput
+
+  """
+  This question accepts only numbers as answers, does not allow for decimals
+  """
+  numeric: NumericTextQuestionInput
+
+  """This question accepts text as answers"""
+  freeform: FreeformTextQuestionInput
+}
+
+"""
+Time zone region id (e.g. America/Chicago) or offset (i.e. +hh:mm or -hh:mm).
+
+Serialized as a string.
+"""
+scalar TimeZone
+
+"""
+Input type of [`UpdateSourcedJobPostingInput.body`](https://docs.indeed.com/api/job/objects/UpdateSourcedJobPostingInput) to update the body of a job posting.
+"""
+input UpdateSourcedJobPostingBodyInput {
+  """
+  Update the title of the job posting. Set to `null` or exclude this field to make no changes.
+  """
+  title: String
+
+  """
+  Update the description of the job posting. Set to `null` or exclude this field to make no changes. Must be between 30 and 20,000 characters.
+  """
+  description: String
+
+  """
+  Update the location of the job posting. Set to `null` or exclude this field to make no changes.
+  """
+  jobLocation: UpdateSourcedJobPostingLocationInput
+
+  """
+  Update the salary of the job posting. Set to `null` or exclude this field to make no changes.
+  """
+  salary: UpdateSourcedJobPostingSalaryInput
+}
+
+input UpdateSourcedJobPostingGeneralLocationInput {
+  """
+  City and administrative region for your country, such as state, county, or prefecture, and postal code.
+  
+  Example (USA): Washington, District of Columbia, 20500
+  Example (UK): Mayfair, London, W1J
+  """
+  cityRegionPostal: String!
+
+  """
+  Street address of the primary work location for the job. Include the street name and number.
+  
+  Example (USA): 1600 Pennsylvania Ave
+  """
+  streetAddress: String
+}
+
+"""Input type for each job posting update."""
+input UpdateSourcedJobPostingInput {
+  """
+  The unique employer job ID (UUID) for a job posting. The createSourcedJobPostings mutation returns this value when you submit a job posting.
+  
+  This mutation accepts the employer job ID as either a UUID or a base64-encrypted Indeed Resource Identifier (IRI) from the EmployerJob type.
+  """
+  sourcedPostingId: ID!
+
+  """Job metadata to update."""
+  metadata: UpdateSourcedJobPostingMetadataInput
+
+  """Job body to update."""
+  body: UpdateSourcedJobPostingBodyInput
+}
+
+"""
+An update for a job's location. Exactly one of the fields should be supplied or an error will be returned.
+"""
+input UpdateSourcedJobPostingLocationInput {
+  """
+  Provides a general location input that can include multiple values such as an unspecific cityRegionPostal as well as a specific address.
+  """
+  general: UpdateSourcedJobPostingGeneralLocationInput
+}
+
+"""
+Input type for the job metadata to update.
+
+Partial updates are accepted, but you must specify at least one field.
+
+Updates are NOT atomic. If you specify more than one field and an error occurs during the update, the API might still apply a partial update.
+"""
+input UpdateSourcedJobPostingMetadataInput {
+  """Updates the job URL."""
+  url: WebUrl
+
+  """
+  Adds category tags to the job. You can use a category tag to group related jobs for a campaign.
+  """
+  campaignCategories: [String!]
+
+  """Updates the job tracking URL."""
+  trackingUrl: WebUrl
+}
+
+"""Return type for each update in the updateSourcedJobPostings mutation."""
+type UpdateSourcedJobPostingResult {
+  """
+  The jobPosting that corresponds to the update provided in the input.
+  
+  A null jobPosting object indicates that Indeed did not accept the update to the job.
+  """
+  jobPosting: SourcedJobPostingUpdate
+}
+
+input UpdateSourcedJobPostingSalaryInput {
+  """
+  The currency code for the salary, in ISO 4217 format (e.g. USD).
+  A null or missing input for this field makes no changes
+  """
+  currency: CurrencyCode
+
+  """
+  Maximum amount in local minor currency.
+  A null or missing input for this field will erase the current value
+  """
+  maximumMinor: Int64
+
+  """
+  Minimum amount in local minor currency.
+  A null or missing input for this field will erase the current value
+  """
+  minimumMinor: Int64
+
+  """The salary's period."""
+  period: JobSalaryPeriod!
+}
+
+"""Input type for updateSourcedJobPostings mutation."""
+input UpdateSourcedJobPostingsInput {
+  """Job posting updates to apply."""
+  updates: [UpdateSourcedJobPostingInput!]!
+}
+
+"""Return type for the updateSourcedJobPostings mutation."""
+type UpdateSourcedJobPostingsPayload {
+  """
+  Contains the results for each update provided in the input.
+  
+  The values in the array cannot be null. However, the corresponding jobPosting object
+  can be null inside each value. A null jobPosting object indicates that Indeed did not
+  accept the update to the job.
+  """
+  results: [UpdateSourcedJobPostingResult!]!
+}
+
+"""
+Input object to update an event.
+
+Include only one of these fields in an update request. The field determines the update behavior.
+"""
+input UpdateVirtualInterviewEventInput {
+  """Reschedules an event."""
+  reschedule: RescheduleVirtualInterviewEventInput
+
+  """Adds interviewers to an event."""
+  addInterviewers: UpdateVirtualInterviewEventInterviewersInput
+
+  """
+  Adds an interviewee to an event. You can only add an interviewee to an event that does not already have an interviewee.
+  """
+  addInterviewee: AddVirtualInterviewEventIntervieweeInput
+
+  """Changes the title of an event. """
+  setTitle: UpdateVirtualInterviewEventTitleInput
+
+  """Changes the time zone of an event."""
+  setTimezone: UpdateVirtualInterviewEventTimezoneInput
+}
+
+"""
+Input object to add interviewers to an event.
+
+Child of `UpdateVirtualInterviewEventInput`.
+
+Adding interviewers to an event is not atomic.
+"""
+input UpdateVirtualInterviewEventInterviewersInput {
+  """ID of the `VirtualInterviewEvent`."""
+  id: ID!
+
+  """
+  Array of one or more email addresses of the interviewers to add to the interview.
+  """
+  interviewers: [VirtualInterviewInterviewerInput!]!
+}
+
+"""Return type for the `UpdateVirtualInterviewEvent` mutation."""
+type UpdateVirtualInterviewEventPayload {
+  """Updated event."""
+  event: VirtualInterviewEvent!
+}
+
+"""
+Input object to change the time zone for an event.
+
+Child of `UpdateVirtualInterviewEventInput`.
+"""
+input UpdateVirtualInterviewEventTimezoneInput {
+  """ID of the `VirtualInterviewEvent`."""
+  id: ID!
+
+  """
+  Time zone for the event, in [IANA Time Zone Database](https://www.iana.org/time-zones) format.
+  """
+  timezone: TimeZone!
+}
+
+"""
+Input object to change the title of an event.
+
+Child of `UpdateVirtualInterviewEventInput`.
+"""
+input UpdateVirtualInterviewEventTitleInput {
+  """ID of the `VirtualInterviewEvent`."""
+  id: ID!
+
+  """Title for the event."""
+  title: String!
+}
+
+"""An RFC-2396/RFC-2732 compliant URI string."""
+scalar URI
+
+"""Return type of the scheduled time slots for the appointment."""
+type VirtualInterviewAppointmentScheduledTime {
+  """
+  Start time of the appointment, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  """
+  startTime: DateTime
+
+  """
+  End time of the appointment, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  """
+  endTime: DateTime
+}
+
+"""Return type with decision detail from the interviewer."""
+type VirtualInterviewDecision {
+  """Decision value from the interviewer."""
+  value: VirtualInterviewDecisionValue
+
+  """Decision summary and notes from the interviewer."""
+  noteText: String
+}
+
+"""Interviewer's judgment about an interviewee's fitness for a job."""
+enum VirtualInterviewDecisionValue {
+  YES
+  NO
+  MAYBE
+  SKIP
+}
+
+"""External VirtualInterviewEvent Type"""
+type VirtualInterviewEvent implements Node {
+  """The event's UUID identifier"""
+  id: ID!
+
+  """Employer-specified title of the event."""
+  title: String!
+
+  """
+  Scheduled start time for the event, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset. This offset is separate from the [`timezone`](#timezone) field.
+  """
+  startTime: DateTime!
+
+  """
+  Scheduled start time for the event, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset. This offset is separate from the [`timezone`](#timezone) field.
+  """
+  endTime: DateTime!
+
+  """
+  Time zone for the interview, in [IANA Time Zone Database](https://www.iana.org/time-zones) format.
+  """
+  timezone: TimeZone!
+
+  """Interviewer URL to the event lobby for this event."""
+  interviewerLobbyUrl: WebUrl!
+
+  """
+  Landing page that directs the interviewee and interviewers to enter the lobby. Available to only OAuth clients.
+  """
+  interviewLandingPageUrl: WebUrl
+
+  """
+  Language code of the event. An [ISO 639-2](https://www.loc.gov/standards/iso639-2/php/code_list.php) language code string. See [Supported language codes, country codes, and locales](language-and-country-codes).
+  """
+  languageCode: LanguageCode
+
+  """
+  The country code of the event. An [ISO 3166-1 - alpha 2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2#Officially_assigned_code_elements) country code string. See [Supported language codes, country codes, and locales](language-and-country-codes).
+  """
+  countryCode: CountryCode
+
+  """Current status of the event."""
+  status: VirtualInterviewEventStatus!
+
+  """Interview type for the event."""
+  mediaType: VirtualInterviewMediaType!
+
+  """List of interviewers invited to this event."""
+  interviewersConnection(first: Int = 10, after: String, before: String, last: Int): VirtualInterviewInterviewersConnection!
+
+  """List of interviewees invited to this event."""
+  intervieweesConnection(first: Int = 10, after: String, before: String, last: Int): VirtualInterviewIntervieweesConnection!
+}
+
+"""Input object of time-range information to use to filter dates."""
+input VirtualInterviewEventDateTimeRangeFilterInput {
+  after: DateTime
+  before: DateTime
+}
+
+"""
+Return type of edge information for [VirtualInterviewEvent](#VirtualInterviewEvent) pagination.
+"""
+type VirtualInterviewEventEdge {
+  """Event item."""
+  node: VirtualInterviewEvent!
+
+  """Cursor position of the node."""
+  cursor: String!
+}
+
+"""
+Return type for `VirtualInterviewEvent` or `VirtualInterviewEvents` that contains pagination information.
+"""
+type VirtualInterviewEventsConnection {
+  """Edges for pagination."""
+  edges: [VirtualInterviewEventEdge!]!
+
+  """
+  Page information for pagination. Defined in `com.indeed.graphql.relay.PageInfo`.
+  """
+  pageInfo: PageInfo!
+
+  """The events for this page."""
+  events: [VirtualInterviewEvent!]!
+
+  """
+  Total number of events that match filter criteria, ignoring pagination.
+  """
+  totalCount: Int!
+}
+
+"""Input object for the `findVirtualInterviewEvents` query."""
+input VirtualInterviewEventsInput {
+  """
+  Array of one or more unique identifier (UUID) values for the events for which to show details.
+  """
+  ids: [ID!]!
+}
+
+"""The event fields on which you can sort."""
+enum VirtualInterviewEventSortField {
+  START_TIME
+  END_TIME
+}
+
+"""
+Input object that defines on which field to sort and in which direction.
+"""
+input VirtualInterviewEventSortOptionInput {
+  """Field on which to sort."""
+  field: VirtualInterviewEventSortField!
+
+  """Direction in which to sort. Default is `ASC`."""
+  order: SortDirection! = ASC
+}
+
+"""
+Return type for the `virtualInterviewEvents` query.
+
+**Note:** When the API cannot find the input IDs, it returns null values. 
+"""
+type VirtualInterviewEventsPayload {
+  """List of events."""
+  events: [VirtualInterviewEvent]!
+}
+
+"""Current status of the event."""
+enum VirtualInterviewEventStatus {
+  SCHEDULED
+  STARTED
+  ENDED
+  ARCHIVED
+  CANCELLED
+}
+
+"""Return type with interviewee information for an event."""
+type VirtualInterviewInterviewee implements Node {
+  """
+  The globally unique identifier for an interviewee - used as a cache key and re-fetching via root node field
+  """
+  id: ID!
+
+  """Name of the interviewee."""
+  name: String!
+
+  """Email address of the interviewee."""
+  email: EmailAddress
+
+  """URL that the interviewee uses to join the event."""
+  intervieweeLobbyUrl: WebUrl!
+
+  """Information about the job for which the interviewee is interviewing."""
+  job: VirtualInterviewJob
+
+  """Status of the interviewee."""
+  status: VirtualInterviewIntervieweeStatus
+
+  """List of interview records for the interviewee."""
+  interviewRecordsConnection(first: Int = 10, after: String): VirtualInterviewRecordsConnection!
+
+  """The scheduled time for the event."""
+  scheduledTime: VirtualInterviewAppointmentScheduledTime
+}
+
+"""
+Return type of edge information for `VirtualInterviewInterviewees` pagination.
+"""
+type VirtualInterviewIntervieweeEdge {
+  """Interviewee item."""
+  node: VirtualInterviewInterviewee!
+
+  """Cursor position of the node."""
+  cursor: String!
+}
+
+"""Input object that contains virtual interview interviewee information."""
+input VirtualInterviewIntervieweeInput {
+  """Display name for the interviewee."""
+  name: String!
+
+  """Email address of the interviewee."""
+  email: EmailAddress!
+}
+
+"""
+Return type for `VirtualInterviewInterviewees` that contains pagination information.
+"""
+type VirtualInterviewIntervieweesConnection {
+  """Edges for pagination."""
+  edges: [VirtualInterviewIntervieweeEdge!]!
+
+  """Page info for pagination. Defined in `com.indeed.graphql.relay`."""
+  pageInfo: PageInfo!
+
+  """List of interviewees for this page."""
+  interviewees: [VirtualInterviewInterviewee!]!
+
+  """Total result count, ignoring pagination."""
+  totalCount: Int!
+}
+
+"""The status of the event."""
+enum VirtualInterviewIntervieweeStatus {
+  RSVPED
+  CHECKED_IN
+  INTERVIEWING
+  INTERVIEWED
+  NOT_INTERVIEWED
+  REQUEUED
+  CANCELLED
+}
+
+"""
+Return type with interviewer information for a virtual interviewer event.
+"""
+type VirtualInterviewInterviewer implements Node {
+  """
+  The globally unique identifier for an interviewer - used as a cache key and re-fetching via root node field
+  """
+  id: ID!
+
+  """Email address of the interviewer."""
+  email: EmailAddress!
+
+  """Name of the interviewer."""
+  name: String
+}
+
+"""
+Return type with edge information for `VirtualInterviewInterviewers` pagination.
+"""
+type VirtualInterviewInterviewerEdge {
+  """Interviewer item."""
+  node: VirtualInterviewInterviewer!
+
+  """Cursor position of the node."""
+  cursor: String!
+}
+
+"""Input for a Virtual Interview Interviewer"""
+input VirtualInterviewInterviewerInput {
+  email: EmailAddress!
+}
+
+"""
+Return type for `VirtualInterviewInterviewers` that contains pagination information.
+"""
+type VirtualInterviewInterviewersConnection {
+  """Edges for pagination."""
+  edges: [VirtualInterviewInterviewerEdge!]!
+
+  """
+  Page info for pagination. Defined in `com.indeed.graphql.relay.PageInfo`.
+  """
+  pageInfo: PageInfo!
+
+  """List of events for this page."""
+  interviewers: [VirtualInterviewInterviewer!]!
+
+  """Total result count, ignoring pagination."""
+  totalCount: Int!
+}
+
+"""
+Return union type that describes the output options for job information.
+"""
+union VirtualInterviewJob = VirtualInterviewJobInfo | EmployerJob
+
+"""
+Return type that contains information for a virtual interview job listing.
+"""
+type VirtualInterviewJobInfo {
+  """Job title."""
+  title: String
+
+  """Job location."""
+  location: String
+}
+
+"""The media on which the event occurs."""
+enum VirtualInterviewMediaType {
+  VIDEO
+  PHONE
+}
+
+"""
+Return type with `InterviewOutcome` information for an interview record.
+"""
+type VirtualInterviewOutcome {
+  """Interviewer who created this interview outcome."""
+  interviewer: VirtualInterviewInterviewer!
+
+  """Outcome decision from the interviewer."""
+  decision: VirtualInterviewDecision
+}
+
+"""
+Return type with edge information for `VirtualInterviewOutcomeRecord` pagination.
+"""
+type VirtualInterviewOutcomeEdge {
+  """Outcome item."""
+  node: VirtualInterviewOutcome!
+
+  """Cursor position of the node."""
+  cursor: String!
+}
+
+"""
+Return type for `VirtualInterviewOutcome` that contains pagination information.
+"""
+type VirtualInterviewOutcomesConnection {
+  """Edges for pagination."""
+  edges: [VirtualInterviewOutcomeEdge!]!
+
+  """
+  Page info for pagination. Defined in `com.indeed.graphql.relay.PageInfo`.
+  """
+  pageInfo: PageInfo!
+
+  """Interview outcomes for this page."""
+  outcomes: [VirtualInterviewOutcome!]!
+}
+
+"""External VirtualInterviewEvent Type"""
+type VirtualInterviewRecord implements Node {
+  """
+  The globally unique identifier for an interviewRecord - used as a cache key and re-fetching via root node field
+  """
+  id: ID!
+
+  """
+  Start time for the interview record, that is, the first time both the interviewer and interviewee are in the interview room, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  """
+  startTime: DateTime
+
+  """
+  End time for the interview record, in [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format with a time zone offset.
+  """
+  endTime: DateTime
+
+  """List of interview outcomes."""
+  interviewOutcomesConnection(first: Int = 10, after: String): VirtualInterviewOutcomesConnection!
+
+  """URL to the recording for the interview, if available."""
+  recordingUrl: WebUrl
+
+  """Interviewee for the interview record."""
+  interviewee: VirtualInterviewInterviewee
+
+  """The virtual interview event associated with this interview record."""
+  event: VirtualInterviewEvent
+}
+
+"""
+Return type of edge information for `VirtualInterviewRecord` pagination.
+"""
+type VirtualInterviewRecordEdge {
+  """Interviewer item."""
+  node: VirtualInterviewRecord!
+
+  """Cursor position of the node."""
+  cursor: String!
+}
+
+"""
+Return type for `VirtualInterviewRecord` that contains pagination information.
+"""
+type VirtualInterviewRecordsConnection {
+  """Edges for pagination."""
+  edges: [VirtualInterviewRecordEdge!]!
+
+  """
+  Page information for pagination. Defined in `com.indeed.graphql.relay.PageInfo`.
+  """
+  pageInfo: PageInfo!
+
+  """Events for this page."""
+  records: [VirtualInterviewRecord!]!
+}
+
+"""Input object of partner metadata related to the request."""
+input VirtualInterviewRequestMetadataInput {
+  """
+  Partner application, which is usually an applicant tracking system (ATS), from which the request was sent.
+  """
+  atsName: String!
+
+  """Employer name, if available."""
+  employerName: String
+}
+
+"""
+Well-formed URL. Specifcation: [RFC 2396/2732](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier)
+"""
+scalar WebUrl

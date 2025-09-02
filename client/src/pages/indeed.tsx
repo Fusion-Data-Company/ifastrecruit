@@ -53,20 +53,20 @@ export default function IndeedIntegrationPage() {
     type: 'Full-time' as const,
   });
 
-  // Real API queries - will work when backend endpoints exist
+  // Real API queries - now working with backend endpoints
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<JobPosting[]>({
     queryKey: ['/api/indeed/jobs'],
-    enabled: false, // Enable when API exists
+    enabled: true, // Enable real API
   });
 
   const { data: applications = [], isLoading: appsLoading } = useQuery<Application[]>({
     queryKey: ['/api/indeed/applications'],
-    enabled: false, // Enable when API exists
+    enabled: true, // Enable real API
   });
 
-  const { data: integrationStatus } = useQuery({
+  const { data: integrationStatus = {} } = useQuery({
     queryKey: ['/api/indeed/status'],
-    enabled: false, // Enable when API exists
+    enabled: true, // Enable real API
   });
 
   const createJobMutation = useMutation({
