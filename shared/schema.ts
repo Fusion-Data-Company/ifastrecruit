@@ -84,6 +84,21 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+export const workflowRules = pgTable("workflow_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  isActive: boolean("is_active").default(true),
+  priority: integer("priority").default(50),
+  triggers: jsonb("triggers").notNull(),
+  conditions: jsonb("conditions").notNull(),
+  actions: jsonb("actions").notNull(),
+  triggerCount: integer("trigger_count").default(0),
+  lastTriggered: timestamp("last_triggered"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
   candidates: many(candidates),
@@ -120,6 +135,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true,
 export const insertApifyActorSchema = createInsertSchema(apifyActors).omit({ id: true, createdAt: true });
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, ts: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export const insertWorkflowRuleSchema = createInsertSchema(workflowRules).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type Campaign = typeof campaigns.$inferSelect;
@@ -129,6 +145,7 @@ export type Booking = typeof bookings.$inferSelect;
 export type ApifyActor = typeof apifyActors.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type WorkflowRule = typeof workflowRules.$inferSelect;
 
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
@@ -137,3 +154,4 @@ export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type InsertApifyActor = z.infer<typeof insertApifyActorSchema>;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertWorkflowRule = z.infer<typeof insertWorkflowRuleSchema>;

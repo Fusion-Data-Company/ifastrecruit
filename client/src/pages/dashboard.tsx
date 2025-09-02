@@ -8,9 +8,12 @@ import PipelineBoard from "@/components/PipelineBoard";
 import ApifyStudio from "@/components/ApifyStudio";
 import Calendar from "@/components/Calendar";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import WorkflowEngine from "@/components/WorkflowEngine";
+import SystemMonitoring from "@/components/SystemMonitoring";
+import AuditLogs from "@/components/AuditLogs";
 import { motion } from "framer-motion";
 
-type TabType = "grid" | "pipeline" | "apify" | "calendar" | "analytics";
+type TabType = "grid" | "pipeline" | "apify" | "calendar" | "analytics" | "workflow" | "monitoring" | "audit";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>("grid");
@@ -27,6 +30,12 @@ export default function Dashboard() {
         return <Calendar />;
       case "analytics":
         return <AnalyticsDashboard />;
+      case "workflow":
+        return <WorkflowEngine />;
+      case "monitoring":
+        return <SystemMonitoring />;
+      case "audit":
+        return <AuditLogs />;
       default:
         return <DataGrid />;
     }
@@ -51,6 +60,9 @@ export default function Dashboard() {
                 { id: "apify", label: "Apify Studio", icon: "fas fa-robot" },
                 { id: "calendar", label: "Calendar", icon: "fas fa-calendar" },
                 { id: "analytics", label: "Analytics", icon: "fas fa-chart-bar" },
+                { id: "workflow", label: "Automation", icon: "fas fa-robot" },
+                { id: "monitoring", label: "Monitoring", icon: "fas fa-server" },
+                { id: "audit", label: "Audit Logs", icon: "fas fa-clipboard-list" },
               ].map((tab) => (
                 <button
                   key={tab.id}

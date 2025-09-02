@@ -5,8 +5,19 @@ import { z } from "zod";
 import { insertCandidateSchema, insertCampaignSchema, insertInterviewSchema, insertBookingSchema } from "@shared/schema";
 import { mcpServer } from "./mcp/server";
 import { setupSSE } from "./services/sse";
+import { registerWorkflowRoutes } from "./routes/workflow";
+import { apiManager } from "./services/external-apis";
+import { emailAutomation } from "./services/email";
+import { 
+  securityHeaders, 
+  apiRateLimit, 
+  errorHandler, 
+  requestLogger, 
+  corsOptions 
+} from "./middleware/security";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
+import cors from "cors";
 
 // Validation schemas
 const tokenSchema = z.object({
@@ -24,6 +35,12 @@ function generateSecureToken(): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Apply security middleware
+  app.use(cors(corsOptions));
+  app.use(securityHeaders);
+  app.use(requestLogger);
+  app.use(apiRateLimit);
   
   // Only setup WebSocket server in production to avoid conflict with Vite's WebSocket
   let wss: WebSocketServer | null = null;
@@ -267,6 +284,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch Apify actors" });
     }
   });
+
+  // Register workflow routes
+  registerWorkflowRoutes(app);
+
+  // External API health check endpoint
+  app.get("/api/health/external", async (req, res) => {
+    try {
+      const healthChecks = await apiManager.healthCheckAll();
+      const configuration = apiManager.getConfigurationStatus();
+      
+      res.json({
+        external_apis: healthChecks,
+        configuration_status: configuration,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check external API health" });
+    }
+  });
+
+  // Email automation endpoints
+  app.post("/api/email/send", async (req, res) => {
+    try {
+      const { to, templateId, variables } = req.body;
+      
+      if (!to || !templateId) {
+        return res.status(400).json({ error: "Missing required fields: to, templateId" });
+      }
+
+      const result = await emailAutomation.sendWelcomeEmail(variables.candidateName, to);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send email" });
+    }
+  });
+
+  app.post("/api/email/interview-invite", async (req, res) => {
+    try {
+      const { candidateId, interviewDetails } = req.body;
+      
+      const candidate = await storage.getCandidate(candidateId);
+      if (!candidate) {
+        return res.status(404).json({ error: "Candidate not found" });
+      }
+
+      const result = await emailAutomation.sendInterviewInvitation(
+        candidate.name,
+        candidate.email,
+        interviewDetails
+      );
+      
+      // Log the email send
+      await storage.createAuditLog({
+        actor: 'system',
+        action: 'email_sent',
+        payloadJson: { 
+          type: 'interview_invite',
+          candidateId,
+          success: result.success,
+        },
+      });
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send interview invitation" });
+    }
+  });
+
+  // External API integration endpoints
+  app.post("/api/integrations/slack/notify", async (req, res) => {
+    try {
+      const { candidateName, action, details } = req.body;
+      
+      const slackService = apiManager.getService('slack');
+      if (!slackService?.isConfigured()) {
+        return res.status(503).json({ error: "Slack integration not configured" });
+      }
+
+      const result = await slackService.sendCandidateNotification(candidateName, action, details);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send Slack notification" });
+    }
+  });
+
+  app.post("/api/integrations/indeed/search", async (req, res) => {
+    try {
+      const { query, location, limit } = req.body;
+      
+      const indeedService = apiManager.getService('indeed');
+      if (!indeedService?.isConfigured()) {
+        return res.status(503).json({ error: "Indeed integration not configured" });
+      }
+
+      const result = await indeedService.searchJobs({ query, location, limit });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search Indeed jobs" });
+    }
+  });
+
+  app.post("/api/integrations/apify/scrape", async (req, res) => {
+    try {
+      const { searchQuery } = req.body;
+      
+      const apifyService = apiManager.getService('apify');
+      if (!apifyService?.isConfigured()) {
+        return res.status(503).json({ error: "Apify integration not configured" });
+      }
+
+      const result = await apifyService.scrapeLinkedInProfiles(searchQuery);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to scrape profiles" });
+    }
+  });
+
+  // AI-powered candidate analysis
+  app.post("/api/ai/analyze-candidate", async (req, res) => {
+    try {
+      const { candidateId } = req.body;
+      
+      const candidate = await storage.getCandidate(candidateId);
+      if (!candidate) {
+        return res.status(404).json({ error: "Candidate not found" });
+      }
+
+      const openRouterService = apiManager.getService('openrouter');
+      if (!openRouterService?.isConfigured()) {
+        return res.status(503).json({ error: "AI service not configured" });
+      }
+
+      const analysis = await openRouterService.generateCandidateAnalysis({
+        name: candidate.name,
+        email: candidate.email,
+        skills: candidate.tags || [],
+      });
+
+      // Update candidate with AI analysis
+      await storage.updateCandidate(candidateId, {
+        score: analysis.score,
+      });
+
+      res.json(analysis);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to analyze candidate" });
+    }
+  });
+
+  // System monitoring endpoint
+  app.get("/api/system/status", async (req, res) => {
+    try {
+      const stats = await storage.getAdminStats();
+      const externalHealth = await apiManager.healthCheckAll();
+      const configuration = apiManager.getConfigurationStatus();
+      
+      res.json({
+        system: {
+          status: 'healthy',
+          uptime: process.uptime(),
+          memory: process.memoryUsage(),
+          node_version: process.version,
+          env: process.env.NODE_ENV,
+        },
+        database: stats,
+        external_apis: externalHealth,
+        integrations: configuration,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get system status" });
+    }
+  });
+
+  // Apply global error handler
+  app.use(errorHandler);
 
   return httpServer;
 }

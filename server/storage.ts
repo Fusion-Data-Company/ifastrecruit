@@ -6,6 +6,7 @@ import {
   apifyActors, 
   auditLogs,
   users,
+  workflowRules,
   type Campaign,
   type Candidate, 
   type Interview,
@@ -13,13 +14,15 @@ import {
   type ApifyActor,
   type AuditLog,
   type User,
+  type WorkflowRule,
   type InsertCampaign,
   type InsertCandidate,
   type InsertInterview,
   type InsertBooking,
   type InsertApifyActor,
   type InsertAuditLog,
-  type InsertUser
+  type InsertUser,
+  type InsertWorkflowRule
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
@@ -67,6 +70,13 @@ export interface IStorage {
   // Audit Log methods
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+
+  // Workflow Rule methods
+  getWorkflowRules(): Promise<WorkflowRule[]>;
+  getWorkflowRule(id: string): Promise<WorkflowRule | undefined>;
+  createWorkflowRule(rule: InsertWorkflowRule): Promise<WorkflowRule>;
+  updateWorkflowRule(id: string, updates: Partial<WorkflowRule>): Promise<WorkflowRule>;
+  deleteWorkflowRule(id: string): Promise<void>;
 
   // KPI methods
   getKPIs(): Promise<any>;
@@ -304,6 +314,34 @@ export class DatabaseStorage implements IStorage {
       apifyActors: actorsCount.count,
       auditLogs: logsCount.count,
     };
+  }
+
+  // Workflow rule methods implementation
+  async getWorkflowRules(): Promise<WorkflowRule[]> {
+    return await db.select().from(workflowRules).orderBy(desc(workflowRules.priority), desc(workflowRules.createdAt));
+  }
+
+  async getWorkflowRule(id: string): Promise<WorkflowRule | undefined> {
+    const [rule] = await db.select().from(workflowRules).where(eq(workflowRules.id, id));
+    return rule || undefined;
+  }
+
+  async createWorkflowRule(rule: InsertWorkflowRule): Promise<WorkflowRule> {
+    const [created] = await db.insert(workflowRules).values(rule).returning();
+    return created;
+  }
+
+  async updateWorkflowRule(id: string, updates: Partial<WorkflowRule>): Promise<WorkflowRule> {
+    const [updated] = await db
+      .update(workflowRules)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(workflowRules.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflowRule(id: string): Promise<void> {
+    await db.delete(workflowRules).where(eq(workflowRules.id, id));
   }
 
   async saveICSFile(content: string): Promise<string> {
