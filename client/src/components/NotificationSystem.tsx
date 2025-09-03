@@ -92,19 +92,6 @@ export default function NotificationSystem({ className }: NotificationSystemProp
 
   return (
     <>
-      {/* Connection Status Indicator (for development) */}
-      {import.meta.env.DEV && (
-        <div className="fixed bottom-4 left-4 z-50">
-          <Card className="glass-panel p-2">
-            <div className="flex items-center space-x-2 text-xs">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-muted-foreground">
-                {isConnected ? 'Live Updates Active' : 'Reconnecting...'}
-              </span>
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* Notification Bell */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
