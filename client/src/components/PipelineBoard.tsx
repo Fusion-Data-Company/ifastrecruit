@@ -152,12 +152,17 @@ export default function PipelineBoard() {
     })
   );
 
-  const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
+  const { data: candidates = [], isLoading, error } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
+    queryFn: async () => {
+      const response = await fetch('/api/candidates');
+      if (!response.ok) {
+        throw new Error('Failed to fetch candidates');
+      }
+      return response.json();
+    },
   });
 
-  // Debug logging
-  console.log("PipelineBoard candidates:", candidates?.length || 0, candidates);
 
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, newStage }: { candidateId: string; newStage: string }) => {
