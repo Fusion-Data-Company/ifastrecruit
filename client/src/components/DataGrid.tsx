@@ -318,8 +318,8 @@ export default function DataGrid() {
     [selectedRows, updateCandidateMutation]
   );
 
-  // Use filtered candidates for table data
-  const tableData = filteredCandidates.length > 0 || currentFilters ? filteredCandidates : (allCandidates || []);
+  // Use filtered candidates for table data, or all candidates if no filters applied
+  const tableData = currentFilters ? filteredCandidates : (allCandidates || []);
 
   const table = useReactTable({
     data: tableData,
