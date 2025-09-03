@@ -171,10 +171,23 @@ export function SecondaryAgent() {
 // Center Agent - Bottom Center
 export function CenterAgent() {
   return (
-    <ElevenLabsWidget 
-      agentId="agent_01jxb0mn53ft19tt6crjzaqnwc"
-      position="bottom-center"
-      testId="center-agent"
-    />
+    <div
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        left: 'calc(50% - 40px)', // Center minus half estimated width
+        zIndex: 9999,
+        backgroundColor: 'rgba(255, 255, 0, 0.3)', // Yellow debug background
+        padding: '2px',
+        borderRadius: '4px'
+      }}
+      data-testid="center-agent-debug"
+    >
+      <ElevenLabsWidget 
+        agentId="agent_01jxb0mn53ft19tt6crjzaqnwc"
+        position="bottom-right" // Use bottom-right positioning logic but in center container
+        testId="center-agent"
+      />
+    </div>
   );
 }
