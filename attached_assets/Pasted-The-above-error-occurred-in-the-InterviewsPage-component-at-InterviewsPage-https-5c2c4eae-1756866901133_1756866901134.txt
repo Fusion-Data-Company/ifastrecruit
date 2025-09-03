@@ -1,0 +1,27 @@
+The above error occurred in the <InterviewsPage> component:
+
+    at InterviewsPage (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/src/pages/interviews.tsx:30:35)
+    at Route (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=bdb22442:191:16)
+    at Switch (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=bdb22442:247:17)
+    at Router
+    at Provider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=bdb22442:38:15)
+    at TooltipProvider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=bdb22442:63:5)
+    at QueryClientProvider (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=bdb22442:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+Cannot read properties of null (reading 'filter')
+at InterviewsPage (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/src/pages/interviews.tsx:278:195)
+at renderWithHooks (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:11548:26)
+at updateFunctionComponent (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:14582:28)
+at beginWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:15924:22)
+at beginWork$1 (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:19753:22)
+at performUnitOfWork (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:19198:20)
+at workLoopSync (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:19137:13)
+at renderRootSync (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:19116:15)
+at recoverFromConcurrentError (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:18736:28)
+at performSyncWorkOnRoot (https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=bdb22442:18879:28)
+Failed to fetch
+Failed to fetch
+at https://5c2c4eae-2fc5-431a-af79-54868e93f448-00-2so5ucamtmw7c.riker.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:236687

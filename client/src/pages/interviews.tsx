@@ -14,7 +14,7 @@ export default function InterviewsPage() {
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const { data: interviews = [], isLoading } = useQuery<Interview[]>({
+  const { data: interviews = [], isLoading, error } = useQuery<Interview[]>({
     queryKey: ['/api/interviews'],
   });
 
@@ -132,7 +132,7 @@ export default function InterviewsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
                   <p className="text-2xl font-bold">
-                    {interviews.filter(i => i.status === 'completed').length}
+                    {(interviews || []).filter(i => i.status === 'completed').length}
                   </p>
                 </div>
               </div>
@@ -148,8 +148,8 @@ export default function InterviewsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Completion Rate</p>
                   <p className="text-2xl font-bold">
-                    {interviews.length > 0 
-                      ? Math.round((interviews.filter(i => i.status === 'completed').length / interviews.length) * 100)
+                    {(interviews || []).length > 0 
+                      ? Math.round(((interviews || []).filter(i => i.status === 'completed').length / (interviews || []).length) * 100)
                       : 0}%
                   </p>
                 </div>
