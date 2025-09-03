@@ -254,15 +254,12 @@ export const intelligentCaching = (ttlSeconds: number = 300) => {
   };
 };
 
-// Performance optimization headers
+// Performance optimization headers - ALL RESTRICTIONS REMOVED FOR ELEVENLABS
 export const performanceHeaders = (req: Request, res: Response, next: NextFunction) => {
-  // Security and performance headers
+  // NO restrictive headers - everything allowed for ElevenLabs widget
   res.set({
     'X-DNS-Prefetch-Control': 'on',
-    'X-Frame-Options': 'DENY',
-    'X-Content-Type-Options': 'nosniff',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+    'Permissions-Policy': 'microphone=*, camera=*, geolocation=*, autoplay=*, encrypted-media=*, fullscreen=*, payment=*',
   });
 
   // Static asset caching

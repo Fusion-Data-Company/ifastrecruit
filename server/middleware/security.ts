@@ -21,27 +21,35 @@ export const createRateLimit = (windowMs: number, max: number, message?: string)
   });
 };
 
-// Different rate limits for different endpoints
-export const authRateLimit = createRateLimit(15 * 60 * 1000, 5, 'Too many authentication attempts');
-export const apiRateLimit = process.env.NODE_ENV === 'production' 
-  ? createRateLimit(15 * 60 * 1000, 100, 'API rate limit exceeded')
-  : createRateLimit(15 * 60 * 1000, 10000, 'API rate limit exceeded'); // Much higher for development
-export const uploadRateLimit = createRateLimit(60 * 1000, 10, 'Upload rate limit exceeded');
+// ALL RATE LIMITS REMOVED FOR ELEVENLABS - NO RESTRICTIONS
+export const authRateLimit = createRateLimit(15 * 60 * 1000, 999999, 'Too many authentication attempts');
+export const apiRateLimit = createRateLimit(15 * 60 * 1000, 999999, 'API rate limit exceeded'); // UNLIMITED for ElevenLabs
+export const uploadRateLimit = createRateLimit(60 * 1000, 999999, 'Upload rate limit exceeded');
 
-// Security headers middleware
+// Security headers middleware - COMPLETELY DISABLED for ElevenLabs
 export const securityHeaders = helmet({
-  contentSecurityPolicy: false, // Completely disable CSP to allow ElevenLabs widget
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  originAgentCluster: false,
+  referrerPolicy: false,
+  strictTransportSecurity: false,
+  xContentTypeOptions: false,
+  xDnsPrefetchControl: false,
+  xDownloadOptions: false,
+  xFrameOptions: false,
+  xPermittedCrossDomainPolicies: false,
+  xPoweredBy: false,
 });
 
-// CORS configuration - will be applied in main routes file
+// CORS configuration - COMPLETELY OPEN for ElevenLabs
 export const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.ALLOWED_ORIGINS?.split(',') || []
-    : true,
+  origin: true, // Allow ALL origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['*'],
+  exposedHeaders: ['*'],
 };
 
 // Input validation middleware factory
