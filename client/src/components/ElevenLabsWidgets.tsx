@@ -88,7 +88,7 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
     : position === 'bottom-left'
     ? { position: 'fixed' as const, bottom: '24px', left: '24px', zIndex: 9999 }
     : position === 'bottom-center'
-    ? { position: 'relative' as const, zIndex: 1 }
+    ? { position: 'fixed' as const, bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }
     : { position: 'fixed' as const, top: '24px', right: '24px', zIndex: 9999 };
 
   if (widgetStatus === 'error') {
@@ -171,22 +171,10 @@ export function SecondaryAgent() {
 // Center Agent - Bottom Center
 export function CenterAgent() {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '24px', 
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 10000,
-        pointerEvents: 'auto'
-      }}
-      data-testid="center-agent-container"
-    >
-      <ElevenLabsWidget 
-        agentId="agent_01jxb0mn53ft19tt6crjzaqnwc"
-        position="bottom-center"
-        testId="center-agent"
-      />
-    </div>
+    <ElevenLabsWidget 
+      agentId="agent_01jxb0mn53ft19tt6crjzaqnwc"
+      position="bottom-center"
+      testId="center-agent"
+    />
   );
 }
