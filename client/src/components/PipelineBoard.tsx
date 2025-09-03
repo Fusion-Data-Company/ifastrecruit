@@ -79,6 +79,12 @@ export default function PipelineBoard() {
       candidates: candidates?.filter(c => c.pipelineStage === "FINAL_INTERVIEW") || [],
     },
     {
+      id: "OFFER",
+      name: "Offer Extended",
+      color: "bg-green-500/20",
+      candidates: candidates?.filter(c => c.pipelineStage === "OFFER") || [],
+    },
+    {
       id: "HIRED",
       name: "Hired",
       color: "bg-accent/30",
@@ -171,7 +177,7 @@ export default function PipelineBoard() {
                       className="candidate-card p-3 rounded-lg border border-border cursor-move"
                       draggable
                       onDragStart={(e) => {
-                        const dragEvent = e as React.DragEvent<HTMLDivElement>;
+                        const dragEvent = e as unknown as React.DragEvent<HTMLDivElement>;
                         dragEvent.dataTransfer.setData("text/plain", candidate.id);
                         setActiveCandidate(candidate);
                       }}
