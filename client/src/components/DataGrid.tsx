@@ -553,11 +553,6 @@ export default function DataGrid() {
           className="mb-6"
         />
 
-        {/* Data Export/Import */}
-        <DataExportImport
-          candidates={allCandidates || []}
-          className="mb-6"
-        />
       </div>
 
       {/* Table with proper column widths */}
@@ -674,6 +669,14 @@ export default function DataGrid() {
             <i className="fas fa-chevron-right"></i>
           </Button>
         </div>
+      </div>
+
+      {/* Data Export/Import - Moved below table */}
+      <div className="p-4 border-t border-border">
+        <DataExportImport
+          candidates={allCandidates || []}
+          className=""
+        />
       </div>
 
       {/* File Viewer for selected candidate */}
