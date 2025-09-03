@@ -37,9 +37,14 @@ export const candidates = pgTable("candidates", {
   emailUnique: unique().on(table.email),
 }));
 
+export const interviewStatusEnum = pgEnum("interview_status", ["scheduled", "completed", "cancelled", "no-show"]);
+
 export const interviews = pgTable("interviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   candidateId: varchar("candidate_id").notNull().references(() => candidates.id),
+  candidateEmail: text("candidate_email").notNull(),
+  scheduledAt: timestamp("scheduled_at").notNull(),
+  status: interviewStatusEnum("status").notNull().default("scheduled"),
   transcriptUrl: text("transcript_url"),
   summary: text("summary"),
   scorecardJson: jsonb("scorecard_json"),

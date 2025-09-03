@@ -79,18 +79,19 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
   });
 
   // Generate analytics data from candidates
+  const safeC = candidates || [];
   const analyticsData: AnalyticsData = {
     pipelineMetrics: [
-      { stage: 'New', count: candidates.filter(c => c.pipelineStage === 'NEW').length, conversionRate: 85, avgTimeInStage: 2.3 },
-      { stage: 'First Interview', count: candidates.filter(c => c.pipelineStage === 'FIRST_INTERVIEW').length, conversionRate: 65, avgTimeInStage: 5.1 },
-      { stage: 'Technical Screen', count: candidates.filter(c => c.pipelineStage === 'TECHNICAL_SCREEN').length, conversionRate: 45, avgTimeInStage: 7.2 },
-      { stage: 'Final Interview', count: candidates.filter(c => c.pipelineStage === 'FINAL_INTERVIEW').length, conversionRate: 78, avgTimeInStage: 4.6 },
-      { stage: 'Offer', count: candidates.filter(c => c.pipelineStage === 'OFFER').length, conversionRate: 92, avgTimeInStage: 3.1 },
-      { stage: 'Hired', count: candidates.filter(c => c.pipelineStage === 'HIRED').length, conversionRate: 100, avgTimeInStage: 0 },
+      { stage: 'New', count: safeC.filter(c => c.pipelineStage === 'NEW').length, conversionRate: 85, avgTimeInStage: 2.3 },
+      { stage: 'First Interview', count: safeC.filter(c => c.pipelineStage === 'FIRST_INTERVIEW').length, conversionRate: 65, avgTimeInStage: 5.1 },
+      { stage: 'Technical Screen', count: safeC.filter(c => c.pipelineStage === 'TECHNICAL_SCREEN').length, conversionRate: 45, avgTimeInStage: 7.2 },
+      { stage: 'Final Interview', count: safeC.filter(c => c.pipelineStage === 'FINAL_INTERVIEW').length, conversionRate: 78, avgTimeInStage: 4.6 },
+      { stage: 'Offer', count: safeC.filter(c => c.pipelineStage === 'OFFER').length, conversionRate: 92, avgTimeInStage: 3.1 },
+      { stage: 'Hired', count: safeC.filter(c => c.pipelineStage === 'HIRED').length, conversionRate: 100, avgTimeInStage: 0 },
     ],
     sourcePerformance: [
-      { source: 'Indeed', candidates: candidates.filter(c => c.campaignId).length, hiredCount: 12, conversionRate: 8.5, avgScore: 78 },
-      { source: 'Manual Entry', candidates: candidates.filter(c => !c.campaignId).length, hiredCount: 8, conversionRate: 12.3, avgScore: 82 },
+      { source: 'Indeed', candidates: safeC.filter(c => c.campaignId).length, hiredCount: 12, conversionRate: 8.5, avgScore: 78 },
+      { source: 'Manual Entry', candidates: safeC.filter(c => !c.campaignId).length, hiredCount: 8, conversionRate: 12.3, avgScore: 82 },
       { source: 'Referrals', candidates: 23, hiredCount: 6, conversionRate: 26.1, avgScore: 89 },
       { source: 'LinkedIn', candidates: 31, hiredCount: 4, conversionRate: 12.9, avgScore: 75 },
     ],
@@ -100,11 +101,11 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
       avgTimeToOffer: 14.7,
     },
     scoreDistribution: [
-      { range: '90-100', count: candidates.filter(c => (c.score || 0) >= 90).length, percentage: 15 },
-      { range: '80-89', count: candidates.filter(c => (c.score || 0) >= 80 && (c.score || 0) < 90).length, percentage: 25 },
-      { range: '70-79', count: candidates.filter(c => (c.score || 0) >= 70 && (c.score || 0) < 80).length, percentage: 35 },
-      { range: '60-69', count: candidates.filter(c => (c.score || 0) >= 60 && (c.score || 0) < 70).length, percentage: 20 },
-      { range: '< 60', count: candidates.filter(c => (c.score || 0) < 60).length, percentage: 5 },
+      { range: '90-100', count: safeC.filter(c => (c.score || 0) >= 90).length, percentage: 15 },
+      { range: '80-89', count: safeC.filter(c => (c.score || 0) >= 80 && (c.score || 0) < 90).length, percentage: 25 },
+      { range: '70-79', count: safeC.filter(c => (c.score || 0) >= 70 && (c.score || 0) < 80).length, percentage: 35 },
+      { range: '60-69', count: safeC.filter(c => (c.score || 0) >= 60 && (c.score || 0) < 70).length, percentage: 20 },
+      { range: '< 60', count: safeC.filter(c => (c.score || 0) < 60).length, percentage: 5 },
     ],
     trendsData: Array.from({ length: 30 }, (_, i) => {
       const date = format(subDays(new Date(), 29 - i), 'MMM dd');
@@ -117,9 +118,9 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
       };
     }),
     performanceKPIs: {
-      totalCandidates: candidates.length,
-      activeInPipeline: candidates.filter(c => !['HIRED', 'REJECTED'].includes(c.pipelineStage)).length,
-      averageScore: Math.round(candidates.reduce((sum, c) => sum + (c.score || 0), 0) / candidates.length) || 0,
+      totalCandidates: safeC.length,
+      activeInPipeline: safeC.filter(c => !['HIRED', 'REJECTED'].includes(c.pipelineStage)).length,
+      averageScore: safeC.length > 0 ? Math.round(safeC.reduce((sum, c) => sum + (c.score || 0), 0) / safeC.length) : 0,
       conversionRate: 8.7,
       timeToHire: 18.5,
       qualityScore: 85,
