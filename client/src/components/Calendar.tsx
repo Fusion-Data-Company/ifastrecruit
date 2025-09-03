@@ -104,7 +104,7 @@ export default function Calendar({ className }: CalendarProps) {
     switch (status) {
       case 'CONFIRMED': return 'hsl(195, 92%, 50%)'; // primary color for confirmed
       case 'PENDING': return 'hsl(183, 100%, 67%)'; // accent color for pending
-      case 'COMPLETED': return 'hsl(147.1429, 78.5047%, 41.9608%)'; // chart-4 green for completed
+      case 'COMPLETED': return 'hsl(183, 100%, 67%)'; // accent cyan for completed
       case 'CANCELLED': return 'hsl(215, 20.2%, 65.1%)'; // muted-foreground for cancelled
       default: return 'hsl(203.8863, 88.2845%, 53.1373%)'; // chart-1 for default
     }
@@ -323,7 +323,7 @@ export default function Calendar({ className }: CalendarProps) {
             endTime: '17:00',
           }}
           eventDisplay="block"
-          eventBackgroundColor="hsla(195, 92%, 50%, 0.15)"
+          eventBackgroundColor="hsla(195, 92%, 50%, 0.2)"
           eventBorderColor="hsl(195, 92%, 50%)"
           eventTextColor="hsl(213, 31%, 91%)"
           slotLabelFormat={{
@@ -331,6 +331,11 @@ export default function Calendar({ className }: CalendarProps) {
             minute: '2-digit',
             meridiem: 'short',
           }}
+          themeSystem="standard"
+          eventClassNames="platform-event"
+          dayHeaderClassNames="platform-day-header"
+          slotLabelClassNames="platform-slot-label"
+          nowIndicatorClassNames="platform-now-indicator"
           data-testid="fullcalendar"
         />
       </motion.div>

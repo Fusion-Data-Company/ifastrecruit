@@ -183,119 +183,113 @@
     opacity: 0.5;
   }
 
-  /* FullCalendar Glassmorphic Styles */
-  .fc {
-    font-family: var(--font-sans);
+  /* FORCE FULLCALENDAR PLATFORM STYLES */
+  .fc, .fc * {
+    font-family: var(--font-sans) !important;
   }
 
   .fc-header-toolbar {
-    background: var(--popover);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-radius: var(--radius);
-    padding: 0.75rem;
-    margin-bottom: 1rem;
-    border: 1px solid var(--border);
+    background: var(--popover) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-radius: var(--radius) !important;
+    padding: 0.75rem !important;
+    margin-bottom: 1rem !important;
+    border: 1px solid var(--border) !important;
   }
 
   .fc-toolbar-title {
-    color: var(--foreground);
-    font-family: var(--font-serif);
-    font-weight: 600;
-    font-size: 1.25rem;
+    color: var(--foreground) !important;
+    font-family: var(--font-serif) !important;
+    font-weight: 600 !important;
+    font-size: 1.25rem !important;
   }
 
-  .fc-button {
+  .fc-button, .fc-button-group .fc-button {
     background: var(--input) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     border: 1px solid var(--border) !important;
     color: var(--foreground) !important;
     border-radius: calc(var(--radius) - 4px) !important;
     transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: none !important;
   }
 
-  .fc-button:hover {
+  .fc-button:hover, .fc-button-group .fc-button:hover {
     background: var(--accent) !important;
     color: var(--accent-foreground) !important;
     box-shadow: var(--glow-accent) !important;
-    transform: translateY(-1px);
+    transform: translateY(-1px) !important;
   }
 
-  .fc-button:focus,
-  .fc-button-active {
+  .fc-button:focus, .fc-button-active, .fc-button:active,
+  .fc-button-group .fc-button:focus, .fc-button-group .fc-button-active, .fc-button-group .fc-button:active {
     background: var(--primary) !important;
     color: var(--primary-foreground) !important;
     box-shadow: var(--glow-primary) !important;
   }
 
-  .fc-view-harness {
-    background: var(--card);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    overflow: hidden;
+  .fc-view-harness, .fc-view-harness-active {
+    background: var(--card) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border-radius: var(--radius) !important;
+    border: 1px solid var(--border) !important;
+    overflow: hidden !important;
   }
 
-  .fc-daygrid-day,
-  .fc-timegrid-slot {
+  .fc-daygrid-day, .fc-timegrid-slot, .fc-timegrid-slot-lane {
     border-color: var(--border) !important;
+    background: transparent !important;
   }
 
-  .fc-daygrid-day-top,
-  .fc-timegrid-axis {
-    color: var(--muted-foreground);
+  .fc-daygrid-day-top, .fc-timegrid-axis, .fc-timegrid-axis-cushion {
+    color: var(--muted-foreground) !important;
   }
 
-  .fc-col-header {
-    background: var(--muted);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+  .fc-col-header, .fc-col-header-cell {
+    background: var(--muted) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     border-bottom: 1px solid var(--border) !important;
-  }
-
-  .fc-col-header-cell {
-    color: var(--foreground);
-    font-weight: 600;
-    padding: 0.75rem 0.5rem;
-  }
-
-  .fc-timegrid-slot-lane {
-    border-bottom: 1px solid var(--border) !important;
+    color: var(--foreground) !important;
+    font-weight: 600 !important;
+    padding: 0.75rem 0.5rem !important;
   }
 
   .fc-timegrid-slot-minor {
-    border-top-style: dotted;
+    border-top-style: dotted !important;
     border-color: hsla(217, 32%, 17%, 0.1) !important;
   }
 
-  .fc-event {
-    border: none !important;
+  .fc-event, .fc-event.fc-event-draggable, .fc-event.fc-event-resizable,
+  .platform-event, .fc-event-main {
+    background: hsla(195, 92%, 50%, 0.2) !important;
+    border: 2px solid hsl(195, 92%, 50%) !important;
+    color: hsl(213, 31%, 91%) !important;
     border-radius: calc(var(--radius) - 4px) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    font-weight: 500;
-    font-size: 0.875rem;
-    transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
-  .fc-event:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px hsla(195, 92%, 50%, 0.4);
+  .fc-event:hover, .platform-event:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px hsla(195, 92%, 50%, 0.4) !important;
+    background: hsla(195, 92%, 50%, 0.3) !important;
   }
 
-  .fc-event-title {
-    font-weight: 600;
+  .fc-event-title, .fc-event-title-container {
+    font-weight: 600 !important;
+    color: hsl(213, 31%, 91%) !important;
   }
 
-  .fc-daygrid-day.fc-day-today {
+  .fc-daygrid-day.fc-day-today, .fc-timegrid-col.fc-day-today {
     background: hsla(195, 92%, 50%, 0.05) !important;
-    border: 1px solid hsla(195, 92%, 50%, 0.2) !important;
-  }
-
-  .fc-timegrid-col.fc-day-today {
-    background: hsla(195, 92%, 50%, 0.03) !important;
+    border-color: hsla(195, 92%, 50%, 0.2) !important;
   }
 
   .fc-highlight {
@@ -306,12 +300,22 @@
     background: hsla(217, 32%, 17%, 0.03) !important;
   }
 
-  .fc-scrollgrid {
+  .fc-scrollgrid, .fc-scrollgrid-section > td, 
+  .fc-scrollgrid-section > th {
     border-color: var(--border) !important;
   }
 
-  .fc-scrollgrid-section > td {
-    border-color: var(--border) !important;
+  .platform-day-header {
+    background: var(--muted) !important;
+    color: var(--foreground) !important;
+  }
+
+  .platform-slot-label {
+    color: var(--muted-foreground) !important;
+  }
+
+  .platform-now-indicator {
+    border-color: var(--primary) !important;
   }
 }
 
