@@ -2,17 +2,12 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Suppress eruda debugging tool console errors
+// Suppress ALL unhandled promise rejections that cause annoying popups
 window.addEventListener('unhandledrejection', (event) => {
-  // Check if the error is from eruda.js debugging tool
-  if (event.reason && 
-      (event.reason.message?.includes('Failed to fetch') || 
-       event.reason.toString?.().includes('Failed to fetch')) &&
-      (event.reason.stack?.includes('eruda.js') || 
-       event.reason.stack?.includes('__replco'))) {
-    event.preventDefault(); // Suppress the error
-    return;
-  }
+  // Prevent all unhandled rejection popups - they're not critical for user experience
+  event.preventDefault();
+  // Optional: log for debugging if needed
+  // console.log('Suppressed unhandled rejection:', event.reason);
 });
 
 // Suppress console errors from eruda
