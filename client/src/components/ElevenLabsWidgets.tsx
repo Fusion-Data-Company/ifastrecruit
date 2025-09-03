@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 declare global {
   namespace JSX {
@@ -19,7 +19,17 @@ interface ElevenLabsWidgetProps {
 }
 
 export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidgetProps) {
+  const [widgetStatus, setWidgetStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
   useEffect(() => {
+    // Environmental diagnostics for debugging
+    console.log('🔍 ElevenLabs Widget Debug Info:');
+    console.log('- Current domain:', window.location.hostname);
+    console.log('- Full URL:', window.location.href);
+    console.log('- Protocol:', window.location.protocol);
+    console.log('- Agent ID:', agentId);
+    
     // Load the ElevenLabs ConvAI widget script if not already loaded
     if (!document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]')) {
       const script = document.createElement('script');
@@ -28,20 +38,74 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
       script.type = 'text/javascript';
       
       script.onload = () => {
-        console.log('ElevenLabs ConvAI script loaded successfully');
+        console.log('✅ ElevenLabs ConvAI script loaded successfully');
+        setWidgetStatus('loaded');
+        
+        // Add widget event listeners for debugging
+        setTimeout(() => {
+          const widget = document.querySelector('elevenlabs-convai');
+          if (widget) {
+            // Listen for widget events
+            widget.addEventListener('error', (e: any) => {
+              console.error('🚨 ElevenLabs Widget Error:', e);
+              setErrorMessage(`Widget Error: ${e.detail || 'Unknown error'}`);
+              setWidgetStatus('error');
+            });
+            
+            widget.addEventListener('connect', () => {
+              console.log('🎉 ElevenLabs Widget Connected Successfully');
+            });
+            
+            widget.addEventListener('disconnect', (e: any) => {
+              console.warn('⚠️ ElevenLabs Widget Disconnected:', e);
+            });
+          }
+        }, 1000);
       };
       
       script.onerror = () => {
-        console.error('Failed to load ElevenLabs ConvAI script');
+        console.error('❌ Failed to load ElevenLabs ConvAI script');
+        setErrorMessage('Failed to load widget script');
+        setWidgetStatus('error');
       };
       
       document.head.appendChild(script);
+    } else {
+      setWidgetStatus('loaded');
     }
-  }, []);
+
+    // Check for HTTPS requirement
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      console.warn('⚠️ ElevenLabs requires HTTPS for microphone access in production');
+      setErrorMessage('Voice features require HTTPS connection');
+    }
+  }, [agentId]);
 
   const positionStyles = position === 'bottom-right' 
     ? { position: 'fixed' as const, bottom: '24px', right: '24px', zIndex: 9999 }
     : { position: 'fixed' as const, top: '24px', right: '24px', zIndex: 9999 };
+
+  if (widgetStatus === 'error') {
+    return (
+      <div 
+        style={{...positionStyles, backgroundColor: '#ff4444', color: 'white', padding: '12px', borderRadius: '8px', fontSize: '12px', maxWidth: '250px'}}
+        data-testid={`${testId}-error`}
+        className="elevenlabs-widget-error"
+      >
+        <div>🚨 Voice Agent Error</div>
+        <div style={{ marginTop: '4px', opacity: 0.9 }}>{errorMessage}</div>
+        <div style={{ marginTop: '8px', fontSize: '10px', opacity: 0.8 }}>
+          Domain: {window.location.hostname}
+          <br />
+          Check ElevenLabs agent settings:
+          <br />
+          • Agent must be public (auth disabled)
+          <br />
+          • Domain must be in allowlist
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
