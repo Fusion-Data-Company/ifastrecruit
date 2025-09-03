@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -152,36 +152,29 @@ export default function PipelineBoard() {
     })
   );
 
-  // FORCE OVERRIDE - bypass react-query completely
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: candidates = [], isLoading, error } = useQuery<Candidate[]>({
+    queryKey: ['/api/candidates'],
+  });
 
-  useEffect(() => {
-    const loadCandidates = async () => {
-      try {
-        console.log("Fetching candidates...");
-        const response = await fetch('/api/candidates');
-        console.log("Response status:", response.status, response.ok);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const text = await response.text();
-        console.log("Response text:", text.substring(0, 200));
-        
-        const data = JSON.parse(text);
-        console.log("FORCE LOADED candidates:", data?.length, data);
-        setCandidates(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Failed to load candidates:", error);
-        setCandidates([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadCandidates();
-  }, []);
+  // Show error state if query fails
+  if (error) {
+    return (
+      <Card className="glass-panel rounded-lg p-6">
+        <div className="text-center py-8">
+          <div className="text-red-500 mb-2">
+            <i className="fas fa-exclamation-triangle text-2xl"></i>
+          </div>
+          <p className="text-muted-foreground">Unable to load candidate data</p>
+          <Button 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/candidates'] })}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, newStage }: { candidateId: string; newStage: string }) => {
