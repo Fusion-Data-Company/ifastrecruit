@@ -65,6 +65,15 @@ export function ObjectUploader({
         maxFileSize,
       },
       autoProceed: false,
+      locale: {
+        strings: {
+          dropHereOr: 'ADD RESUME or %{browse}',
+          browse: 'browse files',
+          dropPasteFiles: 'ADD RESUME here or',
+          dropPasteBoth: 'ADD RESUME here, paste or %{browseFiles}',
+        },
+        pluralize: (count: number) => count === 1 ? 0 : 1,
+      },
     })
       .use(AwsS3, {
         shouldUseMultipart: false,
