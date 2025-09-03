@@ -38,7 +38,6 @@ export default function PipelineBoard() {
 
   const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
-    refetchInterval: 5000,
   });
 
   const updateCandidateMutation = useMutation({

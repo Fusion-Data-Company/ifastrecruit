@@ -16,7 +16,6 @@ export default function InterviewsPage() {
 
   const { data: interviews = [], isLoading } = useQuery<Interview[]>({
     queryKey: ['/api/interviews'],
-    refetchInterval: 30000,
   });
 
   const filteredInterviews = interviews.filter(interview => {

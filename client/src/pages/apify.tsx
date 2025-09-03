@@ -120,19 +120,16 @@ export default function ApifyCommandCenter() {
   // Real API queries - will work when Apify integration exists
   const { data: actors = [], isLoading: actorsLoading } = useQuery<ApifyActor[]>({
     queryKey: ['/api/apify/actors'],
-    refetchInterval: 10000,
   });
 
   const { data: runs = [], isLoading: runsLoading } = useQuery<ApifyRun[]>({
     queryKey: ['/api/apify/runs', selectedActor],
     enabled: !!selectedActor,
-    refetchInterval: 5000,
   });
 
   const { data: runDetails } = useQuery<ApifyRun>({
     queryKey: ['/api/apify/runs', selectedRun, 'details'],
     enabled: !!selectedRun,
-    refetchInterval: 2000,
   });
 
   const createActorMutation = useMutation({

@@ -141,7 +141,6 @@ export default function WorkflowEngine({ className }: WorkflowEngineProps) {
   // Fetch workflow rules
   const { data: workflowRules = [] } = useQuery<WorkflowRule[]>({
     queryKey: ['/api/workflow-rules'],
-    refetchInterval: 10000,
   });
 
   // Create workflow rule mutation

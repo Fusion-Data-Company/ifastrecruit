@@ -42,7 +42,6 @@ export default function AuditLogs({ className }: AuditLogsProps) {
   // Fetch audit logs
   const { data: auditLogs = [], isLoading } = useQuery<AuditLog[]>({
     queryKey: ['/api/audit-logs'],
-    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Filter logs based on search criteria

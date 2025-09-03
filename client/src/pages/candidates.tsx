@@ -18,7 +18,6 @@ export default function CandidatesPage() {
 
   const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ['/api/candidates'],
-    refetchInterval: 30000,
   });
 
   const filteredCandidates = candidates.filter(candidate => {

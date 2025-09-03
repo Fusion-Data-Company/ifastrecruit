@@ -37,7 +37,6 @@ export default function DataGrid() {
 
   const { data: allCandidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
-    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
 
   const handleFilterChange = useCallback((filtered: Candidate[], filters: FilterOptions) => {

@@ -55,7 +55,6 @@ export default function Calendar({ className }: CalendarProps) {
   // Fetch bookings for calendar
   const { data: bookings = [] } = useQuery<Booking[]>({
     queryKey: ['/api/bookings'],
-    refetchInterval: 30000,
   });
 
   // Fetch candidates for booking form

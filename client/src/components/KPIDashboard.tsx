@@ -16,7 +16,6 @@ interface KPIData {
 export default function KPIDashboard() {
   const { data: kpis, isLoading } = useQuery<KPIData>({
     queryKey: ["/api/kpis"],
-    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const kpiCards = [

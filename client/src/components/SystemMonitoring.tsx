@@ -45,13 +45,11 @@ export default function SystemMonitoring() {
   // Fetch system status
   const { data: systemStatus, refetch: refetchSystem } = useQuery<SystemStatus>({
     queryKey: ['/api/system/status'],
-    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch external API health
   const { data: externalHealth, refetch: refetchExternal } = useQuery<ExternalAPIHealth>({
     queryKey: ['/api/health/external'],
-    refetchInterval: 60000, // Refresh every minute
   });
 
   const handleRefresh = async () => {
