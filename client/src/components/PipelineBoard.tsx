@@ -147,7 +147,7 @@ export default function PipelineBoard() {
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-semibold text-sm">{stage.name}</h4>
                 <Badge className={`${stage.color} text-xs`} data-testid={`stage-count-${stage.id}`}>
-                  {stage.candidates.length}
+                  {stage.candidates?.length || 0}
                 </Badge>
               </div>
 
@@ -159,7 +159,7 @@ export default function PipelineBoard() {
                 data-testid={`droppable-${stage.id}`}
               >
                 <AnimatePresence>
-                  {stage.candidates.map((candidate) => (
+                  {(stage.candidates || []).map((candidate) => (
                     <motion.div
                       key={candidate.id}
                       layout
@@ -171,7 +171,9 @@ export default function PipelineBoard() {
                       className="candidate-card p-3 rounded-lg border border-border cursor-move"
                       draggable
                       onDragStart={(e) => {
-                        e.dataTransfer.setData("text/plain", candidate.id);
+                        if ('dataTransfer' in e) {
+                          e.dataTransfer.setData("text/plain", candidate.id);
+                        }
                         setActiveCandidate(candidate);
                       }}
                       data-testid={`pipeline-candidate-${candidate.id}`}
@@ -210,7 +212,7 @@ export default function PipelineBoard() {
                 </AnimatePresence>
 
                 {/* Empty State */}
-                {stage.candidates.length === 0 && (
+                {(stage.candidates?.length || 0) === 0 && (
                   <div className="h-32 border-2 border-dashed border-border rounded-lg flex items-center justify-center text-muted-foreground">
                     <div className="text-center">
                       <i className="fas fa-inbox text-2xl mb-2"></i>
