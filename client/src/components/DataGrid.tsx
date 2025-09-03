@@ -286,7 +286,7 @@ export default function DataGrid() {
             data-testid={`select-candidate-${row.original.id}`}
           />
         ),
-        size: 40,
+        size: 60,
         enableSorting: false,
       },
       {
@@ -302,19 +302,19 @@ export default function DataGrid() {
             </div>
           </div>
         ),
-        size: 180,
+        size: 300,
       },
       {
         accessorKey: "email",
         header: "Email",
         cell: EditableCell,
-        size: 200,
+        size: 350,
       },
       {
         accessorKey: "phone",
         header: "Phone",
         cell: EditableCell,
-        size: 120,
+        size: 220,
       },
       {
         accessorKey: "sourceRef",
@@ -328,7 +328,7 @@ export default function DataGrid() {
             </Badge>
           );
         },
-        size: 80,
+        size: 150,
         enableSorting: false,
       },
       {
@@ -355,13 +355,13 @@ export default function DataGrid() {
             </SelectContent>
           </Select>
         ),
-        size: 140,
+        size: 250,
       },
       {
         accessorKey: "score",
         header: "Score",
         cell: EditableScoreCell,
-        size: 100,
+        size: 200,
       },
       {
         id: "interview",
@@ -373,7 +373,7 @@ export default function DataGrid() {
             }`} data-testid={`interview-status-${row.original.id}`}></i>
           </div>
         ),
-        size: 70,
+        size: 120,
         enableSorting: false,
       },
       {
@@ -386,7 +386,7 @@ export default function DataGrid() {
             }`} data-testid={`booking-status-${row.original.id}`}></i>
           </div>
         ),
-        size: 70,
+        size: 120,
         enableSorting: false,
       },
       {
@@ -397,27 +397,27 @@ export default function DataGrid() {
           const hasResume = candidate.resumeUrl;
           
           return (
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center space-x-2">
               {hasResume ? (
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-2">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-6 h-6 p-0 hover:bg-muted"
+                    className="w-8 h-8 p-0 hover:bg-muted"
                     onClick={() => setSelectedCandidateForFiles(candidate)}
                     data-testid={`view-resume-${candidate.id}`}
                   >
-                    <i className="fas fa-file-alt text-xs text-green-500"></i>
+                    <i className="fas fa-file-alt text-sm text-green-500"></i>
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-6 h-6 p-0 hover:bg-muted"
+                    className="w-8 h-8 p-0 hover:bg-muted"
                     asChild
                     data-testid={`download-resume-${candidate.id}`}
                   >
                     <a href={candidate.resumeUrl || '#'} target="_blank" rel="noopener noreferrer">
-                      <i className="fas fa-download text-xs text-blue-500"></i>
+                      <i className="fas fa-download text-sm text-blue-500"></i>
                     </a>
                   </Button>
                 </div>
@@ -427,42 +427,42 @@ export default function DataGrid() {
                   maxFileSize={10485760}
                   onGetUploadParameters={handleGetUploadParameters}
                   onComplete={handleResumeUploadComplete(candidate.id)}
-                  buttonClassName="w-6 h-6 p-0 hover:bg-muted glass-input"
+                  buttonClassName="w-8 h-8 p-0 hover:bg-muted glass-input"
                   data-testid={`upload-resume-${candidate.id}`}
                 >
-                  <i className="fas fa-upload text-xs"></i>
+                  <i className="fas fa-upload text-sm"></i>
                 </ObjectUploader>
               )}
             </div>
           );
         },
-        size: 80,
+        size: 180,
         enableSorting: false,
       },
       {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
-          <div className="flex items-center justify-center space-x-1">
+          <div className="flex items-center justify-center space-x-2">
             <Button
               variant="ghost"
               size="sm"
-              className="w-6 h-6 p-0 hover:bg-muted"
+              className="w-8 h-8 p-0 hover:bg-muted"
               data-testid={`view-candidate-${row.original.id}`}
             >
-              <i className="fas fa-eye text-xs"></i>
+              <i className="fas fa-eye text-sm"></i>
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="w-6 h-6 p-0 hover:bg-muted"
+              className="w-8 h-8 p-0 hover:bg-muted"
               data-testid={`edit-candidate-${row.original.id}`}
             >
-              <i className="fas fa-edit text-xs"></i>
+              <i className="fas fa-edit text-sm"></i>
             </Button>
           </div>
         ),
-        size: 80,
+        size: 160,
         enableSorting: false,
       },
     ],
