@@ -3,7 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { MainUIAgent, SecondaryAgent } from "@/components/ElevenLabsWidgets";
+import { MainUIAgent, SecondaryAgent, CenterAgent } from "@/components/ElevenLabsWidgets";
 import Dashboard from "@/pages/dashboard";
 import Candidates from "@/pages/candidates";
 import Interviews from "@/pages/interviews";
@@ -43,6 +43,7 @@ function App() {
         <Router />
         <MainUIAgent />
         <SecondaryAgent />
+        <CenterAgent />
       </TooltipProvider>
     </QueryClientProvider>
   );

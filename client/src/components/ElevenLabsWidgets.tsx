@@ -14,7 +14,7 @@ declare global {
 
 interface ElevenLabsWidgetProps {
   agentId: string;
-  position: 'bottom-right' | 'top-right' | 'bottom-left';
+  position: 'bottom-right' | 'top-right' | 'bottom-left' | 'bottom-center';
   testId?: string;
 }
 
@@ -85,6 +85,8 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
     ? { position: 'fixed' as const, bottom: '24px', right: '24px', zIndex: 9999 }
     : position === 'bottom-left'
     ? { position: 'fixed' as const, bottom: '24px', left: '24px', zIndex: 9999 }
+    : position === 'bottom-center'
+    ? { position: 'fixed' as const, bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }
     : { position: 'fixed' as const, top: '24px', right: '24px', zIndex: 9999 };
 
   if (widgetStatus === 'error') {
@@ -160,6 +162,17 @@ export function SecondaryAgent() {
       agentId="agent_01k07mhgszfcg9br6n46m8d35m"
       position="bottom-left"
       testId="secondary-agent"
+    />
+  );
+}
+
+// Center Agent - Bottom Center
+export function CenterAgent() {
+  return (
+    <ElevenLabsWidget 
+      agentId="agent_01jxb0mn53ft19tt6crjzaqnwc"
+      position="bottom-center"
+      testId="center-agent"
     />
   );
 }
