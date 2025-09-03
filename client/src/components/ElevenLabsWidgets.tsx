@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 
 declare global {
   namespace JSX {
@@ -19,72 +19,29 @@ interface ElevenLabsWidgetProps {
 }
 
 export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidgetProps) {
-  const [scriptLoaded, setScriptLoaded] = useState(false);
-  const [scriptError, setScriptError] = useState(false);
-
   useEffect(() => {
-    // Check if script is already loaded
-    const existingScript = document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]');
-    if (existingScript) {
-      setScriptLoaded(true);
-      return;
-    }
-
-    // Load the ElevenLabs ConvAI widget script
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
-    script.async = true;
-    script.type = 'text/javascript';
-    script.crossOrigin = 'anonymous';
-    
-    script.onload = () => {
-      console.log('ElevenLabs ConvAI script loaded successfully');
-      // Wait a bit for the custom element to be defined
-      const checkElement = () => {
-        if (customElements.get('elevenlabs-convai')) {
-          setScriptLoaded(true);
-        } else {
-          // Retry after a short delay
-          setTimeout(checkElement, 100);
-        }
+    // Load the ElevenLabs ConvAI widget script if not already loaded
+    if (!document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]')) {
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed';
+      script.async = true;
+      script.type = 'text/javascript';
+      
+      script.onload = () => {
+        console.log('ElevenLabs ConvAI script loaded successfully');
       };
-      setTimeout(checkElement, 50);
-    };
-    
-    script.onerror = () => {
-      console.error('Failed to load ElevenLabs ConvAI script');
-      setScriptError(true);
-    };
-    
-    document.head.appendChild(script);
-
-    // Cleanup function
-    return () => {
-      // Don't remove the script on unmount as it might be used by other components
-    };
+      
+      script.onerror = () => {
+        console.error('Failed to load ElevenLabs ConvAI script');
+      };
+      
+      document.head.appendChild(script);
+    }
   }, []);
 
   const positionStyles = position === 'bottom-right' 
-    ? { position: 'fixed' as const, bottom: '24px', right: '24px', zIndex: 50 }
-    : { position: 'fixed' as const, top: '24px', right: '24px', zIndex: 50 };
-
-  // Don't render until script is loaded to avoid custom element errors
-  if (scriptError) {
-    console.warn('ElevenLabs widget failed to load');
-    return null;
-  }
-
-  if (!scriptLoaded) {
-    return (
-      <div 
-        style={positionStyles}
-        data-testid={testId}
-        className="elevenlabs-widget-container opacity-0"
-      >
-        {/* Loading placeholder */}
-      </div>
-    );
-  }
+    ? { position: 'fixed' as const, bottom: '24px', right: '24px', zIndex: 9999 }
+    : { position: 'fixed' as const, top: '24px', right: '24px', zIndex: 9999 };
 
   return (
     <div 

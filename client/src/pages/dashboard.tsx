@@ -1,7 +1,6 @@
 import { useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
-import { MainUIAgent } from "@/components/ElevenLabsWidgets";
 import KPIDashboard from "@/components/KPIDashboard";
 import DataGrid from "@/components/DataGrid";
 import PipelineBoard from "@/components/PipelineBoard";
@@ -89,7 +88,6 @@ export default function Dashboard() {
             {renderTabContent()}
           </motion.div>
         
-        <MainUIAgent />
       </main>
     </div>
   );
