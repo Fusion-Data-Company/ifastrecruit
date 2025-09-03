@@ -86,16 +86,16 @@ export default function Calendar({ className }: CalendarProps) {
   });
 
   // Transform bookings to FullCalendar events
-  const calendarEvents = bookings.map(booking => ({
+  const calendarEvents = (bookings || []).map(booking => ({
     id: booking.id,
-    title: `Interview: ${candidates.find(c => c.id === booking.candidateId)?.name || 'Unknown'}`,
+    title: `Interview: ${(candidates || []).find(c => c.id === booking.candidateId)?.name || 'Unknown'}`,
     start: booking.startTs,
     end: booking.endTs,
     backgroundColor: getEventColor(booking.status),
     borderColor: getEventColor(booking.status),
     extendedProps: {
       booking,
-      candidate: candidates.find(c => c.id === booking.candidateId),
+      candidate: (candidates || []).find(c => c.id === booking.candidateId),
     },
   }));
 
@@ -138,7 +138,7 @@ export default function Calendar({ className }: CalendarProps) {
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="glass-input">
             <i className="fas fa-calendar-check mr-1"></i>
-            {bookings.length} Scheduled
+            {(bookings || []).length} Scheduled
           </Badge>
           <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
             <DialogTrigger asChild>
@@ -170,7 +170,7 @@ export default function Calendar({ className }: CalendarProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {candidates.map((candidate) => (
+                            {(candidates || []).map((candidate) => (
                               <SelectItem key={candidate.id} value={candidate.id}>
                                 {candidate.name} - {candidate.email}
                               </SelectItem>

@@ -18,7 +18,7 @@ export default function InterviewsPage() {
     queryKey: ['/api/interviews'],
   });
 
-  const filteredInterviews = interviews.filter(interview => {
+  const filteredInterviews = (interviews || []).filter(interview => {
     if (statusFilter === 'all') return true;
     return interview.status === statusFilter;
   });
@@ -43,13 +43,13 @@ export default function InterviewsPage() {
     }
   };
 
-  const todayInterviews = interviews.filter(interview => {
+  const todayInterviews = (interviews || []).filter(interview => {
     const today = new Date();
     const interviewDate = new Date(interview.scheduledAt);
     return interviewDate.toDateString() === today.toDateString();
   });
 
-  const upcomingInterviews = interviews.filter(interview => {
+  const upcomingInterviews = (interviews || []).filter(interview => {
     const today = new Date();
     const interviewDate = new Date(interview.scheduledAt);
     return interviewDate > today && interview.status === 'scheduled';
