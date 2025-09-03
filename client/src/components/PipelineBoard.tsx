@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -152,9 +152,36 @@ export default function PipelineBoard() {
     })
   );
 
-  const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
-    queryKey: ['/api/candidates'],
-  });
+  // FORCE OVERRIDE - bypass react-query completely
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCandidates = async () => {
+      try {
+        console.log("Fetching candidates...");
+        const response = await fetch('/api/candidates');
+        console.log("Response status:", response.status, response.ok);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        console.log("Response text:", text.substring(0, 200));
+        
+        const data = JSON.parse(text);
+        console.log("FORCE LOADED candidates:", data?.length, data);
+        setCandidates(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to load candidates:", error);
+        setCandidates([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadCandidates();
+  }, []);
 
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, newStage }: { candidateId: string; newStage: string }) => {
