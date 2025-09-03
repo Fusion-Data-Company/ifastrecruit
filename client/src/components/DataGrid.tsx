@@ -16,17 +16,23 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import SearchAndFilter, { type FilterOptions } from "@/components/SearchAndFilter";
 import BulkOperations from "@/components/BulkOperations";
 import DataExportImport from "@/components/DataExportImport";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { FileViewer } from "@/components/FileViewer";
 import type { Candidate } from "@shared/schema";
+import type { UploadResult } from "@uppy/core";
 
 export default function DataGrid() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [currentFilters, setCurrentFilters] = useState<FilterOptions | null>(null);
+  const [selectedCandidateForFiles, setSelectedCandidateForFiles] = useState<Candidate | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: allCandidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
@@ -51,6 +57,43 @@ export default function DataGrid() {
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
     },
   });
+
+  const uploadResumeForCandidateMutation = useMutation({
+    mutationFn: async ({ candidateId, resumeURL }: { candidateId: string; resumeURL: string }) => {
+      const response = await apiRequest("PUT", `/api/candidates/${candidateId}/resume`, { resumeURL });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      toast({
+        title: "Resume uploaded",
+        description: "The resume has been successfully uploaded and attached to the candidate.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Upload failed", 
+        description: "Failed to attach resume to candidate. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("POST", "/api/objects/upload", {});
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleResumeUploadComplete = (candidateId: string) => (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful.length > 0) {
+      const uploadURL = result.successful[0].uploadURL;
+      uploadResumeForCandidateMutation.mutate({ candidateId, resumeURL: uploadURL });
+    }
+  };
 
   const columns = useMemo<ColumnDef<Candidate>[]>(
     () => [
@@ -196,6 +239,54 @@ export default function DataGrid() {
             ["OFFER", "HIRED"].includes(row.original.pipelineStage) ? "text-primary" : "text-muted-foreground"
           }`} data-testid={`booking-status-${row.original.id}`}></i>
         ),
+      },
+      {
+        id: "resume",
+        header: "Resume",
+        cell: ({ row }) => {
+          const candidate = row.original;
+          const hasResume = candidate.resumeUrl;
+          
+          return (
+            <div className="flex items-center space-x-2">
+              {hasResume ? (
+                <div className="flex items-center space-x-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-6 h-6 p-0 hover:bg-muted micro-animation"
+                    onClick={() => setSelectedCandidateForFiles(candidate)}
+                    data-testid={`view-resume-${candidate.id}`}
+                  >
+                    <i className="fas fa-file-alt text-xs text-green-500"></i>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-6 h-6 p-0 hover:bg-muted micro-animation"
+                    asChild
+                    data-testid={`download-resume-${candidate.id}`}
+                  >
+                    <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
+                      <i className="fas fa-download text-xs text-blue-500"></i>
+                    </a>
+                  </Button>
+                </div>
+              ) : (
+                <ObjectUploader
+                  maxNumberOfFiles={1}
+                  maxFileSize={10485760} // 10MB
+                  onGetUploadParameters={handleGetUploadParameters}
+                  onComplete={handleResumeUploadComplete(candidate.id)}
+                  buttonClassName="w-6 h-6 p-0 hover:bg-muted micro-animation glass-input"
+                  data-testid={`upload-resume-${candidate.id}`}
+                >
+                  <i className="fas fa-upload text-xs"></i>
+                </ObjectUploader>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: "actions",
@@ -424,6 +515,34 @@ export default function DataGrid() {
           </Button>
         </div>
       </div>
+
+      {/* File Viewer for selected candidate */}
+      {selectedCandidateForFiles && (
+        <div className="mt-4 p-4 border-t border-border">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Files for {selectedCandidateForFiles.name}</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedCandidateForFiles(null)}
+              data-testid="close-file-viewer"
+            >
+              <i className="fas fa-times"></i>
+            </Button>
+          </div>
+          <FileViewer 
+            files={selectedCandidateForFiles.resumeUrl ? [{
+              id: 'resume',
+              name: `${selectedCandidateForFiles.name}_Resume.pdf`,
+              type: 'application/pdf',
+              url: selectedCandidateForFiles.resumeUrl,
+              size: 1024000, // placeholder size
+              uploadedAt: new Date()
+            }] : []}
+            candidateName={selectedCandidateForFiles.name || 'Unknown'}
+          />
+        </div>
+      )}
     </Card>
   );
 }

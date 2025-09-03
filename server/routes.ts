@@ -12,6 +12,10 @@ import {
   insertApifyActorSchema,
   insertApifyRunSchema
 } from "@shared/schema";
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+} from "./objectStorage";
 import { mcpServer } from "./mcp/server";
 import { setupSSE } from "./services/sse";
 import { registerWorkflowRoutes } from "./routes/workflow";
@@ -178,6 +182,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Interview endpoints
+  app.get("/api/interviews", async (req, res) => {
+    try {
+      const interviews = await storage.getInterviews();
+      res.json(interviews);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch interviews" });
+    }
+  });
+
   app.post("/api/interviews", async (req, res) => {
     try {
       const interviewData = insertInterviewSchema.parse(req.body);
@@ -187,9 +200,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.app.locals.broadcastInterviewScheduled) {
         req.app.locals.broadcastInterviewScheduled({
           id: interview.id,
-          candidateName: interview.candidateName || 'Unknown',
-          startTs: interview.startTs,
-          type: interview.type || 'interview'
+          candidateId: interview.candidateId,
+          summary: interview.summary || 'Interview scheduled'
         });
       }
       
@@ -1485,6 +1497,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update disposition" });
+    }
+  });
+
+  // Object storage endpoints
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        req.path,
+      );
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  app.post("/api/objects/upload", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  app.put("/api/candidates/:id/resume", async (req, res) => {
+    if (!req.body.resumeURL) {
+      return res.status(400).json({ error: "resumeURL is required" });
+    }
+
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(
+        req.body.resumeURL,
+      );
+
+      // Update candidate with resume path
+      const { id } = req.params;
+      const candidate = await storage.updateCandidate(id, { resumeUrl: objectPath });
+
+      res.status(200).json({
+        objectPath: objectPath,
+        candidate: candidate,
+      });
+    } catch (error) {
+      console.error("Error setting candidate resume:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
