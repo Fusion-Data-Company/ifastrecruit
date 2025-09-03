@@ -278,7 +278,7 @@ export default function ApifyCommandCenter() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Actors</p>
-                    <p className="text-2xl font-bold">{actors.length}</p>
+                    <p className="text-2xl font-bold">{(actors || []).length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -293,7 +293,7 @@ export default function ApifyCommandCenter() {
                   <div>
                     <p className="text-sm text-muted-foreground">Active Runs</p>
                     <p className="text-2xl font-bold">
-                      {runs.filter(r => r.status === 'RUNNING').length}
+                      {(runs || []).filter(r => r.status === 'RUNNING').length}
                     </p>
                   </div>
                 </div>
@@ -309,7 +309,7 @@ export default function ApifyCommandCenter() {
                   <div>
                     <p className="text-sm text-muted-foreground">Successful Runs</p>
                     <p className="text-2xl font-bold">
-                      {runs.filter(r => r.status === 'SUCCEEDED').length}
+                      {(runs || []).filter(r => r.status === 'SUCCEEDED').length}
                     </p>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export default function ApifyCommandCenter() {
                   <div>
                     <p className="text-sm text-muted-foreground">Items Scraped</p>
                     <p className="text-2xl font-bold">
-                      {runs.reduce((sum, run) => sum + (run.stats?.outputValueCount || 0), 0)}
+                      {(runs || []).reduce((sum, run) => sum + (run.stats?.outputValueCount || 0), 0)}
                     </p>
                   </div>
                 </div>
@@ -366,7 +366,7 @@ export default function ApifyCommandCenter() {
                               <SelectValue placeholder="Choose an actor..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {actors.map(actor => (
+                              {(actors || []).map(actor => (
                                 <SelectItem key={actor.id} value={actor.id}>
                                   {actor.name}
                                 </SelectItem>
@@ -402,7 +402,7 @@ export default function ApifyCommandCenter() {
                   {selectedActor && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {(() => {
-                        const actor = actors.find(a => a.id === selectedActor);
+                        const actor = (actors || []).find(a => a.id === selectedActor);
                         if (!actor) return null;
                         
                         return (
@@ -480,7 +480,7 @@ export default function ApifyCommandCenter() {
                               <SelectValue placeholder="Select actor to run..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {actors.map(actor => (
+                              {(actors || []).map(actor => (
                                 <SelectItem key={actor.id} value={actor.id}>
                                   {actor.name}
                                 </SelectItem>

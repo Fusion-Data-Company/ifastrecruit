@@ -181,7 +181,7 @@ export default function IndeedIntegrationPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Active Jobs</p>
-                    <p className="text-2xl font-bold">{jobs.filter(j => j.status === 'active').length}</p>
+                    <p className="text-2xl font-bold">{(jobs || []).filter(j => j.status === 'active').length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -195,7 +195,7 @@ export default function IndeedIntegrationPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">New Applications</p>
-                    <p className="text-2xl font-bold">{applications.filter(a => a.disposition === 'new').length}</p>
+                    <p className="text-2xl font-bold">{(applications || []).filter(a => a.disposition === 'new').length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -223,7 +223,7 @@ export default function IndeedIntegrationPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Applications</p>
-                    <p className="text-2xl font-bold">{applications.length}</p>
+                    <p className="text-2xl font-bold">{(applications || []).length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -436,7 +436,7 @@ export default function IndeedIntegrationPage() {
                           <i className="fas fa-spinner fa-spin text-2xl text-muted-foreground"></i>
                           <p className="text-muted-foreground mt-2">Loading jobs...</p>
                         </div>
-                      ) : jobs.length === 0 ? (
+                      ) : (jobs || []).length === 0 ? (
                         <div className="text-center py-8">
                           <i className="fas fa-briefcase text-4xl text-muted-foreground mb-4"></i>
                           <p className="text-muted-foreground">No job postings yet</p>
@@ -444,7 +444,7 @@ export default function IndeedIntegrationPage() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {jobs.map((job) => (
+                          {(jobs || []).map((job) => (
                             <motion.div
                               key={job.id}
                               initial={{ opacity: 0, x: -20 }}
@@ -491,7 +491,7 @@ export default function IndeedIntegrationPage() {
                         <i className="fas fa-spinner fa-spin text-2xl text-muted-foreground"></i>
                         <p className="text-muted-foreground mt-2">Loading applications...</p>
                       </div>
-                    ) : applications.length === 0 ? (
+                    ) : (applications || []).length === 0 ? (
                       <div className="text-center py-8">
                         <i className="fas fa-user-friends text-4xl text-muted-foreground mb-4"></i>
                         <p className="text-muted-foreground">No applications received yet</p>
@@ -499,7 +499,7 @@ export default function IndeedIntegrationPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {applications.map((application) => (
+                        {(applications || []).map((application) => (
                           <motion.div
                             key={application.id}
                             initial={{ opacity: 0, x: -20 }}

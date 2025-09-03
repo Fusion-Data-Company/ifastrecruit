@@ -20,7 +20,7 @@ export default function CandidatesPage() {
     queryKey: ['/api/candidates'],
   });
 
-  const filteredCandidates = candidates.filter(candidate => {
+  const filteredCandidates = (candidates || []).filter(candidate => {
     const matchesSearch = !searchTerm || 
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (candidate.name && candidate.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -69,7 +69,7 @@ export default function CandidatesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Candidates</p>
-                  <p className="text-2xl font-bold">{candidates.length}</p>
+                  <p className="text-2xl font-bold">{(candidates || []).length}</p>
                 </div>
               </div>
             </CardContent>
@@ -84,7 +84,7 @@ export default function CandidatesPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Active Pipeline</p>
                   <p className="text-2xl font-bold">
-                    {candidates.filter(c => !['HIRED', 'REJECTED'].includes(c.pipelineStage)).length}
+                    {(candidates || []).filter(c => !['HIRED', 'REJECTED'].includes(c.pipelineStage)).length}
                   </p>
                 </div>
               </div>
@@ -100,7 +100,7 @@ export default function CandidatesPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">In Interview</p>
                   <p className="text-2xl font-bold">
-                    {candidates.filter(c => ['FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW'].includes(c.pipelineStage)).length}
+                    {(candidates || []).filter(c => ['FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW'].includes(c.pipelineStage)).length}
                   </p>
                 </div>
               </div>
@@ -116,7 +116,7 @@ export default function CandidatesPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Hired</p>
                   <p className="text-2xl font-bold">
-                    {candidates.filter(c => c.pipelineStage === 'HIRED').length}
+                    {(candidates || []).filter(c => c.pipelineStage === 'HIRED').length}
                   </p>
                 </div>
               </div>

@@ -238,7 +238,7 @@ export default function EmailStudioPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="custom">Custom Email</SelectItem>
-                          {templates.map(template => (
+                          {(templates || []).map(template => (
                             <SelectItem key={template.id} value={template.id}>
                               {template.name}
                             </SelectItem>
@@ -294,7 +294,7 @@ export default function EmailStudioPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  templates.map((template) => (
+                  (templates || []).map((template) => (
                     <motion.div
                       key={template.id}
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -351,7 +351,7 @@ export default function EmailStudioPage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {emailLogs.map((log) => (
+                      {(emailLogs || []).map((log) => (
                         <motion.div
                           key={log.id}
                           initial={{ opacity: 0, x: -20 }}
