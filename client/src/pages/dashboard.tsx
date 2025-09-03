@@ -42,18 +42,16 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen bg-background">
       <Sidebar />
+      <TopBar />
       
-      <div className="ml-64 flex-1">
-        <TopBar />
-        
-        <div className="p-6">
+      <main className="md:ml-64 pt-16 p-4 md:p-6">
           <KPIDashboard />
 
           {/* Tab Navigation */}
           <div className="mb-6">
-            <div className="flex space-x-1 glass-panel p-1 rounded-lg w-fit">
+            <div className="flex flex-wrap gap-1 glass-panel p-1 rounded-lg w-fit max-w-full overflow-x-auto">
               {[
                 { id: "grid", label: "Data Grid", icon: "fas fa-table" },
                 { id: "pipeline", label: "Pipeline", icon: "fas fa-stream" },
@@ -67,7 +65,7 @@ export default function Dashboard() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium micro-animation ${
+                  className={`px-2 md:px-4 py-2 rounded-md text-xs md:text-sm font-medium micro-animation whitespace-nowrap ${
                     activeTab === tab.id
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -90,10 +88,9 @@ export default function Dashboard() {
           >
             {renderTabContent()}
           </motion.div>
-        </div>
-      </div>
-
-      <MainUIAgent />
+        
+        <MainUIAgent />
+      </main>
     </div>
   );
 }

@@ -22,12 +22,6 @@ export default function CandidatesPage() {
     queryKey: ['/api/candidates'],
   });
 
-  // FORCE DEBUG - candidates page  
-  console.log("=== CANDIDATES PAGE DEBUG ===");
-  console.log("Candidates page data:", candidates?.length, candidates);
-  console.log("IsLoading:", isLoading);
-  console.log("Query key would become:", ['/api/candidates'].join("/"));
-  console.log("===============================");
 
   const filteredCandidates = (candidates || []).filter(candidate => {
     const matchesSearch = !searchTerm || 
@@ -45,7 +39,7 @@ export default function CandidatesPage() {
     <div className="min-h-screen bg-background">
       <Sidebar />
       <TopBar />
-      <main className="ml-64 pt-16 p-6">
+      <main className="md:ml-64 pt-16 p-4 md:p-6">
       <div className="space-y-6">
         {/* Header */}
         <motion.div 

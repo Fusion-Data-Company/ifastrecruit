@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const [location] = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
 
   const navigationItems = [
     { path: "/", label: "Dashboard", icon: "fas fa-chart-line" },
@@ -16,7 +19,39 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="w-64 fixed left-0 top-0 h-full glass-panel border-r z-40">
+    <>
+      {/* Mobile Menu Button */}
+      <Button
+        variant="ghost" 
+        size="sm"
+        className="md:hidden fixed top-4 left-4 z-50 glass-panel p-2"
+        onClick={() => setIsOpen(!isOpen)}
+        data-testid="mobile-menu-toggle"
+      >
+        <i className={`fas ${isOpen ? 'fa-times' : 'fa-bars'} text-foreground`}></i>
+      </Button>
+
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+            onClick={() => setIsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <motion.div 
+        initial={false}
+        animate={{ x: isOpen ? 0 : -280 }}
+        className={`w-64 fixed left-0 top-0 h-full glass-panel border-r z-50 md:z-40 md:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
       <div className="p-6">
         {/* Logo */}
         <div className="flex items-center space-x-3 mb-8">
@@ -104,6 +139,7 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </div>
+      </motion.div>
+    </>
   );
 }
