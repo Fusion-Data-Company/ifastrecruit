@@ -163,6 +163,8 @@ export default function PipelineBoard() {
     },
   });
 
+  // Debug logging to see what we're getting
+  console.log("Pipeline candidates received:", candidates?.length, candidates?.map(c => ({ id: c.id, name: c.name, stage: c.pipelineStage })));
 
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, newStage }: { candidateId: string; newStage: string }) => {
