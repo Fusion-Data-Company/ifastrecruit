@@ -29,28 +29,10 @@ export const apiRateLimit = process.env.NODE_ENV === 'production'
 export const uploadRateLimit = createRateLimit(60 * 1000, 10, 'Upload rate limit exceeded');
 
 // Security headers middleware
-export const securityHeaders = process.env.NODE_ENV === 'production' 
-  ? helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-          fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "https:"],
-          scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
-          connectSrc: ["'self'", "https://api.elevenlabs.io", "https://api.openrouter.ai", "wss://api.elevenlabs.io", "https://*.elevenlabs.io", "wss://*.elevenlabs.io"],
-          frameSrc: ["'self'", "https://*.elevenlabs.io", "https://elevenlabs.io"],
-          childSrc: ["'self'", "https://*.elevenlabs.io", "https://elevenlabs.io"],
-          workerSrc: ["'self'", "blob:"],
-          objectSrc: ["'none'"],
-        },
-      },
-      crossOriginEmbedderPolicy: false,
-    })
-  : helmet({
-      contentSecurityPolicy: false, // Disable CSP in development
-      crossOriginEmbedderPolicy: false,
-    });
+export const securityHeaders = helmet({
+  contentSecurityPolicy: false, // Completely disable CSP to allow ElevenLabs widget
+  crossOriginEmbedderPolicy: false,
+});
 
 // CORS configuration - will be applied in main routes file
 export const corsOptions = {
