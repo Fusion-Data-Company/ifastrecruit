@@ -10,7 +10,7 @@ export default function Sidebar() {
     { path: "/interviews", label: "Interviews", icon: "fas fa-calendar-alt" },
     { path: "/indeed", label: "Indeed Integration", icon: "fas fa-briefcase" },
     { path: "/apify", label: "Apify Integration", icon: "fas fa-robot" },
-    { path: "/airtop", label: "Airtop Integration", icon: "fas fa-browser" },
+    { path: "/airtop", label: "Airtop Integration", icon: "fas fa-desktop" },
     { path: "/email", label: "Email Studio", icon: "fas fa-envelope" },
     { path: "/slack", label: "Slack Pools", icon: "fab fa-slack" },
   ];
