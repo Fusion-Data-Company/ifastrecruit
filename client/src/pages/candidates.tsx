@@ -22,6 +22,13 @@ export default function CandidatesPage() {
     queryKey: ['/api/candidates'],
   });
 
+  // FORCE DEBUG - candidates page  
+  console.log("=== CANDIDATES PAGE DEBUG ===");
+  console.log("Candidates page data:", candidates?.length, candidates);
+  console.log("IsLoading:", isLoading);
+  console.log("Query key would become:", ['/api/candidates'].join("/"));
+  console.log("===============================");
+
   const filteredCandidates = (candidates || []).filter(candidate => {
     const matchesSearch = !searchTerm || 
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
