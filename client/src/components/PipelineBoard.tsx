@@ -156,6 +156,9 @@ export default function PipelineBoard() {
     queryKey: ["/api/candidates"],
   });
 
+  // Debug logging
+  console.log("PipelineBoard candidates:", candidates?.length || 0, candidates);
+
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, newStage }: { candidateId: string; newStage: string }) => {
       const response = await fetch(`/api/candidates/${candidateId}`, {
