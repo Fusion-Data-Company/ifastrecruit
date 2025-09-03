@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import SearchAndFilter, { type FilterOptions } from "@/components/SearchAndFilter";
@@ -153,6 +154,10 @@ export default function DataGrid() {
   const [currentFilters, setCurrentFilters] = useState<FilterOptions | null>(null);
   const [selectedCandidateForFiles, setSelectedCandidateForFiles] = useState<Candidate | null>(null);
   const [data, setData] = useState<Candidate[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [viewingCandidate, setViewingCandidate] = useState<Candidate | null>(null);
+  const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -307,13 +312,50 @@ export default function DataGrid() {
       {
         accessorKey: "email",
         header: "Email",
-        cell: EditableCell,
+        cell: ({ getValue, row, column, table }) => {
+          const email = getValue() as string;
+          
+          return (
+            <div className="flex items-center space-x-2">
+              <EditableCell getValue={getValue} row={row} column={column} table={table} />
+              {email && (
+                <a 
+                  href={`mailto:${email}`}
+                  className="text-blue-500 hover:text-blue-600 ml-2"
+                  data-testid={`email-${row.original.id}`}
+                  title="Send email"
+                >
+                  <i className="fas fa-envelope text-xs"></i>
+                </a>
+              )}
+            </div>
+          );
+        },
         size: 350,
       },
       {
         accessorKey: "phone",
         header: "Phone",
-        cell: EditableCell,
+        cell: ({ getValue, row, column, table }) => {
+          const phoneNumber = getValue() as string;
+          const formattedPhone = phoneNumber?.replace(/[^\d+]/g, '') || '';
+          
+          return (
+            <div className="flex items-center space-x-2">
+              <EditableCell getValue={getValue} row={row} column={column} table={table} />
+              {formattedPhone && (
+                <a 
+                  href={`tel:${formattedPhone}`}
+                  className="text-blue-500 hover:text-blue-600 ml-2"
+                  data-testid={`call-${row.original.id}`}
+                  title="Call this number"
+                >
+                  <i className="fas fa-phone text-xs"></i>
+                </a>
+              )}
+            </div>
+          );
+        },
         size: 220,
       },
       {
@@ -448,7 +490,9 @@ export default function DataGrid() {
               variant="ghost"
               size="sm"
               className="w-8 h-8 p-0 hover:bg-muted"
+              onClick={() => setViewingCandidate(row.original)}
               data-testid={`view-candidate-${row.original.id}`}
+              title="View candidate details"
             >
               <i className="fas fa-eye text-sm"></i>
             </Button>
@@ -456,7 +500,9 @@ export default function DataGrid() {
               variant="ghost"
               size="sm"
               className="w-8 h-8 p-0 hover:bg-muted"
+              onClick={() => setEditingCandidate(row.original)}
               data-testid={`edit-candidate-${row.original.id}`}
+              title="Edit candidate"
             >
               <i className="fas fa-edit text-sm"></i>
             </Button>
@@ -510,7 +556,7 @@ export default function DataGrid() {
   }
 
   return (
-    <Card className="glass-panel rounded-lg overflow-hidden">
+    <Card className="glass-panel rounded-lg overflow-hidden font-serif">
       {/* Grid Header */}
       <div className="grid-header p-4 border-b">
         <div className="flex items-center justify-between mb-4">
@@ -523,6 +569,7 @@ export default function DataGrid() {
               variant="ghost"
               size="sm"
               className="glass-input px-3 py-1 rounded-lg text-sm glow-hover"
+              onClick={() => setShowFilters(!showFilters)}
               data-testid="filter-button"
             >
               <i className="fas fa-filter mr-2"></i>Filter
@@ -531,6 +578,7 @@ export default function DataGrid() {
               variant="ghost"
               size="sm"
               className="glass-input px-3 py-1 rounded-lg text-sm glow-hover"
+              onClick={() => setShowExportDialog(true)}
               data-testid="export-csv-button"
             >
               <i className="fas fa-download mr-2"></i>Export CSV
@@ -538,12 +586,14 @@ export default function DataGrid() {
           </div>
         </div>
 
-        {/* Advanced Search and Filters */}
-        <SearchAndFilter
-          candidates={allCandidates || []}
-          onFilterChange={handleFilterChange}
-          className="mb-6"
-        />
+        {/* Advanced Search and Filters - Show/Hide */}
+        {showFilters && (
+          <SearchAndFilter
+            candidates={allCandidates || []}
+            onFilterChange={handleFilterChange}
+            className="mb-6"
+          />
+        )}
 
         {/* Bulk Operations */}
         <BulkOperations
@@ -559,12 +609,12 @@ export default function DataGrid() {
       <div className="overflow-x-auto">
         <div className="min-w-[1200px]">
           {/* Table Headers */}
-          <div className="bg-muted/20 border-b border-border">
+          <div className="bg-gradient-to-r from-accent/10 to-primary/10 border-b-2 border-accent/30">
             <div className="flex">
               {table.getHeaderGroups()[0]?.headers.map((header) => (
                 <div
                   key={header.id}
-                  className="flex items-center justify-start px-3 py-3 text-sm font-medium text-muted-foreground border-r border-border/50 last:border-r-0"
+                  className="flex items-center justify-start px-4 py-4 text-sm font-bold text-foreground border-r border-accent/20 last:border-r-0 font-serif tracking-wide"
                   style={{ width: header.getSize() }}
                 >
                   <div className="flex items-center space-x-2">
@@ -573,7 +623,7 @@ export default function DataGrid() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="p-0 h-auto"
+                        className="p-0 h-auto hover:text-accent"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         <i className="fas fa-sort text-xs"></i>
@@ -600,7 +650,7 @@ export default function DataGrid() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute w-full border-b border-border hover:bg-muted/10"
+                    className="absolute w-full border-b border-accent/10 hover:bg-accent/5 hover:shadow-sm transition-all duration-200"
                     style={{
                       height: `${virtualRow.size}px`,
                       transform: `translateY(${virtualRow.start}px)`,
@@ -611,7 +661,7 @@ export default function DataGrid() {
                       {row.getVisibleCells().map((cell) => (
                         <div
                           key={cell.id}
-                          className="flex items-center px-3 py-2 border-r border-border/50 last:border-r-0 overflow-hidden"
+                          className="flex items-center px-4 py-3 border-r border-accent/10 last:border-r-0 overflow-hidden font-serif"
                           style={{ width: cell.column.getSize() }}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
