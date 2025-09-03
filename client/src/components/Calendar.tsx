@@ -102,11 +102,11 @@ export default function Calendar({ className }: CalendarProps) {
 
   function getEventColor(status: string) {
     switch (status) {
-      case 'CONFIRMED': return '#3b82f6';
-      case 'PENDING': return '#f59e0b';
-      case 'COMPLETED': return '#10b981';
-      case 'CANCELLED': return '#ef4444';
-      default: return '#6b7280';
+      case 'CONFIRMED': return '#06b6d4'; // cyan-500 for confirmed
+      case 'PENDING': return '#0891b2'; // cyan-600 for pending
+      case 'COMPLETED': return '#14b8a6'; // teal-500 for completed
+      case 'CANCELLED': return '#64748b'; // slate-500 for cancelled
+      default: return '#475569'; // slate-600 for default
     }
   }
 
@@ -323,9 +323,9 @@ export default function Calendar({ className }: CalendarProps) {
             endTime: '17:00',
           }}
           eventDisplay="block"
-          eventBackgroundColor="rgba(59, 130, 246, 0.1)"
-          eventBorderColor="#3b82f6"
-          eventTextColor="#1f2937"
+          eventBackgroundColor="rgba(6, 182, 212, 0.15)"
+          eventBorderColor="#06b6d4"
+          eventTextColor="#0f172a"
           slotLabelFormat={{
             hour: 'numeric',
             minute: '2-digit',
