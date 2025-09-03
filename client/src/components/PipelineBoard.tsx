@@ -171,9 +171,8 @@ export default function PipelineBoard() {
                       className="candidate-card p-3 rounded-lg border border-border cursor-move"
                       draggable
                       onDragStart={(e) => {
-                        if ('dataTransfer' in e) {
-                          e.dataTransfer.setData("text/plain", candidate.id);
-                        }
+                        const dragEvent = e as React.DragEvent<HTMLDivElement>;
+                        dragEvent.dataTransfer.setData("text/plain", candidate.id);
                         setActiveCandidate(candidate);
                       }}
                       data-testid={`pipeline-candidate-${candidate.id}`}
@@ -191,11 +190,19 @@ export default function PipelineBoard() {
                         {candidate.email}
                       </div>
                       
+                      {/* Resume Link */}
+                      {candidate.resumeUrl && (
+                        <div className="text-xs text-blue-500 mb-2">
+                          <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            <i className="fas fa-file-pdf mr-1"></i>
+                            Resume
+                          </a>
+                        </div>
+                      )}
+                      
                       <div className="flex items-center justify-between">
-                        <Badge className={`text-xs ${
-                          candidate.campaignId ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                        }`}>
-                          {candidate.campaignId ? "Indeed" : "Manual"}
+                        <Badge className="text-xs bg-primary/20 text-primary">
+                          {candidate.sourceRef || "Manual"}
                         </Badge>
                         <div className="flex items-center space-x-1">
                           <div className="w-8 h-1 bg-muted rounded-full overflow-hidden">

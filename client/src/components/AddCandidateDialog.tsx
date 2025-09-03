@@ -42,11 +42,8 @@ export default function AddCandidateDialog({ open, onOpenChange }: AddCandidateD
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: InsertCandidate) => {
-      return await apiRequest("/api/candidates", {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" },
-      });
+      const response = await apiRequest("POST", "/api/candidates", data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
