@@ -298,46 +298,68 @@ export default function Calendar({ className }: CalendarProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         className="calendar-container"
+        style={{
+          background: 'hsla(217, 32%, 17%, 0.08)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '18px',
+          border: '1px solid hsla(217, 32%, 17%, 0.15)',
+          boxShadow: '0 0 40px hsla(195, 92%, 50%, 0.3)',
+          overflow: 'hidden'
+        }}
       >
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
-          initialView="timeGridWeek"
-          selectable={true}
-          selectMirror={true}
-          dayMaxEvents={true}
-          weekends={true}
-          events={calendarEvents}
-          select={handleDateSelect}
-          eventClick={handleEventClick}
-          height="auto"
-          slotMinTime="08:00:00"
-          slotMaxTime="20:00:00"
-          businessHours={{
-            daysOfWeek: [1, 2, 3, 4, 5],
-            startTime: '09:00',
-            endTime: '17:00',
-          }}
-          eventDisplay="block"
-          eventBackgroundColor="hsla(195, 92%, 50%, 0.2)"
-          eventBorderColor="hsl(195, 92%, 50%)"
-          eventTextColor="hsl(213, 31%, 91%)"
-          slotLabelFormat={{
-            hour: 'numeric',
-            minute: '2-digit',
-            meridiem: 'short',
-          }}
-          themeSystem="standard"
-          eventClassNames="platform-event"
-          dayHeaderClassNames="platform-day-header"
-          slotLabelClassNames="platform-slot-label"
-          nowIndicatorClassNames="platform-now-indicator"
-          data-testid="fullcalendar"
-        />
+        <div style={{
+          '--fc-bg-event-color': 'hsla(195, 92%, 50%, 0.2)',
+          '--fc-border-color': 'hsla(217, 32%, 17%, 0.15)',
+          '--fc-button-text-color': 'hsl(213, 31%, 91%)',
+          '--fc-button-bg-color': 'hsla(217, 32%, 17%, 0.1)',
+          '--fc-button-border-color': 'hsla(217, 32%, 17%, 0.15)',
+          '--fc-button-hover-bg-color': 'hsl(183, 100%, 67%)',
+          '--fc-button-hover-border-color': 'hsl(183, 100%, 67%)',
+          '--fc-button-active-bg-color': 'hsl(195, 92%, 50%)',
+          '--fc-button-active-border-color': 'hsl(195, 92%, 50%)',
+          '--fc-page-bg-color': 'transparent',
+          '--fc-neutral-bg-color': 'hsla(217, 32%, 17%, 0.06)',
+          '--fc-neutral-text-color': 'hsl(213, 31%, 91%)',
+          '--fc-list-event-hover-bg-color': 'hsla(195, 92%, 50%, 0.1)',
+        } as React.CSSProperties}>
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay',
+            }}
+            initialView="timeGridWeek"
+            selectable={true}
+            selectMirror={true}
+            dayMaxEvents={true}
+            weekends={true}
+            events={calendarEvents}
+            select={handleDateSelect}
+            eventClick={handleEventClick}
+            height="auto"
+            slotMinTime="08:00:00"
+            slotMaxTime="20:00:00"
+            businessHours={{
+              daysOfWeek: [1, 2, 3, 4, 5],
+              startTime: '09:00',
+              endTime: '17:00',
+            }}
+            eventDisplay="block"
+            eventBackgroundColor="hsla(195, 92%, 50%, 0.3)"
+            eventBorderColor="hsl(195, 92%, 50%)"
+            eventTextColor="hsl(213, 31%, 91%)"
+            slotLabelFormat={{
+              hour: 'numeric',
+              minute: '2-digit',
+              meridiem: 'short',
+            }}
+            themeSystem="standard"
+            eventClassNames="force-platform-event"
+            dayHeaderClassNames="force-platform-header"
+            data-testid="fullcalendar"
+          />
+        </div>
       </motion.div>
 
       {/* Event Details Modal */}
