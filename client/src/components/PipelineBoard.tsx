@@ -152,19 +152,9 @@ export default function PipelineBoard() {
     })
   );
 
-  const { data: candidates = [], isLoading, error } = useQuery<Candidate[]>({
-    queryKey: ["/api/candidates"],
-    queryFn: async () => {
-      const response = await fetch('/api/candidates');
-      if (!response.ok) {
-        throw new Error('Failed to fetch candidates');
-      }
-      return response.json();
-    },
+  const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
+    queryKey: ['/api/candidates'],
   });
-
-  // Debug logging to see what we're getting
-  console.log("Pipeline candidates received:", candidates?.length, candidates?.map(c => ({ id: c.id, name: c.name, stage: c.pipelineStage })));
 
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, newStage }: { candidateId: string; newStage: string }) => {
