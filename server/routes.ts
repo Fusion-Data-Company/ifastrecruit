@@ -73,15 +73,9 @@ function generateSecureToken(): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // Apply security and performance middleware
-  app.use(cors(corsOptions));
-  app.use(securityHeaders);
-  app.use(performanceHeaders);
-  app.use(requestLogger);
-  app.use(performanceTracker);
-  app.use(compressionOptimizer);
-  app.use(requestSizeLimiter(10)); // 10MB limit
-  app.use(apiRateLimit);
+  // NO MIDDLEWARE - EVERYTHING REMOVED FOR ELEVENLABS WIDGET
+  app.use(cors({ origin: "*", credentials: false })); // Allow everything, no credentials
+  // ALL OTHER MIDDLEWARE REMOVED FOR ELEVENLABS
   
   // Only setup WebSocket server in production to avoid conflict with Vite's WebSocket
   let wss: WebSocketServer | null = null;
