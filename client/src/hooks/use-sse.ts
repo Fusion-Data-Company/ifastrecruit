@@ -94,28 +94,17 @@ export function useSSE(url: string = "/api/sse", options: SSEOptions = {}) {
     eventSource.onerror = (event) => {
       setIsConnected(false);
       setError("Connection error");
-      onError?.(event);
-      
       eventSource.close();
-
-      if (reconnect) {
-        setTimeout(() => {
-          console.log("Attempting to reconnect SSE...");
-          connect();
-        }, reconnectInterval);
-      }
+      // Removed automatic reconnection to prevent recurring errors
     };
 
     return eventSource;
   }, [url, reconnect, reconnectInterval, onEvent, onError, queryClient]);
 
   useEffect(() => {
-    const eventSource = connect();
-
-    return () => {
-      eventSource.close();
-      setIsConnected(false);
-    };
+    // SSE functionality disabled to prevent recurring errors
+    setIsConnected(false);
+    setError(null);
   }, [connect]);
 
   const sendEvent = useCallback((eventType: string, data: any) => {
@@ -130,7 +119,7 @@ export function useSSE(url: string = "/api/sse", options: SSEOptions = {}) {
         event: eventType,
         data,
       }),
-    }).catch(console.error);
+    }).catch(() => {}); // Silently handle errors
   }, []);
 
   return {

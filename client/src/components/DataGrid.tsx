@@ -10,6 +10,7 @@ import {
   flexRender,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -89,9 +90,11 @@ export default function DataGrid() {
   };
 
   const handleResumeUploadComplete = (candidateId: string) => (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    if (result.successful.length > 0) {
-      const uploadURL = result.successful[0].uploadURL;
-      uploadResumeForCandidateMutation.mutate({ candidateId, resumeURL: uploadURL });
+    if (result?.successful?.length && result.successful.length > 0) {
+      const uploadURL = result.successful[0]?.uploadURL;
+      if (uploadURL) {
+        uploadResumeForCandidateMutation.mutate({ candidateId, resumeURL: uploadURL });
+      }
     }
   };
 
@@ -267,7 +270,7 @@ export default function DataGrid() {
                     asChild
                     data-testid={`download-resume-${candidate.id}`}
                   >
-                    <a href={candidate.resumeUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={candidate.resumeUrl || '#'} target="_blank" rel="noopener noreferrer">
                       <i className="fas fa-download text-xs text-blue-500"></i>
                     </a>
                   </Button>
@@ -317,7 +320,7 @@ export default function DataGrid() {
   );
 
   // Use filtered candidates for table data
-  const tableData = filteredCandidates.length > 0 || currentFilters ? filteredCandidates : allCandidates;
+  const tableData = filteredCandidates.length > 0 || currentFilters ? filteredCandidates : (allCandidates || []);
 
   const table = useReactTable({
     data: tableData,
@@ -361,7 +364,7 @@ export default function DataGrid() {
           <h3 className="enterprise-heading text-lg font-semibold">Candidate Database</h3>
           <div className="flex items-center space-x-3">
             <span className="text-sm text-muted-foreground" data-testid="total-candidates">
-              {allCandidates.length.toLocaleString()} candidates
+              {(allCandidates || []).length.toLocaleString()} candidates
             </span>
             <Button
               variant="ghost"
@@ -384,7 +387,7 @@ export default function DataGrid() {
 
         {/* Advanced Search and Filters */}
         <SearchAndFilter
-          candidates={allCandidates}
+          candidates={allCandidates || []}
           onFilterChange={handleFilterChange}
           className="mb-6"
         />
@@ -392,14 +395,14 @@ export default function DataGrid() {
         {/* Bulk Operations */}
         <BulkOperations
           selectedCandidates={selectedRows}
-          allCandidates={allCandidates}
+          allCandidates={allCandidates || []}
           onClearSelection={clearSelection}
           className="mb-6"
         />
 
         {/* Data Export/Import */}
         <DataExportImport
-          candidates={allCandidates}
+          candidates={allCandidates || []}
           className="mb-6"
         />
 
@@ -474,10 +477,10 @@ export default function DataGrid() {
         </div>
 
         {/* Loading indicator for additional data */}
-        {tableData.length > 100 && (
+        {(tableData || []).length > 100 && (
           <div className="p-4 text-center text-muted-foreground text-sm">
             <i className="fas fa-spinner fa-spin mr-2"></i>
-            Virtual scrolling active - {tableData.length.toLocaleString()} candidates loaded
+            Virtual scrolling active - {(tableData || []).length.toLocaleString()} candidates loaded
           </div>
         )}
       </div>
@@ -487,7 +490,7 @@ export default function DataGrid() {
         <div className="text-sm text-muted-foreground">
           {selectedRows.length > 0 && (
             <span data-testid="selected-count">
-              {selectedRows.length} of {tableData.length} selected
+              {selectedRows.length} of {(tableData || []).length} selected
             </span>
           )}
         </div>
