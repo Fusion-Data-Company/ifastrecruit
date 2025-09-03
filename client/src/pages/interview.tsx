@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "wouter";
+import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ export default function Interview() {
   const [isRecording, setIsRecording] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "error">("connecting");
 
-  const { data: candidateData, isLoading } = useQuery({
+  const { data: candidateData, isLoading } = useQuery<{ candidateId: string; name: string }>({
     queryKey: ["/interview", token],
     enabled: !!token,
   });
@@ -93,7 +93,45 @@ export default function Interview() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-primary/5 relative overflow-hidden">
+      {/* Navigation Header */}
+      <div className="absolute top-0 left-0 right-0 border-b bg-card/50 backdrop-blur-sm z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="glow-hover" data-testid="button-back-dashboard">
+                <i className="fas fa-arrow-left mr-2"></i>
+                Back to Dashboard
+              </Button>
+            </Link>
+            <div className="h-6 w-px bg-border"></div>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <i className="fas fa-bolt text-primary-foreground"></i>
+              </div>
+              <div>
+                <h1 className="enterprise-heading text-lg text-foreground">iFast Broker</h1>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Link href="/candidates">
+              <Button variant="ghost" size="sm">
+                <i className="fas fa-users mr-2"></i>
+                Candidates
+              </Button>
+            </Link>
+            <Link href="/interviews">
+              <Button variant="ghost" size="sm">
+                <i className="fas fa-calendar-alt mr-2"></i>
+                Interviews
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+      
+      <div className="min-h-screen flex items-center justify-center p-6 pt-24">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -221,6 +259,7 @@ export default function Interview() {
       </motion.div>
       
       <InterviewAgent />
+      </div>
     </div>
   );
 }

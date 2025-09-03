@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "wouter";
+import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,7 +94,45 @@ export default function Booking() {
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen bg-background">
+      {/* Navigation Header */}
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="glow-hover" data-testid="button-back-dashboard">
+                <i className="fas fa-arrow-left mr-2"></i>
+                Back to Dashboard
+              </Button>
+            </Link>
+            <div className="h-6 w-px bg-border"></div>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <i className="fas fa-bolt text-primary-foreground"></i>
+              </div>
+              <div>
+                <h1 className="enterprise-heading text-lg text-foreground">iFast Broker</h1>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Link href="/candidates">
+              <Button variant="ghost" size="sm">
+                <i className="fas fa-users mr-2"></i>
+                Candidates
+              </Button>
+            </Link>
+            <Link href="/interviews">
+              <Button variant="ghost" size="sm">
+                <i className="fas fa-calendar-alt mr-2"></i>
+                Interviews
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
@@ -231,6 +269,7 @@ export default function Booking() {
           <p className="text-xs text-muted-foreground">
             Questions? Contact us at interviews@ifast-broker.com
           </p>
+        </div>
         </div>
       </div>
     </div>

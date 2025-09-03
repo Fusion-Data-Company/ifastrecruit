@@ -2,43 +2,23 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// AGGRESSIVE ERROR SUPPRESSION - STOP ALL POPUPS
+// Proper error handling for production
 window.addEventListener('unhandledrejection', (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  return false;
-});
-
-window.addEventListener('error', (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  return false;
-});
-
-// Suppress all console errors that cause popups
-const originalConsoleError = console.error;
-console.error = () => {
-  // Complete suppression - no errors logged to console
-  return;
-};
-
-const originalConsoleWarn = console.warn;
-console.warn = () => {
-  // Complete suppression - no warnings logged to console  
-  return;
-};
-
-// Override fetch to suppress network errors
-const originalFetch = window.fetch;
-window.fetch = async (...args) => {
-  try {
-    return await originalFetch(...args);
-  } catch (error) {
-    // Silently fail network errors
-    return new Response('{}', { status: 200, statusText: 'OK' });
+  // Only suppress non-critical errors in production
+  if (import.meta.env.PROD && event.reason?.message?.includes('DevTools')) {
+    event.preventDefault();
   }
+});
+
+// Filter out devtools-related errors that aren't actionable
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  const message = args.join(' ');
+  // Only suppress known devtools errors
+  if (message.includes('eruda') || message.includes('DevTools') || message.includes('__replco')) {
+    return;
+  }
+  originalConsoleError.apply(console, args);
 };
 
 createRoot(document.getElementById("root")!).render(<App />);

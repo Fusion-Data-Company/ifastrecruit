@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +30,7 @@ export default function AirtopIntegration() {
   });
 
   // Fetch Airtop sessions
-  const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
+  const { data: sessions = [], isLoading: sessionsLoading } = useQuery<any[]>({
     queryKey: ["/api/airtop/sessions"],
     enabled: !!apiKey
   });
@@ -37,10 +38,7 @@ export default function AirtopIntegration() {
   // Create new session mutation
   const createSessionMutation = useMutation({
     mutationFn: async (config: any) => {
-      return await apiRequest("/api/airtop/sessions", {
-        method: "POST",
-        body: config
-      });
+      return await apiRequest("POST", "/api/airtop/sessions", config);
     },
     onSuccess: () => {
       toast({
@@ -53,10 +51,7 @@ export default function AirtopIntegration() {
   // Execute script mutation
   const executeScriptMutation = useMutation({
     mutationFn: async ({ sessionId, script }: { sessionId: string; script: string }) => {
-      return await apiRequest(`/api/airtop/sessions/${sessionId}/execute`, {
-        method: "POST",
-        body: { script }
-      });
+      return await apiRequest("POST", `/api/airtop/sessions/${sessionId}/execute`, { script });
     },
     onSuccess: () => {
       toast({
@@ -92,7 +87,45 @@ export default function AirtopIntegration() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-6">
+    <div className="min-h-screen bg-background">
+      {/* Navigation Header */}
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="glow-hover" data-testid="button-back-dashboard">
+                <i className="fas fa-arrow-left mr-2"></i>
+                Back to Dashboard
+              </Button>
+            </Link>
+            <div className="h-6 w-px bg-border"></div>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <i className="fas fa-bolt text-primary-foreground"></i>
+              </div>
+              <div>
+                <h1 className="enterprise-heading text-lg text-foreground">iFast Broker</h1>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Link href="/candidates">
+              <Button variant="ghost" size="sm">
+                <i className="fas fa-users mr-2"></i>
+                Candidates
+              </Button>
+            </Link>
+            <Link href="/interviews">
+              <Button variant="ghost" size="sm">
+                <i className="fas fa-calendar-alt mr-2"></i>
+                Interviews
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6 max-w-7xl mx-auto p-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -469,6 +502,7 @@ return 'Email sent successfully';`
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }
