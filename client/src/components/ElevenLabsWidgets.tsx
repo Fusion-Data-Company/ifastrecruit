@@ -14,7 +14,7 @@ declare global {
 
 interface ElevenLabsWidgetProps {
   agentId: string;
-  position: 'bottom-right' | 'top-right';
+  position: 'bottom-right' | 'top-right' | 'bottom-left';
   testId?: string;
 }
 
@@ -83,6 +83,8 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
 
   const positionStyles = position === 'bottom-right' 
     ? { position: 'fixed' as const, bottom: '24px', right: '24px', zIndex: 9999 }
+    : position === 'bottom-left'
+    ? { position: 'fixed' as const, bottom: '24px', left: '24px', zIndex: 9999 }
     : { position: 'fixed' as const, top: '24px', right: '24px', zIndex: 9999 };
 
   if (widgetStatus === 'error') {
@@ -147,6 +149,17 @@ export function SalesCoachAgent() {
       agentId="agent_01jz0xtv25ej8axfe92t1sdv9t"
       position="top-right"
       testId="sales-coach-agent"
+    />
+  );
+}
+
+// Secondary Agent - Bottom Left Corner
+export function SecondaryAgent() {
+  return (
+    <ElevenLabsWidget 
+      agentId="agent_01k07mhgszfcg9br6n46m8d35m"
+      position="bottom-left"
+      testId="secondary-agent"
     />
   );
 }
