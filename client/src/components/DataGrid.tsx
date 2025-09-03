@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useReactTable,
@@ -8,6 +8,7 @@ import {
   getPaginationRowModel,
   type ColumnDef,
   flexRender,
+  type RowData,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion } from "framer-motion";
@@ -27,17 +28,142 @@ import { FileViewer } from "@/components/FileViewer";
 import type { Candidate } from "@shared/schema";
 import type { UploadResult } from "@uppy/core";
 
+// Extend table meta interface for inline editing
+declare module '@tanstack/react-table' {
+  interface TableMeta<TData extends RowData> {
+    updateData: (rowIndex: number, columnId: string, value: unknown) => void;
+  }
+}
+
+// Editable cell component for text fields
+function EditableCell({ getValue, row, column, table }: any) {
+  const initialValue = getValue();
+  const [value, setValue] = useState(initialValue);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Reset value when data changes
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  const onBlur = () => {
+    setIsEditing(false);
+    if (value !== initialValue) {
+      table.options.meta?.updateData(row.index, column.id, value);
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      onBlur();
+    } else if (e.key === 'Escape') {
+      setValue(initialValue);
+      setIsEditing(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <Input
+        value={value as string}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={onBlur}
+        onKeyDown={onKeyDown}
+        className="h-8 text-xs bg-transparent border-accent"
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <div
+      className="cursor-pointer hover:bg-accent/10 px-2 py-1 rounded min-h-8 flex items-center"
+      onClick={() => setIsEditing(true)}
+      data-testid={`editable-${column.id}-${row.original.id}`}
+    >
+      <span className="text-xs">{value as string || "—"}</span>
+    </div>
+  );
+}
+
+// Editable score cell with number input
+function EditableScoreCell({ getValue, row, column, table }: any) {
+  const initialValue = getValue() || 0;
+  const [value, setValue] = useState(initialValue);
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  const onBlur = () => {
+    setIsEditing(false);
+    const numValue = Math.max(0, Math.min(100, Number(value) || 0));
+    setValue(numValue);
+    if (numValue !== initialValue) {
+      table.options.meta?.updateData(row.index, column.id, numValue);
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      onBlur();
+    } else if (e.key === 'Escape') {
+      setValue(initialValue);
+      setIsEditing(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <Input
+        type="number"
+        min="0"
+        max="100"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={onBlur}
+        onKeyDown={onKeyDown}
+        className="h-8 w-16 text-xs bg-transparent border-accent"
+        autoFocus
+      />
+    );
+  }
+
+  const score = value as number;
+  return (
+    <div
+      className="cursor-pointer hover:bg-accent/10 px-2 py-1 rounded min-h-8 flex items-center space-x-2"
+      onClick={() => setIsEditing(true)}
+    >
+      <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-accent rounded-full transition-all duration-300"
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <span className="text-xs w-8">{score}%</span>
+    </div>
+  );
+}
+
 export default function DataGrid() {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [currentFilters, setCurrentFilters] = useState<FilterOptions | null>(null);
   const [selectedCandidateForFiles, setSelectedCandidateForFiles] = useState<Candidate | null>(null);
+  const [data, setData] = useState<Candidate[]>([]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: allCandidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
   });
+
+  // Sync data state with query data
+  useEffect(() => {
+    setData(allCandidates);
+  }, [allCandidates]);
 
   const handleFilterChange = useCallback((filtered: Candidate[], filters: FilterOptions) => {
     setFilteredCandidates(filtered);
@@ -55,8 +181,40 @@ export default function DataGrid() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      toast({
+        title: "Updated",
+        description: "Candidate updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update candidate",
+        variant: "destructive",
+      });
     },
   });
+
+  // Handle inline editing updates
+  const updateData = useCallback((rowIndex: number, columnId: string, value: unknown) => {
+    const candidate = (currentFilters ? filteredCandidates : data)[rowIndex];
+    if (!candidate) return;
+
+    // Optimistic update
+    setData(old =>
+      old.map(row => 
+        row.id === candidate.id 
+          ? { ...row, [columnId]: value }
+          : row
+      )
+    );
+
+    // Update in database
+    updateCandidateMutation.mutate({
+      id: candidate.id,
+      updates: { [columnId]: value } as Partial<Candidate>,
+    });
+  }, [currentFilters, filteredCandidates, data, updateCandidateMutation]);
 
   const uploadResumeForCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, resumeURL }: { candidateId: string; resumeURL: string }) => {
@@ -128,39 +286,35 @@ export default function DataGrid() {
             data-testid={`select-candidate-${row.original.id}`}
           />
         ),
-        size: 50,
+        size: 40,
+        enableSorting: false,
       },
       {
         accessorKey: "name",
         header: "Name",
-        cell: ({ row }) => (
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-xs">
-              {row.original.name?.charAt(0)?.toUpperCase() || "?"}
+        cell: (props) => (
+          <div className="flex items-center space-x-2 min-w-0">
+            <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center text-xs flex-shrink-0">
+              {props.row.original.name?.charAt(0)?.toUpperCase() || "?"}
             </div>
-            <span className="font-medium" data-testid={`candidate-name-${row.original.id}`}>
-              {row.original.name}
-            </span>
+            <div className="min-w-0 flex-1">
+              <EditableCell {...props} />
+            </div>
           </div>
         ),
+        size: 180,
       },
       {
         accessorKey: "email",
         header: "Email",
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground" data-testid={`candidate-email-${getValue()}`}>
-            {getValue() as string}
-          </span>
-        ),
+        cell: EditableCell,
+        size: 200,
       },
       {
         accessorKey: "phone",
         header: "Phone",
-        cell: ({ getValue }) => (
-          <span className="text-muted-foreground">
-            {getValue() as string || "—"}
-          </span>
-        ),
+        cell: EditableCell,
+        size: 120,
       },
       {
         accessorKey: "sourceRef",
@@ -174,22 +328,20 @@ export default function DataGrid() {
             </Badge>
           );
         },
+        size: 80,
+        enableSorting: false,
       },
       {
         accessorKey: "pipelineStage",
         header: "Stage",
-        cell: ({ row }) => (
+        cell: ({ row, table }) => (
           <Select
             value={row.original.pipelineStage}
             onValueChange={(value) => {
-              updateCandidateMutation.mutate({
-                id: row.original.id,
-                updates: { pipelineStage: value as any },
-              });
+              table.options.meta?.updateData(row.index, 'pipelineStage', value);
             }}
-            disabled={updateCandidateMutation.isPending}
           >
-            <SelectTrigger className="glass-input text-xs bg-transparent border-border h-8" data-testid={`stage-select-${row.original.id}`}>
+            <SelectTrigger className="glass-input text-xs bg-transparent border-border h-8 w-full" data-testid={`stage-select-${row.original.id}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -203,44 +355,39 @@ export default function DataGrid() {
             </SelectContent>
           </Select>
         ),
+        size: 140,
       },
       {
         accessorKey: "score",
         header: "Score",
-        cell: ({ getValue }) => {
-          const score = getValue() as number || 0;
-          return (
-            <div className="flex items-center space-x-1">
-              <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-accent rounded-full transition-all duration-300"
-                  style={{ width: `${score}%` }}
-                />
-              </div>
-              <span className="text-xs" data-testid={`candidate-score-${score}`}>
-                {score}%
-              </span>
-            </div>
-          );
-        },
+        cell: EditableScoreCell,
+        size: 100,
       },
       {
         id: "interview",
         header: "Interview",
         cell: ({ row }) => (
-          <i className={`fas fa-check text-sm ${
-            row.original.pipelineStage !== "NEW" ? "text-accent" : "text-muted-foreground"
-          }`} data-testid={`interview-status-${row.original.id}`}></i>
+          <div className="flex justify-center">
+            <i className={`fas fa-check text-sm ${
+              row.original.pipelineStage !== "NEW" ? "text-accent" : "text-muted-foreground"
+            }`} data-testid={`interview-status-${row.original.id}`}></i>
+          </div>
         ),
+        size: 70,
+        enableSorting: false,
       },
       {
         id: "booking",
         header: "Booking",
         cell: ({ row }) => (
-          <i className={`fas fa-calendar-check text-sm ${
-            ["OFFER", "HIRED"].includes(row.original.pipelineStage) ? "text-primary" : "text-muted-foreground"
-          }`} data-testid={`booking-status-${row.original.id}`}></i>
+          <div className="flex justify-center">
+            <i className={`fas fa-calendar-check text-sm ${
+              ["OFFER", "HIRED"].includes(row.original.pipelineStage) ? "text-primary" : "text-muted-foreground"
+            }`} data-testid={`booking-status-${row.original.id}`}></i>
+          </div>
         ),
+        size: 70,
+        enableSorting: false,
       },
       {
         id: "resume",
@@ -250,13 +397,13 @@ export default function DataGrid() {
           const hasResume = candidate.resumeUrl;
           
           return (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center">
               {hasResume ? (
                 <div className="flex items-center space-x-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-6 h-6 p-0 hover:bg-muted micro-animation"
+                    className="w-6 h-6 p-0 hover:bg-muted"
                     onClick={() => setSelectedCandidateForFiles(candidate)}
                     data-testid={`view-resume-${candidate.id}`}
                   >
@@ -265,7 +412,7 @@ export default function DataGrid() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-6 h-6 p-0 hover:bg-muted micro-animation"
+                    className="w-6 h-6 p-0 hover:bg-muted"
                     asChild
                     data-testid={`download-resume-${candidate.id}`}
                   >
@@ -277,10 +424,10 @@ export default function DataGrid() {
               ) : (
                 <ObjectUploader
                   maxNumberOfFiles={1}
-                  maxFileSize={10485760} // 10MB
+                  maxFileSize={10485760}
                   onGetUploadParameters={handleGetUploadParameters}
                   onComplete={handleResumeUploadComplete(candidate.id)}
-                  buttonClassName="w-6 h-6 p-0 hover:bg-muted micro-animation glass-input"
+                  buttonClassName="w-6 h-6 p-0 hover:bg-muted glass-input"
                   data-testid={`upload-resume-${candidate.id}`}
                 >
                   <i className="fas fa-upload text-xs"></i>
@@ -289,16 +436,18 @@ export default function DataGrid() {
             </div>
           );
         },
+        size: 80,
+        enableSorting: false,
       },
       {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center justify-center space-x-1">
             <Button
               variant="ghost"
               size="sm"
-              className="w-6 h-6 p-0 hover:bg-muted micro-animation"
+              className="w-6 h-6 p-0 hover:bg-muted"
               data-testid={`view-candidate-${row.original.id}`}
             >
               <i className="fas fa-eye text-xs"></i>
@@ -306,20 +455,22 @@ export default function DataGrid() {
             <Button
               variant="ghost"
               size="sm"
-              className="w-6 h-6 p-0 hover:bg-muted micro-animation"
+              className="w-6 h-6 p-0 hover:bg-muted"
               data-testid={`edit-candidate-${row.original.id}`}
             >
               <i className="fas fa-edit text-xs"></i>
             </Button>
           </div>
         ),
+        size: 80,
+        enableSorting: false,
       },
     ],
-    [selectedRows, updateCandidateMutation]
+    [selectedRows, setSelectedCandidateForFiles]
   );
 
   // Use filtered candidates for table data, or all candidates if no filters applied
-  const tableData = currentFilters ? filteredCandidates : (allCandidates || []);
+  const tableData = currentFilters ? filteredCandidates : data;
 
   const table = useReactTable({
     data: tableData,
@@ -328,14 +479,17 @@ export default function DataGrid() {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    meta: {
+      updateData,
+    },
   });
 
   const { rows } = table.getRowModel();
 
-  const parentRef = useState<HTMLDivElement | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: rows.length,
-    getScrollElement: () => parentRef[0],
+    getScrollElement: () => parentRef.current,
     estimateSize: () => 60,
     overscan: 10,
   });
@@ -404,84 +558,85 @@ export default function DataGrid() {
           candidates={allCandidates || []}
           className="mb-6"
         />
-
-        {/* Column Headers */}
-        <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground">
-          {table.getHeaderGroups()[0]?.headers.map((header) => (
-            <div
-              key={header.id}
-              className={`${
-                header.id === "select" ? "col-span-1" :
-                header.id === "name" ? "col-span-2" :
-                header.id === "email" ? "col-span-2" :
-                header.id === "pipelineStage" ? "col-span-2" :
-                "col-span-1"
-              } flex items-center space-x-2`}
-            >
-              {flexRender(header.column.columnDef.header, header.getContext())}
-              {header.column.getCanSort() && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-0 h-auto"
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  <i className="fas fa-sort text-xs"></i>
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* Virtualized Rows */}
-      <div 
-        ref={(el) => parentRef[1](el)}
-        className="max-h-96 overflow-auto scroll-area"
-        data-testid="candidates-grid"
-      >
-        <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            return (
-              <motion.div
-                key={row.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.15 }}
-                className="data-row grid grid-cols-12 gap-4 p-4 border-b border-border text-sm absolute w-full"
-                style={{
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                data-testid={`candidate-row-${row.original.id}`}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <div
-                    key={cell.id}
-                    className={`${
-                      cell.column.id === "select" ? "col-span-1" :
-                      cell.column.id === "name" ? "col-span-2" :
-                      cell.column.id === "email" ? "col-span-2" :
-                      cell.column.id === "pipelineStage" ? "col-span-2" :
-                      "col-span-1"
-                    } flex items-center`}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      {/* Table with proper column widths */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[1200px]">
+          {/* Table Headers */}
+          <div className="bg-muted/20 border-b border-border">
+            <div className="flex">
+              {table.getHeaderGroups()[0]?.headers.map((header) => (
+                <div
+                  key={header.id}
+                  className="flex items-center justify-start px-3 py-3 text-sm font-medium text-muted-foreground border-r border-border/50 last:border-r-0"
+                  style={{ width: header.getSize() }}
+                >
+                  <div className="flex items-center space-x-2">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getCanSort() && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-0 h-auto"
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <i className="fas fa-sort text-xs"></i>
+                      </Button>
+                    )}
                   </div>
-                ))}
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Loading indicator for additional data */}
-        {(tableData || []).length > 100 && (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            <i className="fas fa-spinner fa-spin mr-2"></i>
-            Virtual scrolling active - {(tableData || []).length.toLocaleString()} candidates loaded
+                </div>
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* Virtualized Rows */}
+          <div 
+            ref={parentRef}
+            className="max-h-96 overflow-auto"
+            data-testid="candidates-grid"
+          >
+            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                return (
+                  <motion.div
+                    key={row.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute w-full border-b border-border hover:bg-muted/10"
+                    style={{
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                    data-testid={`candidate-row-${row.original.id}`}
+                  >
+                    <div className="flex h-full">
+                      {row.getVisibleCells().map((cell) => (
+                        <div
+                          key={cell.id}
+                          className="flex items-center px-3 py-2 border-r border-border/50 last:border-r-0 overflow-hidden"
+                          style={{ width: cell.column.getSize() }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Loading indicator for additional data */}
+            {(tableData || []).length > 100 && (
+              <div className="p-4 text-center text-muted-foreground text-sm">
+                <i className="fas fa-spinner fa-spin mr-2"></i>
+                Virtual scrolling active - {(tableData || []).length.toLocaleString()} candidates loaded
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Pagination */}
@@ -492,6 +647,9 @@ export default function DataGrid() {
               {selectedRows.length} of {(tableData || []).length} selected
             </span>
           )}
+          <div className="mt-1 text-xs text-muted-foreground/70">
+            Click any cell to edit • Press Enter to save • Press Escape to cancel
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -538,7 +696,7 @@ export default function DataGrid() {
               name: `${selectedCandidateForFiles.name}_Resume.pdf`,
               type: 'application/pdf',
               url: selectedCandidateForFiles.resumeUrl,
-              size: 1024000, // placeholder size
+              size: 1024000,
               uploadedAt: new Date()
             }] : []}
             candidateName={selectedCandidateForFiles.name || 'Unknown'}
