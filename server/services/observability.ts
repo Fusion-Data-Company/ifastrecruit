@@ -396,4 +396,4 @@ export class ObservabilityService {
 export const observabilityService = new ObservabilityService();
 
 // Start monitoring when module is loaded
-observabilityService.startRealTimeMonitoring();
+// observabilityService.startRealTimeMonitoring(); // Disabled to prevent recurring alerts

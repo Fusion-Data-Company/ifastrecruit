@@ -58,36 +58,36 @@ export default function PipelineBoard() {
       id: "NEW",
       name: "New Applications",
       color: "bg-muted",
-      candidates: candidates.filter(c => c.pipelineStage === "NEW"),
+      candidates: candidates?.filter(c => c.pipelineStage === "NEW") || [],
     },
     {
       id: "FIRST_INTERVIEW",
       name: "First Interview",
       color: "bg-primary/20",
-      candidates: candidates.filter(c => c.pipelineStage === "FIRST_INTERVIEW"),
+      candidates: candidates?.filter(c => c.pipelineStage === "FIRST_INTERVIEW") || [],
     },
     {
       id: "TECHNICAL_SCREEN",
       name: "Technical Screen",
       color: "bg-accent/20",
-      candidates: candidates.filter(c => c.pipelineStage === "TECHNICAL_SCREEN"),
+      candidates: candidates?.filter(c => c.pipelineStage === "TECHNICAL_SCREEN") || [],
     },
     {
       id: "FINAL_INTERVIEW",
       name: "Final Interview",
       color: "bg-primary/30",
-      candidates: candidates.filter(c => c.pipelineStage === "FINAL_INTERVIEW"),
+      candidates: candidates?.filter(c => c.pipelineStage === "FINAL_INTERVIEW") || [],
     },
     {
       id: "HIRED",
       name: "Hired",
       color: "bg-accent/30",
-      candidates: candidates.filter(c => c.pipelineStage === "HIRED"),
+      candidates: candidates?.filter(c => c.pipelineStage === "HIRED") || [],
     },
   ];
 
   const handleDragStart = (event: DragStartEvent) => {
-    const candidate = candidates.find(c => c.id === event.active.id);
+    const candidate = candidates?.find(c => c.id === event.active.id);
     setActiveCandidate(candidate || null);
   };
 
