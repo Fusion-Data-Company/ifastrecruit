@@ -240,7 +240,7 @@
   }
 
   .fc-daygrid-day, .fc-timegrid-slot, .fc-timegrid-slot-lane {
-    border-color: var(--border) !important;
+    border-color: white !important;
     background: transparent !important;
   }
 
@@ -302,7 +302,7 @@
 
   .fc-scrollgrid, .fc-scrollgrid-section > td, 
   .fc-scrollgrid-section > th {
-    border-color: var(--border) !important;
+    border-color: white !important;
   }
 
   .platform-day-header {
@@ -325,12 +325,12 @@
   .force-platform-header {
     color: hsl(213, 31%, 91%) !important;
     background: transparent !important;
-    border-color: hsla(217, 32%, 17%, 0.15) !important;
+    border-color: white !important;
   }
 
   .calendar-container .fc-button-primary {
     background-color: hsla(217, 32%, 17%, 0.1) !important;
-    border-color: hsla(217, 32%, 17%, 0.15) !important;
+    border-color: white !important;
     color: hsl(213, 31%, 91%) !important;
   }
 
@@ -350,7 +350,7 @@
   .calendar-container .fc-col-header-cell {
     background-color: hsla(217, 32%, 17%, 0.06) !important;
     color: hsl(213, 31%, 91%) !important;
-    border-color: hsla(217, 32%, 17%, 0.15) !important;
+    border-color: white !important;
   }
 
   .calendar-container .fc-timegrid-slot-label {
