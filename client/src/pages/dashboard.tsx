@@ -16,7 +16,7 @@ import { motion } from "framer-motion";
 type TabType = "grid" | "pipeline" | "apify" | "calendar" | "analytics" | "workflow" | "monitoring" | "audit";
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<TabType>("grid");
+  const [activeTab, setActiveTab] = useState<TabType>("analytics");
 
   const renderTabContent = () => {
     switch (activeTab) {

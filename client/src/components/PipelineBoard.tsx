@@ -12,6 +12,10 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  closestCenter,
+  DragOverEvent,
+  useDraggable,
+  useDroppable,
 } from "@dnd-kit/core";
 import { useMCPClient } from "@/lib/mcp-client";
 import type { Candidate } from "@shared/schema";
@@ -21,6 +25,118 @@ interface PipelineStage {
   name: string;
   color: string;
   candidates: Candidate[];
+}
+
+function DraggableCandidate({ candidate }: { candidate: Candidate }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: candidate.id,
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: isDragging ? 0.5 : 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      whileHover={{ y: -2 }}
+      className={`candidate-card p-3 rounded-lg border border-border bg-card hover:shadow-md transition-all duration-200 cursor-move ${isDragging ? 'opacity-50' : ''}`}
+      data-testid={`pipeline-candidate-${candidate.id}`}
+    >
+      <div className="flex items-center space-x-2 mb-2">
+        <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center text-xs font-semibold text-primary">
+          {candidate.name?.charAt(0)?.toUpperCase() || "?"}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="font-medium text-sm truncate block" data-testid={`pipeline-candidate-name-${candidate.id}`}>
+            {candidate.name}
+          </span>
+          <div className="text-xs text-muted-foreground truncate">
+            {candidate.email}
+          </div>
+        </div>
+      </div>
+      
+      {/* Resume Link */}
+      {candidate.resumeUrl && (
+        <div className="text-xs text-blue-500 mb-2 flex items-center">
+          <i className="fas fa-file-pdf mr-1"></i>
+          <span>Resume Available</span>
+        </div>
+      )}
+      
+      <div className="flex items-center justify-between">
+        <Badge className="text-xs bg-secondary/50">
+          {candidate.sourceRef || "Manual"}
+        </Badge>
+        <div className="flex items-center space-x-1">
+          <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-300"
+              style={{ width: `${candidate.score || 0}%` }}
+            />
+          </div>
+          <span className="text-xs font-medium text-primary">{candidate.score || 0}%</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function DroppableColumn({ stage }: { stage: PipelineStage }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: stage.id,
+  });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15 }}
+      className="pipeline-column rounded-lg p-4 bg-muted/30"
+      data-testid={`pipeline-stage-${stage.id}`}
+    >
+      {/* Stage Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-semibold text-sm text-foreground">{stage.name}</h4>
+        <Badge className={`${stage.color} text-xs border-0`} data-testid={`stage-count-${stage.id}`}>
+          {stage.candidates?.length || 0}
+        </Badge>
+      </div>
+
+      {/* Droppable Area */}
+      <div
+        ref={setNodeRef}
+        className={`min-h-[400px] space-y-3 transition-colors duration-200 ${
+          isOver ? 'bg-primary/5 border-2 border-dashed border-primary/30 rounded-lg p-2' : ''
+        }`}
+        data-testid={`droppable-${stage.id}`}
+      >
+        <AnimatePresence>
+          {(stage.candidates || []).map((candidate) => (
+            <DraggableCandidate key={candidate.id} candidate={candidate} />
+          ))}
+        </AnimatePresence>
+
+        {/* Empty State */}
+        {(stage.candidates?.length || 0) === 0 && (
+          <div className="h-32 border-2 border-dashed border-border rounded-lg flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <i className="fas fa-inbox text-2xl mb-2"></i>
+              <p className="text-sm">No candidates</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 }
 
 export default function PipelineBoard() {
@@ -42,11 +158,15 @@ export default function PipelineBoard() {
 
   const updateCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, newStage }: { candidateId: string; newStage: string }) => {
-      return await callTool("process_candidate", {
-        candidateId,
-        newStage,
-        notes: `Moved via pipeline board`,
+      const response = await fetch(`/api/candidates/${candidateId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pipelineStage: newStage }),
       });
+      if (!response.ok) throw new Error('Failed to update candidate stage');
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
@@ -57,38 +177,32 @@ export default function PipelineBoard() {
     {
       id: "NEW",
       name: "New Applications",
-      color: "bg-muted",
+      color: "bg-blue-500/20 text-blue-700",
       candidates: candidates?.filter(c => c.pipelineStage === "NEW") || [],
     },
     {
       id: "FIRST_INTERVIEW",
       name: "First Interview",
-      color: "bg-primary/20",
+      color: "bg-purple-500/20 text-purple-700",
       candidates: candidates?.filter(c => c.pipelineStage === "FIRST_INTERVIEW") || [],
     },
     {
       id: "TECHNICAL_SCREEN",
       name: "Technical Screen",
-      color: "bg-accent/20",
+      color: "bg-orange-500/20 text-orange-700",
       candidates: candidates?.filter(c => c.pipelineStage === "TECHNICAL_SCREEN") || [],
     },
     {
       id: "FINAL_INTERVIEW",
       name: "Final Interview",
-      color: "bg-primary/30",
+      color: "bg-green-500/20 text-green-700",
       candidates: candidates?.filter(c => c.pipelineStage === "FINAL_INTERVIEW") || [],
     },
     {
       id: "OFFER",
       name: "Offer Extended",
-      color: "bg-green-500/20",
+      color: "bg-teal-500/20 text-teal-700",
       candidates: candidates?.filter(c => c.pipelineStage === "OFFER") || [],
-    },
-    {
-      id: "HIRED",
-      name: "Hired",
-      color: "bg-accent/30",
-      candidates: candidates?.filter(c => c.pipelineStage === "HIRED") || [],
     },
   ];
 
