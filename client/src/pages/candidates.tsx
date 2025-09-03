@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DataGrid from '@/components/DataGrid';
+import AddCandidateDialog from '@/components/AddCandidateDialog';
 import { motion } from 'framer-motion';
 import type { Candidate } from '@shared/schema';
 
@@ -15,6 +16,7 @@ export default function CandidatesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ['/api/candidates'],
@@ -48,7 +50,11 @@ export default function CandidatesPage() {
             <h1 className="enterprise-heading text-3xl font-bold">Candidate Management</h1>
             <p className="text-muted-foreground">Manage your talent pipeline efficiently</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90" data-testid="add-candidate">
+          <Button 
+            className="bg-primary hover:bg-primary/90" 
+            onClick={() => setIsAddDialogOpen(true)}
+            data-testid="add-candidate"
+          >
             <i className="fas fa-user-plus mr-2"></i>
             Add Candidate
           </Button>
@@ -188,6 +194,12 @@ export default function CandidatesPage() {
         </motion.div>
       </div>
       </main>
+
+      {/* Add Candidate Dialog */}
+      <AddCandidateDialog 
+        open={isAddDialogOpen} 
+        onOpenChange={setIsAddDialogOpen} 
+      />
     </div>
   );
 }
