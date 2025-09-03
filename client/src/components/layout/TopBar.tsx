@@ -8,19 +8,7 @@ export default function TopBar() {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
-    <div className="h-16 glass-panel border-b px-6 flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        <h2 className="enterprise-heading text-lg">Enterprise Dashboard</h2>
-        <div className="flex items-center space-x-2 text-muted-foreground text-sm">
-          <motion.div
-            className="w-2 h-2 bg-accent rounded-full"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-          />
-          <span data-testid="sse-status">Real-time SSE Active</span>
-        </div>
-      </div>
-      
+    <div className="h-16 glass-panel border-b px-6 flex items-center justify-end">
       <div className="flex items-center space-x-4">
         <div className="glass-input px-3 py-1 rounded-lg flex items-center space-x-2">
           <i className="fas fa-search text-muted-foreground"></i>
