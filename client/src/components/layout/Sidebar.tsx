@@ -47,9 +47,9 @@ export default function Sidebar() {
       {/* Sidebar */}
       <motion.div 
         initial={false}
-        animate={{ x: isOpen ? 0 : -280 }}
-        className={`w-64 fixed left-0 top-0 h-full glass-panel border-r z-50 md:z-40 md:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        animate={{ x: isOpen ? 0 : 0 }}
+        className={`w-64 fixed left-0 top-0 h-full glass-panel border-r z-40 ${
+          isOpen ? 'translate-x-0' : '-translate-x-0 md:translate-x-0'
         }`}
       >
       <div className="p-6">
