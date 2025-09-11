@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import SearchAndFilter, { type FilterOptions } from "@/components/SearchAndFilter";
@@ -219,7 +220,7 @@ export default function DataGrid() {
       id: candidate.id,
       updates: { [columnId]: value } as Partial<Candidate>,
     });
-  }, [currentFilters, filteredCandidates, updateCandidateMutation]);
+  }, [currentFilters, filteredCandidates, data, updateCandidateMutation]);
 
   const uploadResumeForCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, resumeURL }: { candidateId: string; resumeURL: string }) => {
@@ -307,7 +308,7 @@ export default function DataGrid() {
             </div>
           </div>
         ),
-        size: 300,
+        size: 200,
       },
       {
         accessorKey: "email",
@@ -331,7 +332,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 350,
+        size: 280,
       },
       {
         accessorKey: "phone",
@@ -356,7 +357,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 220,
+        size: 180,
       },
       {
         accessorKey: "sourceRef",
@@ -397,13 +398,13 @@ export default function DataGrid() {
             </SelectContent>
           </Select>
         ),
-        size: 250,
+        size: 160,
       },
       {
         accessorKey: "score",
         header: "Score",
         cell: EditableScoreCell,
-        size: 200,
+        size: 140,
       },
       {
         accessorKey: "interviewScore",
@@ -422,20 +423,32 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 180,
+        size: 150,
       },
       {
         accessorKey: "notes",
         header: "Interview Notes",
         cell: ({ getValue, row }) => {
           const value = getValue() as string;
+          if (!value || value === '-') {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
           return (
-            <div className="max-w-32 truncate" title={value}>
-              <span className="text-sm">{value || '-'}</span>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-32 truncate cursor-help">
+                    <span className="text-sm">{value}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-80 p-3 text-sm bg-popover border border-border shadow-lg">
+                  <div className="whitespace-pre-wrap">{value}</div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
-        size: 200,
+        size: 160,
       },
       {
         accessorKey: "interviewDuration",
