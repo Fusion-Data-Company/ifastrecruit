@@ -109,14 +109,28 @@ function EditableCell({ getValue, row, column, table }: any) {
     );
   }
 
+  const displayValue = value as string || "—";
+  const shouldShowTooltip = displayValue.length > 30;
+
   return (
-    <div
-      className="cursor-pointer hover:bg-accent/10 px-4 py-2 rounded min-h-12 flex items-center"
-      onClick={() => setIsEditing(true)}
-      data-testid={`editable-${column.id}-${row.original.id}`}
-    >
-      <span className="text-base leading-relaxed">{value as string || "—"}</span>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className="cursor-pointer hover:bg-accent/10 px-4 py-2 rounded min-h-12 flex items-center w-full"
+            onClick={() => setIsEditing(true)}
+            data-testid={`editable-${column.id}-${row.original.id}`}
+          >
+            <span className="text-base leading-relaxed truncate">{displayValue}</span>
+          </div>
+        </TooltipTrigger>
+        {shouldShowTooltip && (
+          <TooltipContent side="top" className="max-w-sm break-words">
+            <p>{displayValue}</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -781,12 +795,22 @@ export default function DataGrid() {
         header: "Interview Notes",
         cell: ({ getValue, row, column, table }) => {
           const notes = getValue() as string;
+          const displayText = notes && notes !== '-' ? notes : '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base truncate" title={notes || '-'}>
-                {notes && notes !== '-' ? notes : '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-md break-words">
+                  <p className="whitespace-pre-wrap">{displayText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 350,
@@ -812,12 +836,22 @@ export default function DataGrid() {
         header: "Interview Summary",
         cell: ({ getValue }) => {
           const summary = getValue() as string;
+          const displayText = summary && summary !== '-' ? summary : '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base truncate" title={summary || '-'}>
-                {summary && summary !== '-' ? summary : '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-md break-words">
+                  <p className="whitespace-pre-wrap">{displayText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 350,
@@ -827,12 +861,23 @@ export default function DataGrid() {
         header: "Interview Transcript",
         cell: ({ getValue }) => {
           const transcript = getValue() as string;
+          const displayText = transcript && transcript !== '-' ? `${transcript.substring(0, 50)}...` : '-';
+          const fullText = transcript || '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base truncate" title={transcript || '-'}>
-                {transcript && transcript !== '-' ? `${transcript.substring(0, 50)}...` : '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto break-words">
+                  <pre className="whitespace-pre-wrap text-xs">{fullText}</pre>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 400,
@@ -868,12 +913,22 @@ export default function DataGrid() {
         header: "Agent ID",
         cell: ({ getValue }) => {
           const agentId = getValue() as string;
+          const displayText = agentId || '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base font-mono text-sm truncate" title={agentId || '-'}>
-                {agentId || '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base font-mono text-sm truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="break-all">
+                  <p className="font-mono text-sm">{displayText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 250,
@@ -883,12 +938,22 @@ export default function DataGrid() {
         header: "Conversation ID",
         cell: ({ getValue }) => {
           const conversationId = getValue() as string;
+          const displayText = conversationId || '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base font-mono text-sm truncate" title={conversationId || '-'}>
-                {conversationId || '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base font-mono text-sm truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="break-all">
+                  <p className="font-mono text-sm">{displayText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 250,
@@ -947,12 +1012,22 @@ export default function DataGrid() {
         header: "Transcript Summary",
         cell: ({ getValue }) => {
           const summary = getValue() as string;
+          const displayText = summary && summary !== '-' ? summary : '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base truncate" title={summary || '-'}>
-                {summary && summary !== '-' ? summary : '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-md break-words">
+                  <p className="whitespace-pre-wrap">{displayText}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 350,
@@ -971,12 +1046,23 @@ export default function DataGrid() {
         header: "Evaluation Criteria",
         cell: ({ getValue }) => {
           const criteria = getValue() as any;
+          const displayText = criteria ? 'JSON Data Available' : '-';
+          const tooltipContent = criteria ? JSON.stringify(criteria, null, 2) : '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base truncate" title={criteria ? JSON.stringify(criteria) : '-'}>
-                {criteria ? 'JSON Data Available' : '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto">
+                  <pre className="text-xs font-mono whitespace-pre-wrap">{tooltipContent}</pre>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 250,
@@ -986,12 +1072,23 @@ export default function DataGrid() {
         header: "Data Collection Results",
         cell: ({ getValue }) => {
           const results = getValue() as any;
+          const displayText = results ? 'JSON Data Available' : '-';
+          const tooltipContent = results ? JSON.stringify(results, null, 2) : '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base truncate" title={results ? JSON.stringify(results) : '-'}>
-                {results ? 'JSON Data Available' : '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto">
+                  <pre className="text-xs font-mono whitespace-pre-wrap">{tooltipContent}</pre>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 250,
@@ -1001,12 +1098,23 @@ export default function DataGrid() {
         header: "Interview Data",
         cell: ({ getValue }) => {
           const data = getValue() as any;
+          const displayText = data ? 'JSON Data Available' : '-';
+          const tooltipContent = data ? JSON.stringify(data, null, 2) : '-';
           return (
-            <div className="max-w-xs">
-              <div className="text-base truncate" title={data ? JSON.stringify(data) : '-'}>
-                {data ? 'JSON Data Available' : '-'}
-              </div>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-xs cursor-help">
+                    <div className="text-base truncate">
+                      {displayText}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto">
+                  <pre className="text-xs font-mono whitespace-pre-wrap">{tooltipContent}</pre>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           );
         },
         size: 250,
