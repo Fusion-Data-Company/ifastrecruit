@@ -65,7 +65,135 @@ declare module '@tanstack/react-table' {
   }
 }
 
-// Editable cell component for text fields
+// Enhanced Tooltip Components for different data types
+function EnhancedTooltip({ 
+  children, 
+  content, 
+  title, 
+  maxWidth = "max-w-lg",
+  side = "top" as const,
+  showCondition = true
+}: {
+  children: React.ReactNode;
+  content: string;
+  title?: string;
+  maxWidth?: string;
+  side?: "top" | "bottom" | "left" | "right";
+  showCondition?: boolean;
+}) {
+  if (!showCondition || !content || content === "—" || content === "-") {
+    return <>{children}</>;
+  }
+
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side={side} className={`${maxWidth} max-h-60 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg`}>
+        <div className="space-y-2">
+          {title && <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>}
+          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+            {content}
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// JSON Tooltip for structured data
+function JsonTooltip({ 
+  children, 
+  data, 
+  title 
+}: {
+  children: React.ReactNode;
+  data: any;
+  title?: string;
+}) {
+  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+    return <>{children}</>;
+  }
+
+  const jsonString = JSON.stringify(data, null, 2);
+
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-2xl max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+        <div className="space-y-2">
+          {title && <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>}
+          <pre className="text-xs font-mono whitespace-pre-wrap break-words leading-relaxed">
+            {jsonString}
+          </pre>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// Date Tooltip with full date/time information
+function DateTooltip({ 
+  children, 
+  date, 
+  title 
+}: {
+  children: React.ReactNode;
+  date: string | Date | null;
+  title?: string;
+}) {
+  if (!date) {
+    return <>{children}</>;
+  }
+
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const fullDateTime = dateObj.toLocaleString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short'
+  });
+  const relativeTime = formatRelativeTime(dateObj);
+
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-sm border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+        <div className="space-y-2">
+          {title && <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>}
+          <div className="text-sm space-y-1">
+            <div><strong>Full Date:</strong> {fullDateTime}</div>
+            <div><strong>Relative:</strong> {relativeTime}</div>
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// Helper function to format relative time
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+  return `${Math.floor(diffInSeconds / 31536000)} years ago`;
+}
+
+// Editable cell component for text fields with enhanced tooltips
 function EditableCell({ getValue, row, column, table }: any) {
   const initialValue = getValue();
   const [value, setValue] = useState(initialValue);
@@ -109,28 +237,30 @@ function EditableCell({ getValue, row, column, table }: any) {
     );
   }
 
-  const displayValue = value as string || "—";
-  const shouldShowTooltip = displayValue.length > 30;
+  const displayValue = String(value || "—");
+  const shouldShowTooltip = Boolean(displayValue && displayValue !== "—" && displayValue !== "-");
+  const columnTitle = typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center w-full min-w-0"
-            onClick={() => setIsEditing(true)}
-            data-testid={`editable-${column.id}-${row.original.id}`}
-          >
-            <span className="text-base leading-relaxed truncate min-w-0 flex-1">{displayValue}</span>
-          </div>
-        </TooltipTrigger>
-        {shouldShowTooltip && (
-          <TooltipContent side="top" className="max-w-sm break-words">
-            <p>{displayValue}</p>
-          </TooltipContent>
+    <EnhancedTooltip
+      content={displayValue}
+      title={`${columnTitle}`}
+      showCondition={shouldShowTooltip && (displayValue.length > 20 || (typeof displayValue === 'string' && displayValue.includes('\n')))}
+      maxWidth="max-w-lg"
+    >
+      <div
+        className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center w-full min-w-0 group"
+        onClick={() => setIsEditing(true)}
+        data-testid={`editable-${column.id}-${row.original.id}`}
+      >
+        <span className="text-base leading-relaxed truncate min-w-0 flex-1 group-hover:text-primary transition-colors">
+          {displayValue}
+        </span>
+        {shouldShowTooltip && displayValue.length > 30 && (
+          <Eye className="h-3 w-3 text-muted-foreground/50 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
-      </Tooltip>
-    </TooltipProvider>
+      </div>
+    </EnhancedTooltip>
   );
 }
 
@@ -418,7 +548,7 @@ function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
   );
 }
 
-// Editable score cell with number input
+// Editable score cell with number input and enhanced tooltips
 function EditableScoreCell({ getValue, row, column, table }: any) {
   const initialValue = getValue() || 0;
   const [value, setValue] = useState(initialValue);
@@ -467,19 +597,32 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
   }
 
   const score = value as number;
+  const columnTitle = typeof column.columnDef.header === 'string' ? column.columnDef.header : 'Score';
+  const scoreCategory = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : score >= 20 ? 'Poor' : 'Very Poor';
+  
+  const tooltipContent = `Score: ${score}%\nCategory: ${scoreCategory}\nClick to edit (0-100 range)`;
+
   return (
-    <div
-      className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center space-x-3 min-w-0"
-      onClick={() => setIsEditing(true)}
+    <EnhancedTooltip
+      content={tooltipContent}
+      title={columnTitle}
+      maxWidth="max-w-sm"
     >
-      <div className="w-20 h-4 bg-muted rounded-full overflow-hidden flex-shrink-0">
-        <div 
-          className="h-full bg-accent rounded-full transition-all duration-300"
-          style={{ width: `${score}%` }}
-        />
+      <div
+        className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center space-x-3 min-w-0 group"
+        onClick={() => setIsEditing(true)}
+        data-testid={`score-${column.id}-${row.original.id}`}
+      >
+        <div className="w-20 h-4 bg-muted rounded-full overflow-hidden flex-shrink-0 group-hover:bg-muted/80 transition-colors">
+          <div 
+            className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full transition-all duration-300"
+            style={{ width: `${score}%` }}
+          />
+        </div>
+        <span className="text-base w-16 text-right flex-shrink-0 group-hover:text-primary transition-colors font-medium">{score}%</span>
+        <Edit className="h-3 w-3 text-muted-foreground/50 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
-      <span className="text-base w-16 text-right flex-shrink-0">{score}%</span>
-    </div>
+    </EnhancedTooltip>
   );
 }
 
@@ -498,6 +641,11 @@ export default function DataGrid() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Use refs for stable access to current values without causing re-renders
+  const dataRef = useRef<Candidate[]>([]);
+  const filteredCandidatesRef = useRef<Candidate[]>([]);
+  const currentFiltersRef = useRef<FilterOptions | null>(null);
+
   const { data: allCandidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ["/api/candidates"],
   });
@@ -505,7 +653,21 @@ export default function DataGrid() {
   // Sync data state with query data
   useEffect(() => {
     setData(allCandidates);
+    dataRef.current = allCandidates;
   }, [allCandidates]);
+
+  // Update refs when state changes
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  useEffect(() => {
+    filteredCandidatesRef.current = filteredCandidates;
+  }, [filteredCandidates]);
+
+  useEffect(() => {
+    currentFiltersRef.current = currentFilters;
+  }, [currentFilters]);
 
   const handleFilterChange = useCallback((filtered: Candidate[], filters: FilterOptions) => {
     setFilteredCandidates(filtered);
@@ -539,7 +701,8 @@ export default function DataGrid() {
 
   // Handle inline editing updates
   const updateData = useCallback((rowIndex: number, columnId: string, value: unknown) => {
-    const candidate = (currentFilters ? filteredCandidates : data)[rowIndex];
+    const currentData = currentFiltersRef.current ? filteredCandidatesRef.current : dataRef.current;
+    const candidate = currentData[rowIndex];
     if (!candidate) return;
 
     // Optimistic update
@@ -556,7 +719,7 @@ export default function DataGrid() {
       id: candidate.id,
       updates: { [columnId]: value } as Partial<Candidate>,
     });
-  }, [currentFilters, filteredCandidates, updateCandidateMutation]);
+  }, [updateCandidateMutation]);
 
   const uploadResumeForCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, resumeURL }: { candidateId: string; resumeURL: string }) => {
@@ -612,9 +775,10 @@ export default function DataGrid() {
 
   // Expand all rows
   const expandAllRows = useCallback(() => {
-    const candidateIds = (currentFilters ? filteredCandidates : data).map(c => c.id);
+    const currentData = currentFiltersRef.current ? filteredCandidatesRef.current : dataRef.current;
+    const candidateIds = currentData.map(c => c.id);
     setExpandedRows(new Set(candidateIds));
-  }, [currentFilters, filteredCandidates, data]);
+  }, []);
 
   // Collapse all rows
   const collapseAllRows = useCallback(() => {
@@ -631,16 +795,21 @@ export default function DataGrid() {
           
           return (
             <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-10 w-10 p-0 hover:bg-accent/20"
-                onClick={() => allExpanded ? collapseAllRows() : expandAllRows()}
-                data-testid="expand-all-toggle"
-                title={allExpanded ? "Collapse all rows" : "Expand all rows"}
+              <EnhancedTooltip 
+                content={allExpanded ? "Collapse all rows to hide detailed information" : "Expand all rows to show detailed information"} 
+                title="Expand/Collapse Toggle" 
+                maxWidth="max-w-sm"
               >
-                {allExpanded ? <Minimize2 className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 w-10 p-0 hover:bg-accent/20"
+                  onClick={() => allExpanded ? collapseAllRows() : expandAllRows()}
+                  data-testid="expand-all-toggle"
+                >
+                  {allExpanded ? <Minimize2 className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+                </Button>
+              </EnhancedTooltip>
               {someExpanded && (
                 <span className="text-xs text-muted-foreground">
                   {expandedRows.size}
@@ -652,16 +821,21 @@ export default function DataGrid() {
         cell: ({ row }) => {
           const isExpanded = expandedRows.has(row.original.id);
           return (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 w-10 p-0 hover:bg-accent/20"
-              onClick={() => toggleRowExpansion(row.original.id)}
-              data-testid={`expand-toggle-${row.original.id}`}
-              title={isExpanded ? "Collapse row" : "Expand row"}
+            <EnhancedTooltip 
+              content={isExpanded ? "Collapse row to hide detailed information" : "Expand row to show detailed information including notes, summaries, and technical details"} 
+              title="Row Details Toggle" 
+              maxWidth="max-w-sm"
             >
-              {isExpanded ? <ChevronDown className="h-4 w-4 transition-transform duration-200" /> : <ChevronRight className="h-4 w-4 transition-transform duration-200" />}
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-10 w-10 p-0 hover:bg-accent/20"
+                onClick={() => toggleRowExpansion(row.original.id)}
+                data-testid={`expand-toggle-${row.original.id}`}
+              >
+                {isExpanded ? <ChevronDown className="h-4 w-4 transition-transform duration-200" /> : <ChevronRight className="h-4 w-4 transition-transform duration-200" />}
+              </Button>
+            </EnhancedTooltip>
           );
         },
         size: 80,
@@ -718,14 +892,15 @@ export default function DataGrid() {
                 <EditableCell getValue={getValue} row={row} column={column} table={table} />
               </div>
               {email && (
-                <a 
-                  href={`mailto:${email}`}
-                  className="text-blue-500 hover:text-blue-600 flex-shrink-0 p-1 rounded hover:bg-blue-50 transition-colors"
-                  data-testid={`email-${row.original.id}`}
-                  title="Send email"
-                >
-                  <Mail className="h-4 w-4" />
-                </a>
+                <EnhancedTooltip content={`Send email to: ${email}`} title="Email Action" maxWidth="max-w-sm">
+                  <a 
+                    href={`mailto:${email}`}
+                    className="text-blue-500 hover:text-blue-600 flex-shrink-0 p-1 rounded hover:bg-blue-50 transition-colors"
+                    data-testid={`email-${row.original.id}`}
+                  >
+                    <Mail className="h-4 w-4" />
+                  </a>
+                </EnhancedTooltip>
               )}
             </div>
           );
@@ -743,14 +918,15 @@ export default function DataGrid() {
                 <EditableCell getValue={getValue} row={row} column={column} table={table} />
               </div>
               {phone && (
-                <a 
-                  href={`tel:${phone}`}
-                  className="text-blue-500 hover:text-blue-600 flex-shrink-0 p-1 rounded hover:bg-blue-50 transition-colors"
-                  data-testid={`phone-${row.original.id}`}
-                  title="Call phone"
-                >
-                  <Phone className="h-4 w-4" />
-                </a>
+                <EnhancedTooltip content={`Call: ${phone}`} title="Phone Action" maxWidth="max-w-sm">
+                  <a 
+                    href={`tel:${phone}`}
+                    className="text-blue-500 hover:text-blue-600 flex-shrink-0 p-1 rounded hover:bg-blue-50 transition-colors"
+                    data-testid={`phone-${row.original.id}`}
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                </EnhancedTooltip>
               )}
             </div>
           );
@@ -760,27 +936,48 @@ export default function DataGrid() {
       {
         accessorKey: "pipelineStage",
         header: "Pipeline Stage",
-        cell: ({ row, table }) => (
-          <Select
-            value={row.original.pipelineStage}
-            onValueChange={(value) => {
-              table.options.meta?.updateData(row.index, 'pipelineStage', value);
-            }}
-          >
-            <SelectTrigger className="glass-input text-base bg-transparent border-border h-10 w-full min-w-0" data-testid={`stage-select-${row.original.id}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NEW">New</SelectItem>
-              <SelectItem value="FIRST_INTERVIEW">First Interview</SelectItem>
-              <SelectItem value="TECHNICAL_SCREEN">Technical Screen</SelectItem>
-              <SelectItem value="FINAL_INTERVIEW">Final Interview</SelectItem>
-              <SelectItem value="OFFER">Offer</SelectItem>
-              <SelectItem value="HIRED">Hired</SelectItem>
-              <SelectItem value="REJECTED">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-        ),
+        cell: ({ row, table }) => {
+          const stage = row.original.pipelineStage;
+          const stageDescriptions = {
+            'NEW': 'New candidate - recently added to the system',
+            'FIRST_INTERVIEW': 'First Interview - initial screening completed',
+            'TECHNICAL_SCREEN': 'Technical Screen - technical evaluation in progress',
+            'FINAL_INTERVIEW': 'Final Interview - final evaluation stage',
+            'OFFER': 'Offer - job offer has been extended',
+            'HIRED': 'Hired - candidate has accepted and joined',
+            'REJECTED': 'Rejected - candidate did not proceed'
+          };
+          const description = stageDescriptions[stage as keyof typeof stageDescriptions] || 'Unknown stage';
+          
+          return (
+            <EnhancedTooltip
+              content={`Stage: ${stage}\n${description}\n\nClick to change pipeline stage`}
+              title="Pipeline Stage"
+              maxWidth="max-w-sm"
+            >
+              <Select
+                value={row.original.pipelineStage}
+                onValueChange={(value) => {
+                  table.options.meta?.updateData(row.index, 'pipelineStage', value);
+                }}
+              >
+                <SelectTrigger className="glass-input text-base bg-transparent border-border h-10 w-full min-w-0 hover:bg-accent/10 transition-colors group" data-testid={`stage-select-${row.original.id}`}>
+                  <SelectValue />
+                  <ArrowUpDown className="h-3 w-3 text-muted-foreground/50 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NEW">New</SelectItem>
+                  <SelectItem value="FIRST_INTERVIEW">First Interview</SelectItem>
+                  <SelectItem value="TECHNICAL_SCREEN">Technical Screen</SelectItem>
+                  <SelectItem value="FINAL_INTERVIEW">Final Interview</SelectItem>
+                  <SelectItem value="OFFER">Offer</SelectItem>
+                  <SelectItem value="HIRED">Hired</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </EnhancedTooltip>
+          );
+        },
         size: 300,
       },
       {
@@ -852,21 +1049,25 @@ export default function DataGrid() {
         cell: ({ getValue, row, column, table }) => {
           const notes = getValue() as string;
           const displayText = notes && notes !== '-' ? notes : '-';
+          const shouldShowTooltip = Boolean(displayText && displayText !== "—" && displayText !== "-");
+          const columnTitle = typeof column.columnDef.header === 'string' ? column.columnDef.header : 'Interview Notes';
+          
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-md break-words">
-                  <p className="whitespace-pre-wrap">{displayText}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <EnhancedTooltip
+              content={displayText}
+              title={columnTitle}
+              showCondition={shouldShowTooltip && (displayText.length > 30 || displayText.includes('\n'))}
+              maxWidth="max-w-lg"
+            >
+              <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
+                <div className="text-base truncate min-w-0 group-hover:text-primary transition-colors">
+                  {displayText}
+                </div>
+                {shouldShowTooltip && displayText.length > 30 && (
+                  <Eye className="h-3 w-3 text-muted-foreground/50 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                )}
+              </div>
+            </EnhancedTooltip>
           );
         },
         size: 350,
@@ -874,24 +1075,28 @@ export default function DataGrid() {
       {
         accessorKey: "interviewSummary",
         header: "Interview Summary",
-        cell: ({ getValue }) => {
+        cell: ({ getValue, row, column, table }) => {
           const summary = getValue() as string;
           const displayText = summary && summary !== '-' ? summary : '-';
+          const shouldShowTooltip = Boolean(displayText && displayText !== "—" && displayText !== "-");
+          const columnTitle = typeof column.columnDef.header === 'string' ? column.columnDef.header : 'Interview Summary';
+          
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-md break-words">
-                  <p className="whitespace-pre-wrap">{displayText}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <EnhancedTooltip
+              content={displayText}
+              title={columnTitle}
+              showCondition={shouldShowTooltip && (displayText.length > 30 || displayText.includes('\n'))}
+              maxWidth="max-w-lg"
+            >
+              <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
+                <div className="text-base truncate min-w-0 group-hover:text-primary transition-colors">
+                  {displayText}
+                </div>
+                {shouldShowTooltip && displayText.length > 30 && (
+                  <Eye className="h-3 w-3 text-muted-foreground/50 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                )}
+              </div>
+            </EnhancedTooltip>
           );
         },
         size: 350,
@@ -899,25 +1104,29 @@ export default function DataGrid() {
       {
         accessorKey: "interviewTranscript",
         header: "Interview Transcript",
-        cell: ({ getValue }) => {
+        cell: ({ getValue, row, column, table }) => {
           const transcript = getValue() as string;
           const displayText = transcript && transcript !== '-' ? `${transcript.substring(0, 50)}...` : '-';
           const fullText = transcript || '-';
+          const shouldShowTooltip = Boolean(fullText && fullText !== "—" && fullText !== "-");
+          const columnTitle = typeof column.columnDef.header === 'string' ? column.columnDef.header : 'Interview Transcript';
+          
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto break-words">
-                  <pre className="whitespace-pre-wrap text-xs">{fullText}</pre>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <EnhancedTooltip
+              content={fullText}
+              title={columnTitle}
+              showCondition={shouldShowTooltip && fullText.length > 50}
+              maxWidth="max-w-2xl"
+            >
+              <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
+                <div className="text-base truncate min-w-0 group-hover:text-primary transition-colors">
+                  {displayText}
+                </div>
+                {shouldShowTooltip && fullText.length > 50 && (
+                  <Eye className="h-3 w-3 text-muted-foreground/50 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                )}
+              </div>
+            </EnhancedTooltip>
           );
         },
         size: 400,
@@ -929,12 +1138,14 @@ export default function DataGrid() {
           const value = getValue() as string;
           const date = value ? new Date(value) : null;
           return (
-            <div className="flex items-center space-x-2 min-w-0 px-2 py-1">
-              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-base min-w-0 truncate">
-                {date ? date.toLocaleDateString() : '-'}
-              </span>
-            </div>
+            <DateTooltip date={date} title="Interview Date">
+              <div className="flex items-center space-x-2 min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group cursor-help">
+                <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors" />
+                <span className="text-base min-w-0 truncate group-hover:text-primary transition-colors">
+                  {date ? date.toLocaleDateString() : '-'}
+                </span>
+              </div>
+            </DateTooltip>
           );
         },
         size: 180,
@@ -985,22 +1196,15 @@ export default function DataGrid() {
         cell: ({ getValue }) => {
           const criteria = getValue() as any;
           const displayText = criteria ? getJsonDataPreview(criteria, 80) : '-';
-          const tooltipContent = criteria ? JSON.stringify(criteria, null, 2) : '-';
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base font-mono text-sm truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto">
-                  <pre className="text-xs font-mono whitespace-pre-wrap">{tooltipContent}</pre>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <JsonTooltip data={criteria} title="Evaluation Criteria">
+              <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
+                <div className="text-base font-mono text-sm truncate min-w-0 flex items-center">
+                  <Database className="h-3 w-3 text-muted-foreground/50 mr-2 flex-shrink-0" />
+                  <span className="group-hover:text-primary transition-colors">{displayText}</span>
+                </div>
+              </div>
+            </JsonTooltip>
           );
         },
         size: 280,
@@ -1011,22 +1215,15 @@ export default function DataGrid() {
         cell: ({ getValue }) => {
           const results = getValue() as any;
           const displayText = results ? getJsonDataPreview(results, 80) : '-';
-          const tooltipContent = results ? JSON.stringify(results, null, 2) : '-';
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base font-mono text-sm truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto">
-                  <pre className="text-xs font-mono whitespace-pre-wrap">{tooltipContent}</pre>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <JsonTooltip data={results} title="Data Collection Results">
+              <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
+                <div className="text-base font-mono text-sm truncate min-w-0 flex items-center">
+                  <BarChart3 className="h-3 w-3 text-muted-foreground/50 mr-2 flex-shrink-0" />
+                  <span className="group-hover:text-primary transition-colors">{displayText}</span>
+                </div>
+              </div>
+            </JsonTooltip>
           );
         },
         size: 280,
@@ -1037,22 +1234,15 @@ export default function DataGrid() {
         cell: ({ getValue }) => {
           const data = getValue() as any;
           const displayText = data ? getJsonDataPreview(data, 80) : '-';
-          const tooltipContent = data ? JSON.stringify(data, null, 2) : '-';
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base font-mono text-sm truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-lg max-h-60 overflow-y-auto">
-                  <pre className="text-xs font-mono whitespace-pre-wrap">{tooltipContent}</pre>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <JsonTooltip data={data} title="Interview Data">
+              <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
+                <div className="text-base font-mono text-sm truncate min-w-0 flex items-center">
+                  <ClipboardList className="h-3 w-3 text-muted-foreground/50 mr-2 flex-shrink-0" />
+                  <span className="group-hover:text-primary transition-colors">{displayText}</span>
+                </div>
+              </div>
+            </JsonTooltip>
           );
         },
         size: 280,
@@ -1065,22 +1255,29 @@ export default function DataGrid() {
           const value = getValue() as string;
           const date = value ? new Date(value) : null;
           return (
-            <div className="flex items-center space-x-2 min-w-0 px-2 py-1">
-              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-base min-w-0 truncate">
-                {date ? date.toLocaleDateString() : '-'}
-              </span>
-            </div>
+            <DateTooltip date={date} title="Created At">
+              <div className="flex items-center space-x-2 min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group cursor-help">
+                <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 group-hover:text-primary transition-colors" />
+                <span className="text-base min-w-0 truncate group-hover:text-primary transition-colors">
+                  {date ? date.toLocaleDateString() : '-'}
+                </span>
+              </div>
+            </DateTooltip>
           );
         },
         size: 180,
       },
     ],
-    [selectedRows, expandedRows, currentFilters, filteredCandidates, data]
+    [updateData]
   );
 
   // Use filtered candidates for table data, or all candidates if no filters applied
   const tableData = currentFilters ? filteredCandidates : data;
+
+  // Memoize table meta to prevent recreation on every render
+  const tableMeta = useMemo(() => ({
+    updateData,
+  }), [updateData]);
 
   const table = useReactTable({
     data: tableData,
@@ -1089,9 +1286,7 @@ export default function DataGrid() {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    meta: {
-      updateData,
-    },
+    meta: tableMeta,
   });
 
   const { rows } = table.getRowModel();
@@ -1120,7 +1315,8 @@ export default function DataGrid() {
   }
 
   return (
-    <Card className="glass-panel rounded-lg overflow-hidden font-serif">
+    <TooltipProvider>
+      <Card className="glass-panel rounded-lg overflow-hidden font-serif">
       {/* Grid Header */}
       <div className="grid-header p-4 border-b">
         <div className="flex items-center justify-between mb-4">
@@ -1129,24 +1325,28 @@ export default function DataGrid() {
             <span className="text-sm text-muted-foreground" data-testid="total-candidates">
               {(allCandidates || []).length.toLocaleString()} candidates
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="glass-input px-3 py-1 rounded-lg text-sm glow-hover"
-              onClick={() => setShowFilters(!showFilters)}
-              data-testid="filter-button"
-            >
-              <i className="fas fa-filter mr-2"></i>Filter
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="glass-input px-3 py-1 rounded-lg text-sm glow-hover"
-              onClick={() => setShowExportDialog(true)}
-              data-testid="export-csv-button"
-            >
-              <i className="fas fa-download mr-2"></i>Export CSV
-            </Button>
+            <EnhancedTooltip content="Show/hide advanced search and filtering options" title="Filter Toggle" maxWidth="max-w-sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="glass-input px-3 py-1 rounded-lg text-sm glow-hover"
+                onClick={() => setShowFilters(!showFilters)}
+                data-testid="filter-button"
+              >
+                <i className="fas fa-filter mr-2"></i>Filter
+              </Button>
+            </EnhancedTooltip>
+            <EnhancedTooltip content="Export candidate data to CSV file for external analysis" title="Export Data" maxWidth="max-w-sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="glass-input px-3 py-1 rounded-lg text-sm glow-hover"
+                onClick={() => setShowExportDialog(true)}
+                data-testid="export-csv-button"
+              >
+                <i className="fas fa-download mr-2"></i>Export CSV
+              </Button>
+            </EnhancedTooltip>
           </div>
         </div>
 
@@ -1713,6 +1913,7 @@ export default function DataGrid() {
           </DialogContent>
         </Dialog>
       )}
-    </Card>
+      </Card>
+    </TooltipProvider>
   );
 }
