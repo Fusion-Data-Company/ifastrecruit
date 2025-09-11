@@ -71,7 +71,7 @@ function EditableCell({ getValue, row, column, table }: any) {
         onChange={(e) => setValue(e.target.value)}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="h-8 text-xs bg-transparent border-accent"
+        className="h-10 text-sm bg-transparent border-accent"
         autoFocus
       />
     );
@@ -79,11 +79,11 @@ function EditableCell({ getValue, row, column, table }: any) {
 
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-2 py-1 rounded min-h-8 flex items-center"
+      className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center"
       onClick={() => setIsEditing(true)}
       data-testid={`editable-${column.id}-${row.original.id}`}
     >
-      <span className="text-xs">{value as string || "—"}</span>
+      <span className="text-sm">{value as string || "—"}</span>
     </div>
   );
 }
@@ -126,7 +126,7 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
         onChange={(e) => setValue(e.target.value)}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="h-8 w-16 text-xs bg-transparent border-accent"
+        className="h-10 w-20 text-sm bg-transparent border-accent"
         autoFocus
       />
     );
@@ -135,7 +135,7 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
   const score = value as number;
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-2 py-1 rounded min-h-8 flex items-center space-x-2"
+      className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center space-x-2"
       onClick={() => setIsEditing(true)}
     >
       <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
@@ -144,7 +144,7 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
           style={{ width: `${score}%` }}
         />
       </div>
-      <span className="text-xs w-8">{score}%</span>
+      <span className="text-sm w-10">{score}%</span>
     </div>
   );
 }
@@ -300,7 +300,7 @@ export default function DataGrid() {
         header: "Name",
         cell: (props) => (
           <div className="flex items-center space-x-2 min-w-0">
-            <div className="w-7 h-7 bg-primary/20 rounded-full flex items-center justify-center text-xs flex-shrink-0">
+            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-sm flex-shrink-0">
               {props.row.original.name?.charAt(0)?.toUpperCase() || "?"}
             </div>
             <div className="min-w-0 flex-1">
@@ -326,7 +326,7 @@ export default function DataGrid() {
                   data-testid={`email-${row.original.id}`}
                   title="Send email"
                 >
-                  <i className="fas fa-envelope text-xs"></i>
+                  <i className="fas fa-envelope text-sm"></i>
                 </a>
               )}
             </div>
@@ -351,7 +351,7 @@ export default function DataGrid() {
                   data-testid={`call-${row.original.id}`}
                   title="Call this number"
                 >
-                  <i className="fas fa-phone text-xs"></i>
+                  <i className="fas fa-phone text-sm"></i>
                 </a>
               )}
             </div>
@@ -366,7 +366,7 @@ export default function DataGrid() {
           const source = row.original.campaignId ? "Indeed" : "Manual";
           const colorClass = source === "Indeed" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground";
           return (
-            <Badge className={`${colorClass} rounded-full text-xs`} data-testid={`candidate-source-${row.original.id}`}>
+            <Badge className={`${colorClass} rounded-full text-sm`} data-testid={`candidate-source-${row.original.id}`}>
               {source}
             </Badge>
           );
@@ -384,7 +384,7 @@ export default function DataGrid() {
               table.options.meta?.updateData(row.index, 'pipelineStage', value);
             }}
           >
-            <SelectTrigger className="glass-input text-xs bg-transparent border-border h-8 w-full" data-testid={`stage-select-${row.original.id}`}>
+            <SelectTrigger className="glass-input text-sm bg-transparent border-border h-10 w-full" data-testid={`stage-select-${row.original.id}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -437,8 +437,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-32 truncate cursor-help">
-                    <span className="text-sm">{value}</span>
+                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs">
+                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-80 p-3 text-sm bg-popover border border-border shadow-lg">
@@ -465,7 +465,7 @@ export default function DataGrid() {
         cell: ({ getValue }) => {
           const value = getValue() as string;
           return (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-sm">
               {value || 'Unknown'}
             </Badge>
           );
@@ -478,12 +478,157 @@ export default function DataGrid() {
         cell: ({ getValue, row }) => {
           const value = getValue() as string;
           return (
-            <div className="max-w-40 truncate" title={value}>
-              <span className="text-sm">{value || '-'}</span>
+            <div className="p-2 bg-muted/10 rounded min-h-8 max-w-xs" title={value}>
+              <span className="text-sm whitespace-pre-wrap break-words leading-5">{value || '-'}</span>
             </div>
           );
         },
         size: 200,
+      },
+      {
+        accessorKey: "interviewTranscript",
+        header: "Interview Transcript",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as string;
+          if (!value || value === '-') {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-sm">
+                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value.substring(0, 150)}{value.length > 150 ? '...' : ''}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-2xl p-4 text-sm bg-popover border border-border shadow-lg">
+                  <div className="whitespace-pre-wrap max-h-96 overflow-y-auto">{value}</div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        size: 300,
+      },
+      {
+        accessorKey: "interviewSummary",
+        header: "Interview Summary",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as string;
+          if (!value || value === '-') {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-sm">
+                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value.substring(0, 100)}{value.length > 100 ? '...' : ''}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xl p-4 text-sm bg-popover border border-border shadow-lg">
+                  <div className="whitespace-pre-wrap">{value}</div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        size: 280,
+      },
+      {
+        accessorKey: "evaluationCriteria",
+        header: "Evaluation Criteria",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as any;
+          if (!value) {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+          const jsonString = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs">
+                    <span className="text-sm">📊 Criteria Available</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-2xl p-4 text-sm bg-popover border border-border shadow-lg">
+                  <pre className="whitespace-pre-wrap max-h-96 overflow-y-auto text-xs">{jsonString}</pre>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        size: 180,
+      },
+      {
+        accessorKey: "dataCollectionResults",
+        header: "Data Collection",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as any;
+          if (!value) {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+          const jsonString = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs">
+                    <span className="text-sm">📋 Data Available</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-2xl p-4 text-sm bg-popover border border-border shadow-lg">
+                  <pre className="whitespace-pre-wrap max-h-96 overflow-y-auto text-xs">{jsonString}</pre>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        size: 180,
+      },
+      {
+        accessorKey: "callStatus",
+        header: "Call Status",
+        cell: ({ getValue }) => {
+          const value = getValue() as string;
+          const statusColor = value === 'completed' ? 'text-green-600' : value === 'failed' ? 'text-red-600' : 'text-yellow-600';
+          return (
+            <span className={`text-sm font-medium ${statusColor}`}>
+              {value || '-'}
+            </span>
+          );
+        },
+        size: 140,
+      },
+      {
+        accessorKey: "callSuccessful",
+        header: "Call Success",
+        cell: ({ getValue }) => {
+          const value = getValue() as string;
+          const isSuccess = value === 'success' || value === 'true';
+          return (
+            <div className="flex items-center justify-center">
+              <i className={`fas ${isSuccess ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} text-base`}></i>
+              <span className="ml-2 text-sm">{value || '-'}</span>
+            </div>
+          );
+        },
+        size: 140,
+      },
+      {
+        accessorKey: "messageCount",
+        header: "Messages",
+        cell: ({ getValue }) => {
+          const value = getValue() as number;
+          return (
+            <div className="flex items-center justify-center">
+              <i className="fas fa-comments text-blue-500 text-base mr-2"></i>
+              <span className="text-sm font-medium">{value || 0}</span>
+            </div>
+          );
+        },
+        size: 120,
       },
       {
         accessorKey: "interviewDate",
@@ -509,7 +654,7 @@ export default function DataGrid() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-8 h-8 p-0 hover:bg-muted"
+                className="w-10 h-10 p-0 hover:bg-muted"
                 onClick={() => {
                   // Show interview details modal
                   console.log('Interview data:', row.original);
@@ -518,7 +663,7 @@ export default function DataGrid() {
                 data-testid={`interview-details-${row.original.id}`}
                 title="View interview details"
               >
-                <i className={`fas fa-info-circle text-sm ${
+                <i className={`fas fa-info-circle text-base ${
                   hasData ? "text-primary" : "text-muted-foreground"
                 }`}></i>
               </Button>
@@ -533,7 +678,7 @@ export default function DataGrid() {
         header: "Interview",
         cell: ({ row }) => (
           <div className="flex justify-center">
-            <i className={`fas fa-check text-sm ${
+            <i className={`fas fa-check text-base ${
               row.original.pipelineStage !== "NEW" ? "text-accent" : "text-muted-foreground"
             }`} data-testid={`interview-status-${row.original.id}`}></i>
           </div>
@@ -546,7 +691,7 @@ export default function DataGrid() {
         header: "Booking",
         cell: ({ row }) => (
           <div className="flex justify-center">
-            <i className={`fas fa-calendar-check text-sm ${
+            <i className={`fas fa-calendar-check text-base ${
               ["OFFER", "HIRED"].includes(row.original.pipelineStage) ? "text-primary" : "text-muted-foreground"
             }`} data-testid={`booking-status-${row.original.id}`}></i>
           </div>
@@ -568,11 +713,11 @@ export default function DataGrid() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-8 h-8 p-0 hover:bg-muted"
+                    className="w-10 h-10 p-0 hover:bg-muted"
                     onClick={() => setSelectedCandidateForFiles(candidate)}
                     data-testid={`view-resume-${candidate.id}`}
                   >
-                    <i className="fas fa-file-alt text-sm text-green-500"></i>
+                    <i className="fas fa-file-alt text-base text-green-500"></i>
                   </Button>
                   <Button
                     variant="ghost"
@@ -582,7 +727,7 @@ export default function DataGrid() {
                     data-testid={`download-resume-${candidate.id}`}
                   >
                     <a href={candidate.resumeUrl || '#'} target="_blank" rel="noopener noreferrer">
-                      <i className="fas fa-download text-sm text-blue-500"></i>
+                      <i className="fas fa-download text-base text-blue-500"></i>
                     </a>
                   </Button>
                 </div>
@@ -592,10 +737,10 @@ export default function DataGrid() {
                   maxFileSize={10485760}
                   onGetUploadParameters={handleGetUploadParameters}
                   onComplete={handleResumeUploadComplete(candidate.id)}
-                  buttonClassName="w-8 h-8 p-0 hover:bg-muted glass-input"
+                  buttonClassName="w-10 h-10 p-0 hover:bg-muted glass-input"
                   data-testid={`upload-resume-${candidate.id}`}
                 >
-                  <i className="fas fa-upload text-sm"></i>
+                  <i className="fas fa-upload text-base"></i>
                 </ObjectUploader>
               )}
             </div>
@@ -617,7 +762,7 @@ export default function DataGrid() {
               data-testid={`view-candidate-${row.original.id}`}
               title="View candidate details"
             >
-              <i className="fas fa-eye text-sm"></i>
+              <i className="fas fa-eye text-base"></i>
             </Button>
             <Button
               variant="ghost"
@@ -627,7 +772,7 @@ export default function DataGrid() {
               data-testid={`edit-candidate-${row.original.id}`}
               title="Edit candidate"
             >
-              <i className="fas fa-edit text-sm"></i>
+              <i className="fas fa-edit text-base"></i>
             </Button>
           </div>
         ),
@@ -659,7 +804,7 @@ export default function DataGrid() {
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,
+    estimateSize: () => 120,
     overscan: 10,
   });
 
