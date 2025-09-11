@@ -36,7 +36,8 @@ import {
   Eye,
   Edit,
   Calendar,
-  FileUp
+  FileUp,
+  Info
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -548,6 +549,102 @@ function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
   );
 }
 
+// Editable name cell with info button for details modal
+function EditableNameCellWithInfo({ getValue, row, column, table, onShowDetails }: any) {
+  const initialValue = getValue();
+  const [value, setValue] = useState(initialValue);
+  const [isEditing, setIsEditing] = useState(false);
+  const prevInitialValueRef = useRef(initialValue);
+
+  // Reset value when data changes - prevent infinite loops by checking if value actually changed
+  useEffect(() => {
+    if (prevInitialValueRef.current !== initialValue) {
+      setValue(initialValue);
+      prevInitialValueRef.current = initialValue;
+    }
+  }, [initialValue]);
+
+  const onBlur = () => {
+    setIsEditing(false);
+    if (value !== initialValue) {
+      table.options.meta?.updateData(row.index, column.id, value);
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      onBlur();
+    } else if (e.key === 'Escape') {
+      setValue(initialValue);
+      setIsEditing(false);
+    }
+  };
+
+  const handleInfoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onShowDetails(row.original);
+  };
+
+  if (isEditing) {
+    return (
+      <Input
+        value={value as string}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={onBlur}
+        onKeyDown={onKeyDown}
+        className="h-10 text-base bg-transparent border-accent"
+        autoFocus
+      />
+    );
+  }
+
+  const displayValue = String(value || "—");
+  const shouldShowTooltip = Boolean(displayValue && displayValue !== "—" && displayValue !== "-");
+  const columnTitle = typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id;
+
+  return (
+    <div className="flex items-center space-x-2 min-w-0 group">
+      <EnhancedTooltip
+        content={displayValue}
+        title={`${columnTitle}`}
+        showCondition={shouldShowTooltip && (displayValue.length > 20 || (typeof displayValue === 'string' && displayValue.includes('\n')))}
+        maxWidth="max-w-lg"
+      >
+        <div
+          className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center w-full min-w-0 flex-1"
+          onClick={() => setIsEditing(true)}
+          data-testid={`editable-name-${row.original.id}`}
+        >
+          <span className="text-base leading-relaxed truncate min-w-0 flex-1 group-hover:text-primary transition-colors">
+            {displayValue}
+          </span>
+          {shouldShowTooltip && displayValue.length > 30 && (
+            <Eye className="h-3 w-3 text-muted-foreground/50 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+          )}
+        </div>
+      </EnhancedTooltip>
+      
+      <EnhancedTooltip
+        content="View comprehensive candidate details including interview transcripts, notes, and ElevenLabs data"
+        title="Candidate Details"
+        maxWidth="max-w-sm"
+      >
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 opacity-60 hover:opacity-100 hover:bg-primary/10 transition-all duration-200 flex-shrink-0"
+          onClick={handleInfoClick}
+          data-testid={`info-button-${row.original.id}`}
+          aria-label={`View details for ${displayValue}`}
+        >
+          <Info className="h-4 w-4 text-primary" />
+        </Button>
+      </EnhancedTooltip>
+    </div>
+  );
+}
+
 // Editable score cell with number input and enhanced tooltips
 function EditableScoreCell({ getValue, row, column, table }: any) {
   const initialValue = getValue() || 0;
@@ -719,7 +816,7 @@ export default function DataGrid() {
       id: candidate.id,
       updates: { [columnId]: value } as Partial<Candidate>,
     });
-  }, [updateCandidateMutation]);
+  }, []);
 
   const uploadResumeForCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, resumeURL }: { candidateId: string; resumeURL: string }) => {
@@ -789,55 +886,42 @@ export default function DataGrid() {
     () => [
       {
         id: "expand",
-        header: ({ table }) => {
-          const allExpanded = expandedRows.size === (currentFilters ? filteredCandidates : data).length;
-          const someExpanded = expandedRows.size > 0;
-          
-          return (
-            <div className="flex items-center space-x-2">
-              <EnhancedTooltip 
-                content={allExpanded ? "Collapse all rows to hide detailed information" : "Expand all rows to show detailed information"} 
-                title="Expand/Collapse Toggle" 
-                maxWidth="max-w-sm"
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-10 w-10 p-0 hover:bg-accent/20"
-                  onClick={() => allExpanded ? collapseAllRows() : expandAllRows()}
-                  data-testid="expand-all-toggle"
-                >
-                  {allExpanded ? <Minimize2 className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
-                </Button>
-              </EnhancedTooltip>
-              {someExpanded && (
-                <span className="text-xs text-muted-foreground">
-                  {expandedRows.size}
-                </span>
-              )}
-            </div>
-          );
-        },
-        cell: ({ row }) => {
-          const isExpanded = expandedRows.has(row.original.id);
-          return (
+        header: () => (
+          <div className="flex items-center space-x-2">
             <EnhancedTooltip 
-              content={isExpanded ? "Collapse row to hide detailed information" : "Expand row to show detailed information including notes, summaries, and technical details"} 
-              title="Row Details Toggle" 
+              content="Expand all rows to show detailed information" 
+              title="Expand/Collapse Toggle" 
               maxWidth="max-w-sm"
             >
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-10 w-10 p-0 hover:bg-accent/20"
-                onClick={() => toggleRowExpansion(row.original.id)}
-                data-testid={`expand-toggle-${row.original.id}`}
+                onClick={expandAllRows}
+                data-testid="expand-all-toggle"
               >
-                {isExpanded ? <ChevronDown className="h-4 w-4 transition-transform duration-200" /> : <ChevronRight className="h-4 w-4 transition-transform duration-200" />}
+                <Expand className="h-4 w-4" />
               </Button>
             </EnhancedTooltip>
-          );
-        },
+          </div>
+        ),
+        cell: ({ row }) => (
+          <EnhancedTooltip 
+            content="Click to expand/collapse row details including notes, summaries, and technical information"
+            title="Row Details Toggle" 
+            maxWidth="max-w-sm"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0 hover:bg-accent/20"
+              onClick={() => toggleRowExpansion(row.original.id)}
+              data-testid={`expand-toggle-${row.original.id}`}
+            >
+              <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+            </Button>
+          </EnhancedTooltip>
+        ),
         size: 80,
         enableSorting: false,
       },
@@ -877,8 +961,8 @@ export default function DataGrid() {
       {
         accessorKey: "name",
         header: "Name",
-        cell: (props) => <EditableCell {...props} />,
-        size: 300,
+        cell: (props) => <EditableNameCellWithInfo {...props} onShowDetails={setDetailsCandidate} />,
+        size: 320,
       },
       {
         accessorKey: "email",
@@ -1268,7 +1352,7 @@ export default function DataGrid() {
         size: 180,
       },
     ],
-    [updateData]
+    []
   );
 
   // Use filtered candidates for table data, or all candidates if no filters applied
