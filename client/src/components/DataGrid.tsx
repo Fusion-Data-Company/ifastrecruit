@@ -103,7 +103,7 @@ function EditableCell({ getValue, row, column, table }: any) {
         onChange={(e) => setValue(e.target.value)}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="h-12 text-base bg-transparent border-accent"
+        className="h-14 text-base bg-transparent border-accent"
         autoFocus
       />
     );
@@ -111,11 +111,11 @@ function EditableCell({ getValue, row, column, table }: any) {
 
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-4 py-4 rounded min-h-16 flex items-center"
+      className="cursor-pointer hover:bg-accent/10 px-4 py-5 rounded min-h-20 flex items-center"
       onClick={() => setIsEditing(true)}
       data-testid={`editable-${column.id}-${row.original.id}`}
     >
-      <span className="text-base">{value as string || "—"}</span>
+      <span className="text-base leading-relaxed">{value as string || "—"}</span>
     </div>
   );
 }
@@ -390,7 +390,7 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
         onChange={(e) => setValue(e.target.value)}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="h-10 w-20 text-sm bg-transparent border-accent"
+        className="h-14 w-24 text-base bg-transparent border-accent"
         autoFocus
       />
     );
@@ -399,16 +399,16 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
   const score = value as number;
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-4 py-4 rounded min-h-16 flex items-center space-x-3"
+      className="cursor-pointer hover:bg-accent/10 px-4 py-5 rounded min-h-20 flex items-center space-x-3"
       onClick={() => setIsEditing(true)}
     >
-      <div className="w-16 h-3 bg-muted rounded-full overflow-hidden">
+      <div className="w-20 h-4 bg-muted rounded-full overflow-hidden">
         <div 
           className="h-full bg-accent rounded-full transition-all duration-300"
           style={{ width: `${score}%` }}
         />
       </div>
-      <span className="text-base w-12">{score}%</span>
+      <span className="text-base w-16">{score}%</span>
     </div>
   );
 }
@@ -626,9 +626,10 @@ export default function DataGrid() {
             data-testid={`select-candidate-${row.original.id}`}
           />
         ),
-        size: 60,
+        size: 80,
         enableSorting: false,
       },
+      // === BASIC INFO COLUMNS ===
       {
         accessorKey: "name",
         header: "Name",
@@ -668,7 +669,32 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 300,
+        size: 250,
+      },
+      {
+        accessorKey: "phone",
+        header: "Phone",
+        cell: ({ getValue, row, column, table }) => {
+          const phone = getValue() as string;
+          return (
+            <div className="flex items-center space-x-3">
+              <div className="flex-1">
+                <EditableCell getValue={getValue} row={row} column={column} table={table} />
+              </div>
+              {phone && (
+                <a 
+                  href={`tel:${phone}`}
+                  className="text-blue-500 hover:text-blue-600 flex-shrink-0"
+                  data-testid={`phone-${row.original.id}`}
+                  title="Call phone"
+                >
+                  <Phone className="h-4 w-4" />
+                </a>
+              )}
+            </div>
+          );
+        },
+        size: 200,
       },
       {
         accessorKey: "pipelineStage",
@@ -680,7 +706,7 @@ export default function DataGrid() {
               table.options.meta?.updateData(row.index, 'pipelineStage', value);
             }}
           >
-            <SelectTrigger className="glass-input text-base bg-transparent border-border h-12 w-full" data-testid={`stage-select-${row.original.id}`}>
+            <SelectTrigger className="glass-input text-base bg-transparent border-border h-14 w-full" data-testid={`stage-select-${row.original.id}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -694,54 +720,131 @@ export default function DataGrid() {
             </SelectContent>
           </Select>
         ),
-        size: 180,
+        size: 200,
       },
       {
         accessorKey: "score",
         header: "Overall Score",
         cell: EditableScoreCell,
-        size: 160,
+        size: 200,
       },
       {
-        accessorKey: "agentName",
-        header: "Agent",
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
+        accessorKey: "sourceRef",
+        header: "Source Reference",
+        cell: ({ getValue, row, column, table }) => (
+          <EditableCell getValue={getValue} row={row} column={column} table={table} />
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: "resumeUrl",
+        header: "Resume URL",
+        cell: ({ getValue, row }) => {
+          const url = getValue() as string;
           return (
             <div className="flex items-center space-x-2">
-              <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              <span className="text-base">{value || '-'}</span>
+              {url ? (
+                <a 
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:text-blue-600 text-base truncate"
+                  data-testid={`resume-url-${row.original.id}`}
+                  title="Open resume"
+                >
+                  <FileUp className="h-4 w-4 mr-1 inline" />
+                  View Resume
+                </a>
+              ) : (
+                <span className="text-base text-muted-foreground">-</span>
+              )}
             </div>
           );
         },
-        size: 150,
+        size: 200,
       },
       {
-        id: "callComposite",
-        header: "Call Info",
-        cell: ({ row }) => {
-          const duration = formatCallDuration(row.original.callDuration);
-          const isSuccess = row.original.callSuccessful === 'success' || row.original.callSuccessful === 'true';
-          const status = row.original.callStatus;
-          
+        accessorKey: "tags",
+        header: "Tags",
+        cell: ({ getValue }) => {
+          const tags = (getValue() as string[]) || [];
           return (
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-base">{duration}</span>
-              </div>
-              <div className="flex items-center">
-                {isSuccess ? (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-red-500" />
-                )}
+            <div className="flex flex-wrap gap-1">
+              {tags.length > 0 ? (
+                tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-base text-muted-foreground">-</span>
+              )}
+            </div>
+          );
+        },
+        size: 200,
+      },
+      // === INTERVIEW COLUMNS ===
+      {
+        accessorKey: "notes",
+        header: "Interview Notes",
+        cell: ({ getValue, row, column, table }) => {
+          const notes = getValue() as string;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base truncate" title={notes || '-'}>
+                {notes && notes !== '-' ? notes : '-'}
               </div>
             </div>
           );
         },
-        size: 140,
-        enableSorting: false,
+        size: 250,
+      },
+      {
+        accessorKey: "interviewScore",
+        header: "Interview Score",
+        cell: ({ getValue, row, column, table }) => (
+          <EditableScoreCell getValue={getValue} row={row} column={column} table={table} />
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: "interviewDuration",
+        header: "Interview Duration",
+        cell: ({ getValue, row, column, table }) => (
+          <EditableCell getValue={getValue} row={row} column={column} table={table} />
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: "interviewSummary",
+        header: "Interview Summary",
+        cell: ({ getValue }) => {
+          const summary = getValue() as string;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base truncate" title={summary || '-'}>
+                {summary && summary !== '-' ? summary : '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 250,
+      },
+      {
+        accessorKey: "interviewTranscript",
+        header: "Interview Transcript",
+        cell: ({ getValue }) => {
+          const transcript = getValue() as string;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base truncate" title={transcript || '-'}>
+                {transcript && transcript !== '-' ? `${transcript.substring(0, 50)}...` : '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 250,
       },
       {
         accessorKey: "interviewDate",
@@ -758,10 +861,185 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 160,
+        size: 200,
+      },
+      // === AGENT & CALL COLUMNS ===
+      {
+        accessorKey: "agentName",
+        header: "Agent Name",
+        cell: ({ getValue, row, column, table }) => (
+          <EditableCell getValue={getValue} row={row} column={column} table={table} />
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: "agentId",
+        header: "Agent ID",
+        cell: ({ getValue }) => {
+          const agentId = getValue() as string;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base font-mono text-sm truncate" title={agentId || '-'}>
+                {agentId || '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "conversationId",
+        header: "Conversation ID",
+        cell: ({ getValue }) => {
+          const conversationId = getValue() as string;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base font-mono text-sm truncate" title={conversationId || '-'}>
+                {conversationId || '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "callDuration",
+        header: "Call Duration",
+        cell: ({ getValue }) => {
+          const duration = getValue() as number;
+          return (
+            <div className="flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-base">{formatCallDuration(duration)}</span>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "messageCount",
+        header: "Message Count",
+        cell: ({ getValue, row, column, table }) => (
+          <EditableCell getValue={getValue} row={row} column={column} table={table} />
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: "callStatus",
+        header: "Call Status",
+        cell: ({ getValue, row, column, table }) => (
+          <EditableCell getValue={getValue} row={row} column={column} table={table} />
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: "callSuccessful",
+        header: "Call Successful",
+        cell: ({ getValue }) => {
+          const isSuccess = getValue() as string;
+          const success = isSuccess === 'success' || isSuccess === 'true';
+          return (
+            <div className="flex items-center space-x-2">
+              {success ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : (
+                <XCircle className="h-4 w-4 text-red-500" />
+              )}
+              <span className="text-base">{isSuccess || '-'}</span>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "transcriptSummary",
+        header: "Transcript Summary",
+        cell: ({ getValue }) => {
+          const summary = getValue() as string;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base truncate" title={summary || '-'}>
+                {summary && summary !== '-' ? summary : '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 250,
+      },
+      {
+        accessorKey: "callSummaryTitle",
+        header: "Call Summary Title",
+        cell: ({ getValue, row, column, table }) => (
+          <EditableCell getValue={getValue} row={row} column={column} table={table} />
+        ),
+        size: 250,
+      },
+      // === DATA COLUMNS ===
+      {
+        accessorKey: "evaluationCriteria",
+        header: "Evaluation Criteria",
+        cell: ({ getValue }) => {
+          const criteria = getValue() as any;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base truncate" title={criteria ? JSON.stringify(criteria) : '-'}>
+                {criteria ? 'JSON Data Available' : '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "dataCollectionResults",
+        header: "Data Collection Results",
+        cell: ({ getValue }) => {
+          const results = getValue() as any;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base truncate" title={results ? JSON.stringify(results) : '-'}>
+                {results ? 'JSON Data Available' : '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "interviewData",
+        header: "Interview Data",
+        cell: ({ getValue }) => {
+          const data = getValue() as any;
+          return (
+            <div className="max-w-xs">
+              <div className="text-base truncate" title={data ? JSON.stringify(data) : '-'}>
+                {data ? 'JSON Data Available' : '-'}
+              </div>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      // === TIMESTAMPS ===
+      {
+        accessorKey: "createdAt",
+        header: "Created At",
+        cell: ({ getValue }) => {
+          const value = getValue() as string;
+          const date = value ? new Date(value) : null;
+          return (
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-base">
+                {date ? date.toLocaleDateString() : '-'}
+              </span>
+            </div>
+          );
+        },
+        size: 200,
       },
     ],
-    [selectedRows]
+    [selectedRows, expandedRows, currentFilters, filteredCandidates, data]
   );
 
   // Use filtered candidates for table data, or all candidates if no filters applied
@@ -854,17 +1132,17 @@ export default function DataGrid() {
 
       </div>
 
-      {/* Table with proper column widths */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[1200px]">
+      {/* Table with unlimited horizontal scrolling */}
+      <div className="overflow-x-auto overflow-y-hidden">
+        <div className="min-w-fit">
           {/* Table Headers */}
           <div className="bg-gradient-to-r from-accent/10 to-primary/10 border-b-2 border-accent/30">
             <div className="flex">
               {table.getHeaderGroups()[0]?.headers.map((header) => (
                 <div
                   key={header.id}
-                  className="flex items-center justify-start px-4 py-4 text-sm font-bold text-foreground border-r border-accent/20 last:border-r-0 font-serif tracking-wide"
-                  style={{ width: header.getSize() }}
+                  className="flex items-center justify-start px-4 py-6 text-base font-bold text-foreground border-r border-accent/20 last:border-r-0 font-serif tracking-wide"
+                  style={{ minWidth: header.getSize(), width: header.getSize() }}
                 >
                   <div className="flex items-center space-x-2">
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -887,7 +1165,7 @@ export default function DataGrid() {
           {/* Table Rows with Expansion Support */}
           <div 
             ref={parentRef}
-            className="max-h-[80vh] overflow-auto"
+            className="max-h-[80vh] overflow-y-auto overflow-x-hidden"
             data-testid="candidates-grid"
           >
             <div className="relative">
@@ -905,12 +1183,12 @@ export default function DataGrid() {
                     data-testid={`candidate-row-${row.original.id}`}
                   >
                     {/* Main Row */}
-                    <div className="flex min-h-20">
+                    <div className="flex min-h-24">
                       {row.getVisibleCells().map((cell) => (
                         <div
                           key={cell.id}
-                          className="flex items-center px-4 py-3 border-r border-accent/10 last:border-r-0 overflow-hidden font-serif"
-                          style={{ width: cell.column.getSize() }}
+                          className="flex items-center px-4 py-4 border-r border-accent/10 last:border-r-0 overflow-hidden font-serif"
+                          style={{ minWidth: cell.column.getSize(), width: cell.column.getSize() }}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </div>
