@@ -26,7 +26,13 @@ import {
   apiRateLimit, 
   errorHandler, 
   requestLogger, 
-  corsOptions 
+  corsOptions,
+  elevenlabsCorsOptions,
+  mcpRateLimit,
+  elevenlabsRateLimit,
+  authRateLimit,
+  uploadRateLimit,
+  validateApiKey
 } from "./middleware/security";
 import { 
   performanceTracker,
@@ -52,6 +58,7 @@ import { observabilityService } from "./services/observability";
 import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment.config";
 import { apifyService } from "./services/apify-client";
 import { indeedService } from "./services/indeed-client";
+import { elevenlabsIntegration } from "./integrations/elevenlabs";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
 import cors from "cors";
@@ -73,9 +80,18 @@ function generateSecureToken(): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
-  // NO MIDDLEWARE - EVERYTHING REMOVED FOR ELEVENLABS WIDGET
-  app.use(cors({ origin: "*", credentials: false })); // Allow everything, no credentials
-  // ALL OTHER MIDDLEWARE REMOVED FOR ELEVENLABS
+  // Apply security middleware globally
+  app.use(securityHeaders);
+  app.use(requestLogger);
+  app.use(cors(corsOptions));
+  
+  // Apply rate limiting to most endpoints
+  app.use('/api', apiRateLimit);
+  
+  // Special handling for ElevenLabs MCP endpoints - apply permissive CORS and higher rate limits
+  app.use('/api/mcp', cors(elevenlabsCorsOptions));
+  app.use('/api/mcp', mcpRateLimit);
+  app.use('/api/elevenlabs', elevenlabsRateLimit);
   
   // Only setup WebSocket server in production to avoid conflict with Vite's WebSocket
   let wss: WebSocketServer | null = null;
@@ -441,8 +457,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Indeed integration webhook
-  app.post("/api/indeed/applications", async (req, res) => {
+  // Indeed integration webhook - protected with API key validation
+  app.post("/api/indeed/applications", validateApiKey, async (req, res) => {
     try {
       // Process Indeed application
       const candidateData = {
@@ -467,8 +483,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mailjet webhook
-  app.post("/api/mailjet/webhooks", async (req, res) => {
+  // Mailjet webhook - protected with API key validation
+  app.post("/api/mailjet/webhooks", validateApiKey, async (req, res) => {
     try {
       // Process Mailjet events (delivery, bounce, open)
       await storage.createAuditLog({
@@ -513,7 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin endpoints (gated by query key)
-  app.get("/admin", (req, res, next) => {
+  app.get("/admin", authRateLimit, (req, res, next) => {
     const { key } = req.query;
     if (key !== process.env.ADMIN_QUERY_KEY) {
       return res.status(403).json({ error: "Invalid admin key" });
@@ -531,6 +547,365 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(kpis);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch KPIs" });
+    }
+  });
+
+  // =========================
+  // ELEVENLABS INTEGRATION API
+  // =========================
+  
+  // Collect all available data from a specific ElevenLabs agent
+  app.post("/api/elevenlabs/collect-agent-data", async (req, res) => {
+    try {
+      // Default to the specific agent ID, but allow override
+      const agentId = req.body.agentId || "agent_0601k4t9d82qe5ybsgkngct0zzkm";
+      
+      console.log(`[ElevenLabs] Collecting data for agent: ${agentId}`);
+      
+      const agentData = await elevenlabsIntegration.getAllAgentData(agentId);
+      
+      console.log(`[ElevenLabs] Successfully collected data for agent ${agentId}:`, {
+        total_conversations: agentData.total_conversations,
+        has_agent_info: !!agentData.agent,
+        has_errors: !!agentData.error_details
+      });
+      
+      res.json({
+        success: true,
+        agent_id: agentId,
+        timestamp: new Date().toISOString(),
+        data: agentData
+      });
+    } catch (error) {
+      console.error("[ElevenLabs] Agent data collection failed:", error);
+      res.status(500).json({ 
+        error: "Failed to collect ElevenLabs agent data", 
+        details: String(error),
+        agent_id: req.body.agentId || "agent_0601k4t9d82qe5ybsgkngct0zzkm"
+      });
+    }
+  });
+
+  // Get conversations for a specific ElevenLabs agent (with pagination)
+  app.get("/api/elevenlabs/conversations/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { limit, cursor, after, before } = req.query;
+      
+      const options = {
+        limit: limit ? parseInt(String(limit)) : undefined,
+        cursor: cursor ? String(cursor) : undefined,
+        after: after ? String(after) : undefined,
+        before: before ? String(before) : undefined,
+      };
+      
+      const conversations = await elevenlabsIntegration.getAgentConversations(agentId, options);
+      
+      res.json({
+        success: true,
+        agent_id: agentId,
+        ...conversations
+      });
+    } catch (error) {
+      console.error(`[ElevenLabs] Failed to fetch conversations for agent ${req.params.agentId}:`, error);
+      res.status(500).json({ 
+        error: "Failed to fetch agent conversations", 
+        details: String(error),
+        agent_id: req.params.agentId
+      });
+    }
+  });
+
+  // Import conversations and match them to candidates
+  app.post("/api/elevenlabs/import-conversations", async (req, res) => {
+    try {
+      const { conversations, agentId, confirmImport = false } = req.body;
+      
+      if (!conversations || !Array.isArray(conversations)) {
+        return res.status(400).json({ error: "Invalid conversations data" });
+      }
+
+      console.log(`[ElevenLabs] Processing ${conversations.length} conversations for import`);
+
+      // Smart matching function to extract potential candidate identifiers
+      const extractCandidateInfo = (conversation: any) => {
+        const extractedInfo: any = { conversation_id: conversation.conversation_id };
+        
+        // Extract from transcript if available
+        if (conversation.transcript && Array.isArray(conversation.transcript)) {
+          const transcriptText = conversation.transcript
+            .map((t: any) => t.message || t.text || '')
+            .join(' ')
+            .toLowerCase();
+          
+          // Email extraction using regex
+          const emailMatches = transcriptText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/gi);
+          if (emailMatches && emailMatches.length > 0) {
+            extractedInfo.emails = Array.from(new Set(emailMatches));
+          }
+          
+          // Phone number extraction (various formats)
+          const phoneMatches = transcriptText.match(/(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\+\d{1,3}[-.\s]?\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4})/g);
+          if (phoneMatches && phoneMatches.length > 0) {
+            extractedInfo.phones = Array.from(new Set(phoneMatches.map((p: string) => p.replace(/[^\d+]/g, ''))));
+          }
+          
+          // Name extraction - look for "my name is" or "I'm" patterns
+          const namePatterns = [
+            /(?:my name is|i'm|i am|this is)\s+([a-z]+(?:\s+[a-z]+)*)/gi,
+            /(?:^|\s)([A-Z][a-z]+\s+[A-Z][a-z]+)(?=\s|$)/g
+          ];
+          
+          const names: string[] = [];
+          namePatterns.forEach(pattern => {
+            const matches = transcriptText.matchAll(pattern);
+            for (const match of matches) {
+              if (match[1] && match[1].length > 2) {
+                names.push(match[1].trim());
+              }
+            }
+          });
+          
+          if (names.length > 0) {
+            extractedInfo.names = Array.from(new Set(names));
+          }
+        }
+        
+        // Extract from metadata if available
+        if (conversation.metadata) {
+          if (conversation.metadata.email) extractedInfo.emails = [conversation.metadata.email];
+          if (conversation.metadata.phone) extractedInfo.phones = [conversation.metadata.phone];
+          if (conversation.metadata.name) extractedInfo.names = [conversation.metadata.name];
+        }
+        
+        return extractedInfo;
+      };
+
+      // Process each conversation and find potential matches
+      const processed = [];
+      const matches = [];
+      const errors = [];
+
+      for (const conversation of conversations) {
+        try {
+          const extractedInfo = extractCandidateInfo(conversation);
+          let matchedCandidate = null;
+          let matchType = '';
+
+          // Try to find existing candidate
+          if (extractedInfo.emails) {
+            for (const email of extractedInfo.emails) {
+              matchedCandidate = await storage.getCandidateByEmail(email);
+              if (matchedCandidate) {
+                matchType = 'email';
+                break;
+              }
+            }
+          }
+
+          // If no email match, try phone numbers (this would need custom implementation)
+          // For now, we'll focus on email matching as it's most reliable
+
+          const processedItem = {
+            conversation,
+            extractedInfo,
+            matchedCandidate,
+            matchType,
+            status: matchedCandidate ? 'matched' : 'unmatched'
+          };
+
+          processed.push(processedItem);
+          
+          if (matchedCandidate) {
+            matches.push(processedItem);
+          }
+        } catch (error) {
+          errors.push({
+            conversation_id: conversation.conversation_id,
+            error: String(error)
+          });
+        }
+      }
+
+      // If this is just a preview (not confirmed import), return the analysis
+      if (!confirmImport) {
+        return res.json({
+          success: true,
+          preview: true,
+          total_conversations: conversations.length,
+          matched_count: matches.length,
+          unmatched_count: processed.length - matches.length,
+          error_count: errors.length,
+          matches: matches.map(m => ({
+            conversation_id: m.conversation.conversation_id,
+            candidate_id: m.matchedCandidate?.id,
+            candidate_name: m.matchedCandidate?.name,
+            candidate_email: m.matchedCandidate?.email,
+            match_type: m.matchType,
+            extracted_info: m.extractedInfo
+          })),
+          errors
+        });
+      }
+
+      // Perform actual import if confirmed
+      const importResults = {
+        updated: 0,
+        failed: 0,
+        skipped: 0,
+        details: [] as any[]
+      };
+
+      for (const match of matches) {
+        try {
+          const { conversation, matchedCandidate } = match;
+          
+          if (!matchedCandidate) {
+            continue; // Skip if no matched candidate
+          }
+          
+          // Prepare transcript from conversation
+          let transcript = '';
+          if (conversation.transcript && Array.isArray(conversation.transcript)) {
+            transcript = conversation.transcript
+              .map((t: any) => `${t.role || 'unknown'}: ${t.message || t.text || ''}`)
+              .join('\n');
+          }
+
+          // Prepare update data
+          const updateData: any = {
+            interviewTranscript: transcript,
+            conversationId: conversation.conversation_id,
+            agentId: agentId,
+            conversationMetadata: {
+              ...conversation.metadata,
+              import_date: new Date().toISOString(),
+              conversation_duration: conversation.ended_at 
+                ? new Date(conversation.ended_at).getTime() - new Date(conversation.created_at).getTime()
+                : null
+            },
+            agentData: {
+              conversation_data: conversation,
+              agent_id: agentId,
+              import_timestamp: new Date().toISOString()
+            }
+          };
+
+          // Add audio URL if available
+          if (conversation.audio_info?.audio_url) {
+            updateData.audioRecordingUrl = conversation.audio_info.audio_url;
+          }
+
+          // Set interview date from conversation created_at
+          if (conversation.created_at) {
+            updateData.interviewDate = new Date(conversation.created_at);
+          }
+
+          // Calculate call duration in seconds
+          if (conversation.created_at && conversation.ended_at) {
+            const durationMs = new Date(conversation.ended_at).getTime() - new Date(conversation.created_at).getTime();
+            updateData.callDuration = Math.floor(durationMs / 1000);
+          }
+
+          // Update the candidate
+          await storage.updateCandidate(matchedCandidate.id, updateData);
+          
+          importResults.updated++;
+          importResults.details.push({
+            conversation_id: conversation.conversation_id,
+            candidate_id: matchedCandidate.id,
+            candidate_name: matchedCandidate.name,
+            status: 'updated'
+          });
+
+          console.log(`[ElevenLabs] Updated candidate ${matchedCandidate.id} with conversation ${conversation.conversation_id}`);
+          
+        } catch (error) {
+          importResults.failed++;
+          importResults.details.push({
+            conversation_id: match.conversation.conversation_id,
+            candidate_id: match.matchedCandidate?.id,
+            status: 'failed',
+            error: String(error)
+          });
+          console.error(`[ElevenLabs] Failed to update candidate:`, error);
+        }
+      }
+
+      // Count unmatched conversations as skipped
+      importResults.skipped = processed.length - matches.length;
+
+      res.json({
+        success: true,
+        imported: true,
+        total_processed: processed.length,
+        results: importResults
+      });
+
+    } catch (error) {
+      console.error("[ElevenLabs] Import failed:", error);
+      res.status(500).json({ 
+        error: "Failed to import conversations", 
+        details: String(error)
+      });
+    }
+  });
+
+  // Get detailed information for a specific conversation
+  app.get("/api/elevenlabs/conversations/:conversationId/details", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      const details = await elevenlabsIntegration.getConversationDetails(conversationId);
+      
+      res.json({
+        success: true,
+        conversation_id: conversationId,
+        details
+      });
+    } catch (error) {
+      console.error(`[ElevenLabs] Failed to fetch conversation details for ${req.params.conversationId}:`, error);
+      res.status(500).json({ 
+        error: "Failed to fetch conversation details", 
+        details: String(error),
+        conversation_id: req.params.conversationId
+      });
+    }
+  });
+
+  // Get audio for a specific conversation
+  app.get("/api/elevenlabs/conversations/:conversationId/audio", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      const audioInfo = await elevenlabsIntegration.getConversationAudio(conversationId);
+      
+      // If we got binary audio data, stream it directly
+      if (audioInfo.audio_data) {
+        res.setHeader('Content-Type', audioInfo.content_type || 'audio/mpeg');
+        res.setHeader('Content-Length', audioInfo.audio_data.byteLength);
+        res.end(Buffer.from(audioInfo.audio_data));
+      } else if (audioInfo.audio_url) {
+        // If we got a URL, redirect to it or return the URL
+        res.json({
+          success: true,
+          conversation_id: conversationId,
+          audio_url: audioInfo.audio_url,
+          content_type: audioInfo.content_type
+        });
+      } else {
+        res.status(404).json({
+          error: "No audio data found for conversation",
+          conversation_id: conversationId
+        });
+      }
+    } catch (error) {
+      console.error(`[ElevenLabs] Failed to fetch conversation audio for ${req.params.conversationId}:`, error);
+      res.status(500).json({ 
+        error: "Failed to fetch conversation audio", 
+        details: String(error),
+        conversation_id: req.params.conversationId
+      });
     }
   });
 
@@ -769,7 +1144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (apifyService.isApiConnected()) {
         try {
           const realActors = await apifyService.listActors();
-          allActors = realActors.map(actor => ({
+          allActors = realActors.map((actor: any) => ({
             id: actor.id,
             name: actor.name,
             description: actor.description || '',
@@ -1186,7 +1561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { candidateName, action, details } = req.body;
       
-      const slackService = apiManager.getService('slack');
+      const slackService = apiManager.getService('slack') as any;
       if (!slackService?.isConfigured()) {
         return res.status(503).json({ error: "Slack integration not configured" });
       }
@@ -1202,7 +1577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { query, location, limit } = req.body;
       
-      const indeedService = apiManager.getService('indeed');
+      const indeedService = apiManager.getService('indeed') as any;
       if (!indeedService?.isConfigured()) {
         return res.status(503).json({ error: "Indeed integration not configured" });
       }
@@ -1218,7 +1593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { searchQuery } = req.body;
       
-      const apifyService = apiManager.getService('apify');
+      const apifyService = apiManager.getService('apify') as any;
       if (!apifyService?.isConfigured()) {
         return res.status(503).json({ error: "Apify integration not configured" });
       }
@@ -1240,7 +1615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Candidate not found" });
       }
 
-      const openRouterService = apiManager.getService('openrouter');
+      const openRouterService = apiManager.getService('openrouter') as any;
       if (!openRouterService?.isConfigured()) {
         return res.status(503).json({ error: "AI service not configured" });
       }
@@ -1293,12 +1668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { action, actor, limit = 100, offset = 0 } = req.query;
       
       // Get audit logs from storage with filtering
-      const auditLogs = await storage.getAuditLogs({
-        action: action as string,
-        actor: actor as string,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
-      });
+      const auditLogs = await storage.getAuditLogs(parseInt(limit as string));
 
       res.json(auditLogs);
     } catch (error) {
@@ -1377,12 +1747,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/backup", async (req, res) => {
     try {
       const backupData = {
-        candidates: await storage.getAllCandidates(),
-        campaigns: await storage.getAllCampaigns(),
-        interviews: await storage.getAllInterviews(),
-        bookings: await storage.getAllBookings(),
-        workflowRules: await storage.getAllWorkflowRules(),
-        apifyActors: await storage.getAllApifyActors(),
+        candidates: await storage.getCandidates(),
+        campaigns: await storage.getCampaigns(),
+        interviews: await storage.getInterviews(),
+        bookings: await storage.getBookings(),
+        workflowRules: await storage.getWorkflowRules(),
+        apifyActors: await storage.getApifyActors(),
         metadata: {
           timestamp: new Date().toISOString(),
           version: '1.0.0',
@@ -1413,8 +1783,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid backup data format" });
       }
 
-      // Clear existing data (in a real implementation, this would be more sophisticated)
-      await storage.clearAllData();
+      // Clear existing data would require individual deletions
+      // await storage.clearAllData(); // Method doesn't exist, would need implementation
       
       // Restore data
       if (backupData.candidates) {
@@ -1613,7 +1983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: jobData.description,
             requirements: jobData.requirements || '',
             salary: jobData.salary || '',
-            type: jobData.type,
+            type: jobData.type || 'Full-time',
           });
           
           // Store with Indeed job ID
@@ -1670,11 +2040,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         indeedApplicationId: applicationData.applicationId,
         jobId: applicationData.jobId,
         candidateId: candidate.id,
+        candidateName: applicationData.candidateName,
+        candidateEmail: applicationData.candidateEmail,
         appliedAt: new Date(applicationData.appliedAt),
         disposition: 'new',
         resume: applicationData.resume || null,
         coverLetter: applicationData.coverLetter || null,
-        screeningAnswersJson: applicationData.screeningAnswers || {},
+        screeningAnswers: applicationData.screeningAnswers || {},
       });
 
       res.json({ candidate, application });
@@ -1727,7 +2099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/objects/upload", async (req, res) => {
+  app.post("/api/objects/upload", uploadRateLimit, async (req, res) => {
     const objectStorageService = new ObjectStorageService();
     try {
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
@@ -1738,7 +2110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/candidates/:id/resume", async (req, res) => {
+  app.put("/api/candidates/:id/resume", uploadRateLimit, async (req, res) => {
     if (!req.body.resumeURL) {
       return res.status(400).json({ error: "resumeURL is required" });
     }

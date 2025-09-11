@@ -14,6 +14,7 @@ import ApifyCenter from "@/pages/apify";
 import AirtopIntegration from "@/pages/AirtopIntegration";
 import EmailStudio from "@/pages/email";
 import SlackPools from "@/pages/slack";
+import ElevenLabsPage from "@/pages/elevenlabs";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/airtop" component={AirtopIntegration} />
       <Route path="/email" component={EmailStudio} />
       <Route path="/slack" component={SlackPools} />
+      <Route path="/elevenlabs" component={ElevenLabsPage} />
       <Route component={NotFound} />
     </Switch>
   );

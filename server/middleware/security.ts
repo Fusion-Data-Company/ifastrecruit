@@ -21,35 +21,96 @@ export const createRateLimit = (windowMs: number, max: number, message?: string)
   });
 };
 
-// ALL RATE LIMITS REMOVED FOR ELEVENLABS - NO RESTRICTIONS
-export const authRateLimit = createRateLimit(15 * 60 * 1000, 999999, 'Too many authentication attempts');
-export const apiRateLimit = createRateLimit(15 * 60 * 1000, 999999, 'API rate limit exceeded'); // UNLIMITED for ElevenLabs
-export const uploadRateLimit = createRateLimit(60 * 1000, 999999, 'Upload rate limit exceeded');
+// Reasonable rate limits that protect against abuse while allowing legitimate ElevenLabs usage
+export const authRateLimit = createRateLimit(15 * 60 * 1000, 20, 'Too many authentication attempts');
+export const apiRateLimit = createRateLimit(15 * 60 * 1000, 1000, 'API rate limit exceeded'); // High limit for ElevenLabs
+export const uploadRateLimit = createRateLimit(60 * 1000, 50, 'Upload rate limit exceeded');
 
-// Security headers middleware - COMPLETELY DISABLED for ElevenLabs
+// Special elevated rate limit for ElevenLabs MCP endpoints
+export const mcpRateLimit = createRateLimit(15 * 60 * 1000, 5000, 'MCP rate limit exceeded');
+export const elevenlabsRateLimit = createRateLimit(15 * 60 * 1000, 2000, 'ElevenLabs rate limit exceeded');
+
+// Security headers middleware - Properly configured with ElevenLabs compatibility
 export const securityHeaders = helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-  crossOriginOpenerPolicy: false,
-  crossOriginResourcePolicy: false,
-  originAgentCluster: false,
-  referrerPolicy: false,
-  strictTransportSecurity: false,
-  xContentTypeOptions: false,
-  xDnsPrefetchControl: false,
-  xDownloadOptions: false,
-  xFrameOptions: false,
-  xPermittedCrossDomainPolicies: false,
-  xPoweredBy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://api.elevenlabs.io", "https://elevenlabs.io"],
+      connectSrc: ["'self'", "https://api.elevenlabs.io", "https://elevenlabs.io", "wss:", "ws:"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'", "https:"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin for ElevenLabs
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
 });
 
-// CORS configuration - COMPLETELY OPEN for ElevenLabs
+// CORS configuration - Restrictive but ElevenLabs compatible
 export const corsOptions = {
-  origin: true, // Allow ALL origins
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins for ElevenLabs and development
+    const allowedOrigins = [
+      'https://elevenlabs.io',
+      'https://api.elevenlabs.io',
+      'https://play.elevenlabs.io',
+      'https://creator.elevenlabs.io',
+      'http://localhost:5000',
+      'http://localhost:3000',
+      'http://localhost:8080',
+      'https://ifast-broker.replit.app',
+      process.env.APP_BASE_URL,
+      process.env.REPLIT_DEV_DOMAIN,
+    ].filter(Boolean);
+
+    // Check if the origin is allowed
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow ElevenLabs subdomains
+    if (origin.endsWith('.elevenlabs.io') || origin.endsWith('.replit.app') || origin.endsWith('.replit.dev')) {
+      return callback(null, true);
+    }
+
+    // Reject unauthorized origins
+    console.warn(`CORS: Blocked origin ${origin}`);
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With', 
+    'Content-Type', 
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'X-API-Key',
+    'mcp-session-id',
+    'Mcp-Session-Id'
+  ],
+  exposedHeaders: ['mcp-session-id', 'Mcp-Session-Id'],
+  maxAge: 86400, // 24 hours
+};
+
+// Permissive CORS specifically for ElevenLabs MCP endpoints
+export const elevenlabsCorsOptions = {
+  origin: true, // Allow all origins for ElevenLabs MCP
+  credentials: false, // No credentials needed for MCP
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['*'],
-  exposedHeaders: ['*'],
+  exposedHeaders: ['mcp-session-id', 'Mcp-Session-Id'],
 };
 
 // Input validation middleware factory

@@ -16,7 +16,7 @@ export class ElevenLabsIntegration {
       const response = await fetch(`${this.baseUrl}/convai/conversation/get_signed_url`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
+          "xi-api-key": this.apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -45,7 +45,7 @@ export class ElevenLabsIntegration {
       const response = await fetch(`${this.baseUrl}/convai/agents`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
+          "xi-api-key": this.apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -70,7 +70,7 @@ export class ElevenLabsIntegration {
     try {
       const response = await fetch(`${this.baseUrl}/convai/agents/${agentId}`, {
         headers: {
-          "Authorization": `Bearer ${this.apiKey}`,
+          "xi-api-key": this.apiKey,
         },
       });
 
@@ -81,6 +81,219 @@ export class ElevenLabsIntegration {
       return await response.json();
     } catch (error) {
       throw new Error(`Agent status check failed: ${String(error)}`);
+    }
+  }
+
+  // Data collection methods for agent conversations
+  
+  async getAgentConversations(agentId: string, options: {
+    limit?: number;
+    cursor?: string;
+    after?: string;
+    before?: string;
+  } = {}): Promise<{
+    conversations: any[];
+    has_more: boolean;
+    cursor?: string;
+  }> {
+    if (!this.apiKey) {
+      throw new Error("ELEVENLABS_API_KEY not configured - cannot fetch conversations");
+    }
+
+    try {
+      const params = new URLSearchParams();
+      params.append('agent_id', agentId);
+      
+      if (options.limit) params.append('limit', options.limit.toString());
+      if (options.cursor) params.append('cursor', options.cursor);
+      if (options.after) params.append('after', options.after);
+      if (options.before) params.append('before', options.before);
+
+      const response = await fetch(`${this.baseUrl}/convai/conversations?${params}`, {
+        headers: {
+          "xi-api-key": this.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch conversations: ${response.statusText} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return {
+        conversations: data.conversations || [],
+        has_more: data.has_more || false,
+        cursor: data.cursor
+      };
+    } catch (error) {
+      throw new Error(`Conversation fetch failed: ${String(error)}`);
+    }
+  }
+
+  async getConversationDetails(conversationId: string): Promise<{
+    conversation_id: string;
+    agent_id: string;
+    user_id?: string;
+    created_at: string;
+    ended_at?: string;
+    transcript?: any[];
+    metadata?: any;
+  }> {
+    if (!this.apiKey) {
+      throw new Error("ELEVENLABS_API_KEY not configured - cannot fetch conversation details");
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/convai/conversations/${conversationId}`, {
+        headers: {
+          "xi-api-key": this.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch conversation details: ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Conversation details fetch failed: ${String(error)}`);
+    }
+  }
+
+  async getConversationAudio(conversationId: string): Promise<{
+    audio_url?: string;
+    audio_data?: ArrayBuffer;
+    content_type?: string;
+  }> {
+    if (!this.apiKey) {
+      throw new Error("ELEVENLABS_API_KEY not configured - cannot fetch conversation audio");
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/convai/conversations/${conversationId}/audio`, {
+        headers: {
+          "xi-api-key": this.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch conversation audio: ${response.statusText} - ${errorText}`);
+      }
+
+      const contentType = response.headers.get('content-type') || 'audio/mpeg';
+      
+      // Check if response is JSON (might contain audio URL) or binary audio data
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        return {
+          audio_url: data.audio_url || data.url,
+          content_type: contentType
+        };
+      } else {
+        // Binary audio data
+        const arrayBuffer = await response.arrayBuffer();
+        return {
+          audio_data: arrayBuffer,
+          content_type: contentType
+        };
+      }
+    } catch (error) {
+      throw new Error(`Conversation audio fetch failed: ${String(error)}`);
+    }
+  }
+
+  async getAllAgentData(agentId: string): Promise<{
+    agent: any;
+    conversations: any[];
+    total_conversations: number;
+    error_details?: string[];
+  }> {
+    if (!this.apiKey) {
+      throw new Error("ELEVENLABS_API_KEY not configured - cannot collect agent data");
+    }
+
+    const errors: string[] = [];
+    let agent: any = null;
+    let allConversations: any[] = [];
+
+    try {
+      // Get agent details
+      try {
+        agent = await this.getAgentStatus(agentId);
+      } catch (error) {
+        errors.push(`Failed to fetch agent details: ${String(error)}`);
+      }
+
+      // Get all conversations with pagination
+      let hasMore = true;
+      let cursor: string | undefined;
+      
+      while (hasMore) {
+        try {
+          const result = await this.getAgentConversations(agentId, {
+            limit: 100,
+            cursor
+          });
+          
+          // Enrich each conversation with detailed data and audio info
+          const enrichedConversations = await Promise.allSettled(
+            result.conversations.map(async (conv) => {
+              const enriched = { ...conv };
+              
+              // Try to get conversation details
+              try {
+                const details = await this.getConversationDetails(conv.conversation_id);
+                enriched.details = details;
+              } catch (error) {
+                enriched.details_error = String(error);
+              }
+              
+              // Try to get audio info (but don't download the full audio data)
+              try {
+                const audioInfo = await this.getConversationAudio(conv.conversation_id);
+                enriched.audio_info = {
+                  has_audio: !!(audioInfo.audio_url || audioInfo.audio_data),
+                  audio_url: audioInfo.audio_url,
+                  content_type: audioInfo.content_type,
+                  audio_size_bytes: audioInfo.audio_data ? audioInfo.audio_data.byteLength : undefined
+                };
+              } catch (error) {
+                enriched.audio_error = String(error);
+              }
+              
+              return enriched;
+            })
+          );
+
+          // Add successful results
+          enrichedConversations.forEach((result) => {
+            if (result.status === 'fulfilled') {
+              allConversations.push(result.value);
+            } else {
+              errors.push(`Failed to enrich conversation: ${result.reason}`);
+            }
+          });
+
+          hasMore = result.has_more;
+          cursor = result.cursor;
+        } catch (error) {
+          errors.push(`Failed to fetch conversations batch: ${String(error)}`);
+          hasMore = false;
+        }
+      }
+
+      return {
+        agent,
+        conversations: allConversations,
+        total_conversations: allConversations.length,
+        error_details: errors.length > 0 ? errors : undefined
+      };
+
+    } catch (error) {
+      throw new Error(`Agent data collection failed: ${String(error)}`);
     }
   }
 

@@ -51,6 +51,10 @@ export const candidates = pgTable("candidates", {
   transcriptSummary: text("transcript_summary"),
   callSummaryTitle: text("call_summary_title"),
   agentName: text("agent_name"),
+  // === NEW ELEVENLABS FIELDS ===
+  audioRecordingUrl: text("audio_recording_url"),
+  agentData: jsonb("agent_data"), // Comprehensive agent interaction data
+  conversationMetadata: jsonb("conversation_metadata"), // Conversation-specific metadata
   // === END INTERVIEW DATA FIELDS ===
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({

@@ -16,6 +16,7 @@ export default function Sidebar() {
     { path: "/airtop", label: "Airtop Integration", icon: "fas fa-desktop" },
     { path: "/email", label: "Email Studio", icon: "fas fa-envelope" },
     { path: "/slack", label: "Slack Pools", icon: "fab fa-slack" },
+    { path: "/elevenlabs", label: "ElevenLabs Data", icon: "fas fa-headphones" },
   ];
 
   return (
