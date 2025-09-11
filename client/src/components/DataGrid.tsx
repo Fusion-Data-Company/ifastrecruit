@@ -103,7 +103,7 @@ function EditableCell({ getValue, row, column, table }: any) {
         onChange={(e) => setValue(e.target.value)}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="h-14 text-base bg-transparent border-accent"
+        className="h-10 text-base bg-transparent border-accent"
         autoFocus
       />
     );
@@ -111,7 +111,7 @@ function EditableCell({ getValue, row, column, table }: any) {
 
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-4 py-5 rounded min-h-20 flex items-center"
+      className="cursor-pointer hover:bg-accent/10 px-4 py-2 rounded min-h-12 flex items-center"
       onClick={() => setIsEditing(true)}
       data-testid={`editable-${column.id}-${row.original.id}`}
     >
@@ -390,7 +390,7 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
         onChange={(e) => setValue(e.target.value)}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="h-14 w-24 text-base bg-transparent border-accent"
+        className="h-10 w-24 text-base bg-transparent border-accent"
         autoFocus
       />
     );
@@ -399,7 +399,7 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
   const score = value as number;
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-4 py-5 rounded min-h-20 flex items-center space-x-3"
+      className="cursor-pointer hover:bg-accent/10 px-4 py-2 rounded min-h-12 flex items-center space-x-3"
       onClick={() => setIsEditing(true)}
     >
       <div className="w-20 h-4 bg-muted rounded-full overflow-hidden">
@@ -697,7 +697,7 @@ export default function DataGrid() {
               table.options.meta?.updateData(row.index, 'pipelineStage', value);
             }}
           >
-            <SelectTrigger className="glass-input text-base bg-transparent border-border h-14 w-full" data-testid={`stage-select-${row.original.id}`}>
+            <SelectTrigger className="glass-input text-base bg-transparent border-border h-10 w-full" data-testid={`stage-select-${row.original.id}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1132,7 +1132,7 @@ export default function DataGrid() {
               {table.getHeaderGroups()[0]?.headers.map((header) => (
                 <div
                   key={header.id}
-                  className="flex items-center justify-start px-4 py-6 text-base font-bold text-foreground border-r border-accent/20 last:border-r-0 font-serif tracking-wide"
+                  className="flex items-center justify-start px-4 py-3 text-base font-bold text-foreground border-r border-accent/20 last:border-r-0 font-serif tracking-wide"
                   style={{ minWidth: header.getSize(), width: header.getSize() }}
                 >
                   <div className="flex items-center space-x-2">
@@ -1174,11 +1174,11 @@ export default function DataGrid() {
                     data-testid={`candidate-row-${row.original.id}`}
                   >
                     {/* Main Row */}
-                    <div className="flex min-h-24">
+                    <div className="flex min-h-16">
                       {row.getVisibleCells().map((cell) => (
                         <div
                           key={cell.id}
-                          className="flex items-center px-4 py-4 border-r border-accent/10 last:border-r-0 overflow-hidden font-serif"
+                          className="flex items-center px-4 py-2 border-r border-accent/10 last:border-r-0 overflow-hidden font-serif"
                           style={{ minWidth: cell.column.getSize(), width: cell.column.getSize() }}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
