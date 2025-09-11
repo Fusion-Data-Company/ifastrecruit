@@ -134,11 +134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
 
         case "tools/call":
-          if (!params || !params.name) {
+          if (!params?.name) {
             return res.status(400).json({
               jsonrpc: "2.0",
               error: { code: -32602, message: "Invalid params: name required" },
-              id
+              id: id || null
             });
           }
           result = await mcpServer.callTool(params.name, params.arguments || {});
