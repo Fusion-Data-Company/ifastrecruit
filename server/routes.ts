@@ -112,8 +112,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // STREAMABLE_HTTP MCP endpoint for ElevenLabs interview agents
+  // Unified endpoint supporting POST (commands), GET (streaming), DELETE (cleanup)
+  
+  // Store active sessions
+  const mcpSessions = new Map<string, any>();
+  
+  // POST - Handle MCP commands
   app.post("/api/mcp", async (req, res) => {
     try {
+      const sessionId = req.headers['mcp-session-id'] as string;
       const { method, params, id, jsonrpc } = req.body;
 
       // Validate JSON-RPC 2.0 format
@@ -125,20 +132,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Session management
+      if (sessionId && !mcpSessions.has(sessionId)) {
+        mcpSessions.set(sessionId, { 
+          id: sessionId, 
+          created: new Date(),
+          tools: await mcpServer.listTools()
+        });
+      }
+
       let result;
 
       switch (method) {
         case "initialize":
+          const newSessionId = sessionId || crypto.randomUUID();
+          mcpSessions.set(newSessionId, {
+            id: newSessionId,
+            created: new Date(),
+            initialized: true
+          });
+          
           result = {
             protocolVersion: "2024-11-05",
             capabilities: {
               tools: {},
+              streaming: {},
             },
             serverInfo: {
               name: "ifast-broker",
               version: "1.0.0"
             }
           };
+          
+          // Set session header for client
+          res.setHeader('Mcp-Session-Id', newSessionId);
           break;
 
         case "initialized":
@@ -148,6 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "capabilities":
           result = {
             tools: {},
+            streaming: {},
           };
           break;
 
@@ -191,6 +219,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         id: req.body.id || null
       });
+    }
+  });
+
+  // GET - Handle SSE streaming for STREAMABLE_HTTP
+  app.get("/api/mcp", async (req, res) => {
+    const sessionId = req.headers['mcp-session-id'] as string;
+    
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    // Optional session validation
+    if (sessionId && !mcpSessions.has(sessionId)) {
+      res.write(`event: error\ndata: {"error": "Invalid session"}\n\n`);
+      res.end();
+      return;
+    }
+
+    // Keep connection alive
+    const keepAlive = setInterval(() => {
+      res.write(`event: ping\ndata: {"type": "ping"}\n\n`);
+    }, 30000);
+
+    // Send initial connection event
+    res.write(`event: connected\ndata: {"type": "connected", "sessionId": "${sessionId || 'anonymous'}"}\n\n`);
+
+    // Handle client disconnect
+    req.on('close', () => {
+      clearInterval(keepAlive);
+    });
+  });
+
+  // DELETE - Handle session cleanup
+  app.delete("/api/mcp", async (req, res) => {
+    const sessionId = req.headers['mcp-session-id'] as string;
+    
+    if (sessionId && mcpSessions.has(sessionId)) {
+      mcpSessions.delete(sessionId);
+      res.json({ success: true, message: "Session terminated" });
+    } else {
+      res.status(404).json({ error: "Session not found" });
     }
   });
 
