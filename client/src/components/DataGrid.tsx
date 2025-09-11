@@ -634,7 +634,7 @@ export default function DataGrid() {
         accessorKey: "name",
         header: "Name",
         cell: (props) => <EditableCell {...props} />,
-        size: 250,
+        size: 300,
       },
       {
         accessorKey: "email",
@@ -660,7 +660,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 250,
+        size: 300,
       },
       {
         accessorKey: "phone",
@@ -685,7 +685,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 280,
       },
       {
         accessorKey: "pipelineStage",
@@ -711,13 +711,13 @@ export default function DataGrid() {
             </SelectContent>
           </Select>
         ),
-        size: 200,
+        size: 300,
       },
       {
         accessorKey: "score",
         header: "Overall Score",
         cell: EditableScoreCell,
-        size: 200,
+        size: 180,
       },
       {
         accessorKey: "sourceRef",
@@ -725,7 +725,7 @@ export default function DataGrid() {
         cell: ({ getValue, row, column, table }) => (
           <EditableCell getValue={getValue} row={row} column={column} table={table} />
         ),
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "resumeUrl",
@@ -752,7 +752,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "tags",
@@ -773,7 +773,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 250,
       },
       // === INTERVIEW COLUMNS ===
       {
@@ -789,7 +789,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 250,
+        size: 350,
       },
       {
         accessorKey: "interviewScore",
@@ -820,7 +820,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 250,
+        size: 350,
       },
       {
         accessorKey: "interviewTranscript",
@@ -835,7 +835,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 250,
+        size: 400,
       },
       {
         accessorKey: "interviewDate",
@@ -852,7 +852,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 180,
       },
       // === AGENT & CALL COLUMNS ===
       {
@@ -861,7 +861,7 @@ export default function DataGrid() {
         cell: ({ getValue, row, column, table }) => (
           <EditableCell getValue={getValue} row={row} column={column} table={table} />
         ),
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "agentId",
@@ -876,7 +876,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "conversationId",
@@ -891,7 +891,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "callDuration",
@@ -905,7 +905,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 180,
       },
       {
         accessorKey: "messageCount",
@@ -913,7 +913,7 @@ export default function DataGrid() {
         cell: ({ getValue, row, column, table }) => (
           <EditableCell getValue={getValue} row={row} column={column} table={table} />
         ),
-        size: 200,
+        size: 150,
       },
       {
         accessorKey: "callStatus",
@@ -921,7 +921,7 @@ export default function DataGrid() {
         cell: ({ getValue, row, column, table }) => (
           <EditableCell getValue={getValue} row={row} column={column} table={table} />
         ),
-        size: 200,
+        size: 180,
       },
       {
         accessorKey: "callSuccessful",
@@ -940,7 +940,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 180,
       },
       {
         accessorKey: "transcriptSummary",
@@ -955,7 +955,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 250,
+        size: 350,
       },
       {
         accessorKey: "callSummaryTitle",
@@ -963,7 +963,7 @@ export default function DataGrid() {
         cell: ({ getValue, row, column, table }) => (
           <EditableCell getValue={getValue} row={row} column={column} table={table} />
         ),
-        size: 250,
+        size: 350,
       },
       // === DATA COLUMNS ===
       {
@@ -979,7 +979,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "dataCollectionResults",
@@ -994,7 +994,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "interviewData",
@@ -1009,7 +1009,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 250,
       },
       // === TIMESTAMPS ===
       {
@@ -1027,7 +1027,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 200,
+        size: 180,
       },
     ],
     [selectedRows, expandedRows, currentFilters, filteredCandidates, data]
