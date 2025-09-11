@@ -939,65 +939,7 @@ export default function DataGrid() {
         },
         size: 180,
       },
-      // === AGENT & CALL COLUMNS ===
-      {
-        accessorKey: "agentName",
-        header: "Agent Name",
-        cell: ({ getValue, row, column, table }) => (
-          <EditableCell getValue={getValue} row={row} column={column} table={table} />
-        ),
-        size: 250,
-      },
-      {
-        accessorKey: "agentId",
-        header: "Agent ID",
-        cell: ({ getValue }) => {
-          const agentId = getValue() as string;
-          const displayText = agentId || '-';
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base font-mono text-sm truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="break-all">
-                  <p className="font-mono text-sm">{displayText}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 250,
-      },
-      {
-        accessorKey: "conversationId",
-        header: "Conversation ID",
-        cell: ({ getValue }) => {
-          const conversationId = getValue() as string;
-          const displayText = conversationId || '-';
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base font-mono text-sm truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="break-all">
-                  <p className="font-mono text-sm">{displayText}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 250,
-      },
+      // === CALL COLUMNS ===
       {
         accessorKey: "callDuration",
         header: "Call Duration",
