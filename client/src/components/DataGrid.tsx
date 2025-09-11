@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -183,6 +185,7 @@ export default function DataGrid() {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [viewingCandidate, setViewingCandidate] = useState<Candidate | null>(null);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
+  const [detailsCandidate, setDetailsCandidate] = useState<Candidate | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -768,8 +771,7 @@ export default function DataGrid() {
                 size="sm"
                 className="w-10 h-10 p-0 hover:bg-muted"
                 onClick={() => {
-                  // Show interview details modal
-                  console.log('Interview data:', row.original);
+                  setDetailsCandidate(row.original);
                 }}
                 disabled={!hasData}
                 data-testid={`interview-details-${row.original.id}`}
@@ -1135,6 +1137,377 @@ export default function DataGrid() {
             candidateName={selectedCandidateForFiles.name || 'Unknown'}
           />
         </div>
+      )}
+
+      {/* Details Modal */}
+      {detailsCandidate && (
+        <Dialog open={!!detailsCandidate} onOpenChange={() => setDetailsCandidate(null)}>
+          <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw] h-[90vh] overflow-hidden p-0">
+            <DialogHeader className="p-6 border-b border-border">
+              <DialogTitle className="text-xl font-semibold">
+                Interview Details - {detailsCandidate.name}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                Complete interview data and evaluation results
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-hidden">
+              <Tabs defaultValue="overview" className="h-full flex flex-col">
+                <TabsList className="grid w-full grid-cols-5 mx-6 mt-4">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                  <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
+                  <TabsTrigger value="data">Data Results</TabsTrigger>
+                  <TabsTrigger value="technical">Technical</TabsTrigger>
+                </TabsList>
+
+                <div className="flex-1 overflow-hidden px-6 pb-6">
+                  {/* Overview Tab */}
+                  <TabsContent value="overview" className="h-full mt-4">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        {/* Basic Info */}
+                        <div className="bg-muted/30 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Name</label>
+                              <p className="text-sm mt-1">{detailsCandidate.name}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Email</label>
+                              <p className="text-sm mt-1">{detailsCandidate.email}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                              <p className="text-sm mt-1">{detailsCandidate.phone || '-'}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Pipeline Stage</label>
+                              <p className="text-sm mt-1">{detailsCandidate.pipelineStage}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Interview Summary */}
+                        {detailsCandidate.interviewSummary && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">Interview Summary</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.interviewSummary || '')}
+                                data-testid="copy-interview-summary"
+                              >
+                                <i className="fas fa-copy mr-2"></i>Copy
+                              </Button>
+                            </div>
+                            <div className="bg-background rounded-md p-3 border">
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                                {detailsCandidate.interviewSummary}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Call Summary Title */}
+                        {detailsCandidate.callSummaryTitle && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold mb-3">Call Summary Title</h3>
+                            <div className="bg-background rounded-md p-3 border">
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                                {detailsCandidate.callSummaryTitle}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Notes */}
+                        {detailsCandidate.notes && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">Interview Notes</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.notes || '')}
+                                data-testid="copy-notes"
+                              >
+                                <i className="fas fa-copy mr-2"></i>Copy
+                              </Button>
+                            </div>
+                            <div className="bg-background rounded-md p-3 border">
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                                {detailsCandidate.notes}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Metrics */}
+                        <div className="bg-muted/30 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold mb-3">Interview Metrics</h3>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Score</label>
+                              <p className="text-sm mt-1">{detailsCandidate.score || 0}%</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Interview Score</label>
+                              <p className="text-sm mt-1">{detailsCandidate.interviewScore || 0}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Duration</label>
+                              <p className="text-sm mt-1">{detailsCandidate.interviewDuration || '-'}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Call Duration</label>
+                              <p className="text-sm mt-1">{formatCallDuration(detailsCandidate.callDuration)}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Message Count</label>
+                              <p className="text-sm mt-1">{detailsCandidate.messageCount || 0}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Call Status</label>
+                              <p className="text-sm mt-1">{detailsCandidate.callStatus || '-'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Transcript Tab */}
+                  <TabsContent value="transcript" className="h-full mt-4">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        {/* Full Interview Transcript */}
+                        {detailsCandidate.interviewTranscript ? (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">Full Interview Transcript</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.interviewTranscript || '')}
+                                data-testid="copy-transcript"
+                              >
+                                <i className="fas fa-copy mr-2"></i>Copy
+                              </Button>
+                            </div>
+                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
+                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
+                                {detailsCandidate.interviewTranscript}
+                              </pre>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 text-muted-foreground">
+                            <i className="fas fa-file-text text-3xl mb-4"></i>
+                            <p>No interview transcript available</p>
+                          </div>
+                        )}
+
+                        {/* Transcript Summary */}
+                        {detailsCandidate.transcriptSummary && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">Transcript Summary</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.transcriptSummary || '')}
+                                data-testid="copy-transcript-summary"
+                              >
+                                <i className="fas fa-copy mr-2"></i>Copy
+                              </Button>
+                            </div>
+                            <div className="bg-background rounded-md p-3 border">
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                                {detailsCandidate.transcriptSummary}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Evaluation Tab */}
+                  <TabsContent value="evaluation" className="h-full mt-4">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        {detailsCandidate.evaluationCriteria ? (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">Evaluation Criteria</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.evaluationCriteria as any, null, 2))}
+                                data-testid="copy-evaluation-criteria"
+                              >
+                                <i className="fas fa-copy mr-2"></i>Copy JSON
+                              </Button>
+                            </div>
+                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
+                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
+                                {JSON.stringify(detailsCandidate.evaluationCriteria as any, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 text-muted-foreground">
+                            <i className="fas fa-chart-bar text-3xl mb-4"></i>
+                            <p>No evaluation criteria available</p>
+                          </div>
+                        )}
+
+                        {/* Interview Data */}
+                        {!!detailsCandidate.interviewData && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">Interview Data</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.interviewData, null, 2))}
+                                data-testid="copy-interview-data"
+                              >
+                                <i className="fas fa-copy mr-2"></i>Copy JSON
+                              </Button>
+                            </div>
+                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
+                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
+                                {JSON.stringify(detailsCandidate.interviewData as any, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Data Results Tab */}
+                  <TabsContent value="data" className="h-full mt-4">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        {detailsCandidate.dataCollectionResults ? (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">Data Collection Results</h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.dataCollectionResults as any, null, 2))}
+                                data-testid="copy-data-collection"
+                              >
+                                <i className="fas fa-copy mr-2"></i>Copy JSON
+                              </Button>
+                            </div>
+                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
+                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
+                                {JSON.stringify(detailsCandidate.dataCollectionResults as any, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 text-muted-foreground">
+                            <i className="fas fa-database text-3xl mb-4"></i>
+                            <p>No data collection results available</p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Technical Tab */}
+                  <TabsContent value="technical" className="h-full mt-4">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        {/* Agent Information */}
+                        <div className="bg-muted/30 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold mb-3">Agent Information</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Agent Name</label>
+                              <p className="text-sm mt-1 font-mono">{detailsCandidate.agentName || '-'}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Agent ID</label>
+                              <p className="text-sm mt-1 font-mono">{detailsCandidate.agentId || '-'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <label className="text-sm font-medium text-muted-foreground">Conversation ID</label>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm font-mono flex-1">{detailsCandidate.conversationId || '-'}</p>
+                                {detailsCandidate.conversationId && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigator.clipboard.writeText(detailsCandidate.conversationId || '')}
+                                    data-testid="copy-conversation-id"
+                                  >
+                                    <i className="fas fa-copy"></i>
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Call Information */}
+                        <div className="bg-muted/30 rounded-lg p-4">
+                          <h3 className="text-lg font-semibold mb-3">Call Information</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Call Status</label>
+                              <p className="text-sm mt-1">{detailsCandidate.callStatus || '-'}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Call Successful</label>
+                              <p className="text-sm mt-1">{detailsCandidate.callSuccessful || '-'}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Interview Date</label>
+                              <p className="text-sm mt-1">
+                                {detailsCandidate.interviewDate 
+                                  ? new Date(detailsCandidate.interviewDate).toLocaleString()
+                                  : '-'
+                                }
+                              </p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Source Reference</label>
+                              <p className="text-sm mt-1">{detailsCandidate.sourceRef || '-'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tags */}
+                        {detailsCandidate.tags && detailsCandidate.tags.length > 0 && (
+                          <div className="bg-muted/30 rounded-lg p-4">
+                            <h3 className="text-lg font-semibold mb-3">Tags</h3>
+                            <div className="flex flex-wrap gap-2">
+                              {detailsCandidate.tags.map((tag, index) => (
+                                <Badge key={index} variant="secondary">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </Card>
   );
