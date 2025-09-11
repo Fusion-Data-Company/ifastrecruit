@@ -128,6 +128,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let result;
 
       switch (method) {
+        case "initialize":
+          result = {
+            protocolVersion: "2024-11-05",
+            capabilities: {
+              tools: {},
+            },
+            serverInfo: {
+              name: "ifast-broker",
+              version: "1.0.0"
+            }
+          };
+          break;
+
+        case "initialized":
+          result = {};
+          break;
+
+        case "capabilities":
+          result = {
+            tools: {},
+          };
+          break;
+
         case "tools/list":
           const tools = await mcpServer.listTools();
           result = tools;
