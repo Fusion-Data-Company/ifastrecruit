@@ -123,8 +123,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionId = req.headers['mcp-session-id'] as string;
       const { method, params, id, jsonrpc } = req.body;
 
+      // COMPREHENSIVE LOGGING - Log all incoming MCP requests
+      console.log(`[MCP] Incoming request - Method: ${method}, SessionId: ${sessionId}, ID: ${id}`);
+      console.log(`[MCP] Full request body:`, JSON.stringify(req.body, null, 2));
+      console.log(`[MCP] Request headers:`, JSON.stringify(req.headers, null, 2));
+
       // Validate JSON-RPC 2.0 format
       if (jsonrpc !== "2.0" || !method) {
+        console.log(`[MCP] ERROR: Invalid JSON-RPC format - jsonrpc: ${jsonrpc}, method: ${method}`);
         return res.status(400).json({
           jsonrpc: "2.0",
           error: { code: -32600, message: "Invalid Request" },
@@ -139,12 +145,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           created: new Date(),
           tools: await mcpServer.listTools()
         });
+        console.log(`[MCP] Created new session: ${sessionId}`);
       }
 
       let result;
 
       switch (method) {
         case "initialize":
+          console.log(`[MCP] Processing initialize method with params:`, params);
           const newSessionId = sessionId || crypto.randomUUID();
           mcpSessions.set(newSessionId, {
             id: newSessionId,
@@ -155,8 +163,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           result = {
             protocolVersion: "2024-11-05",
             capabilities: {
-              tools: {},
-              streaming: {},
+              tools: {
+                listChanged: true
+              },
+              logging: {},
+              experimental: {
+                streaming: {}
+              }
             },
             serverInfo: {
               name: "ifast-broker",
@@ -166,51 +179,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Set session header for client
           res.setHeader('Mcp-Session-Id', newSessionId);
+          console.log(`[MCP] Initialize complete, session: ${newSessionId}`);
           break;
 
         case "initialized":
+          console.log(`[MCP] Processing initialized notification`);
           result = {};
           break;
 
+        case "notifications/initialized":
+          console.log(`[MCP] Processing notifications/initialized method`);
+          result = {};
+          break;
+
+        case "notifications/cancelled":
+          console.log(`[MCP] Processing notifications/cancelled method`);
+          if (params?.requestId) {
+            console.log(`[MCP] Cancelling request ID: ${params.requestId}`);
+          }
+          result = {};
+          break;
+
+        case "ping":
+          console.log(`[MCP] Processing ping method`);
+          result = { pong: true, timestamp: new Date().toISOString() };
+          break;
+
         case "capabilities":
+          console.log(`[MCP] Processing capabilities method`);
           result = {
-            tools: {},
-            streaming: {},
+            tools: {
+              listChanged: true
+            },
+            logging: {},
+            experimental: {
+              streaming: {}
+            }
           };
           break;
 
         case "tools/list":
+          console.log(`[MCP] Processing tools/list method`);
           const tools = await mcpServer.listTools();
           result = tools;
+          console.log(`[MCP] Returning ${tools.tools?.length || 0} tools`);
           break;
 
         case "tools/call":
+          console.log(`[MCP] Processing tools/call method with params:`, params);
           if (!params?.name) {
+            console.log(`[MCP] ERROR: tools/call missing name parameter`);
             return res.status(400).json({
               jsonrpc: "2.0",
               error: { code: -32602, message: "Invalid params: name required" },
               id: id || null
             });
           }
+          console.log(`[MCP] Calling tool: ${params.name} with arguments:`, params.arguments);
           result = await mcpServer.callTool(params.name, params.arguments || {});
+          console.log(`[MCP] Tool ${params.name} completed successfully`);
+          break;
+
+        case "logging/setLevel":
+          console.log(`[MCP] Processing logging/setLevel method with params:`, params);
+          result = {};
           break;
 
         default:
+          console.log(`[MCP] ERROR: Unknown method called: ${method}`);
+          console.log(`[MCP] Available methods: initialize, initialized, notifications/initialized, notifications/cancelled, ping, capabilities, tools/list, tools/call, logging/setLevel`);
           return res.status(400).json({
             jsonrpc: "2.0",
-            error: { code: -32601, message: "Method not found" },
+            error: { code: -32601, message: `Method not found: ${method}` },
             id
           });
       }
 
-      res.json({
+      const response = {
         jsonrpc: "2.0",
         result,
         id
-      });
+      };
+
+      // Log successful response
+      console.log(`[MCP] Sending response for ${method}:`, JSON.stringify(response, null, 2));
+      res.json(response);
 
     } catch (error) {
-      res.status(500).json({
+      console.log(`[MCP] ERROR: Exception in MCP handler:`, error);
+      console.log(`[MCP] Request that caused error:`, JSON.stringify(req.body, null, 2));
+      
+      const errorResponse = {
         jsonrpc: "2.0",
         error: { 
           code: -32603, 
@@ -218,7 +277,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: String(error) 
         },
         id: req.body.id || null
-      });
+      };
+
+      console.log(`[MCP] Sending error response:`, JSON.stringify(errorResponse, null, 2));
+      res.status(500).json(errorResponse);
     }
   });
 
