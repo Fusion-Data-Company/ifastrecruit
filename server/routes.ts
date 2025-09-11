@@ -229,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[MCP] Processing tools/call method with params:`, params);
           if (!params?.name) {
             console.log(`[MCP] ERROR: tools/call missing name parameter`);
-            return res.status(400).json({
+            return res.status(200).json({
               jsonrpc: "2.0",
               error: { code: -32602, message: "Invalid params: name required" },
               id: id || null
@@ -248,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         default:
           console.log(`[MCP] ERROR: Unknown method called: ${method}`);
           console.log(`[MCP] Available methods: initialize, initialized, notifications/initialized, notifications/cancelled, ping, capabilities, tools/list, tools/call, logging/setLevel`);
-          return res.status(400).json({
+          return res.status(200).json({
             jsonrpc: "2.0",
             error: { code: -32601, message: `Method not found: ${method}` },
             id
