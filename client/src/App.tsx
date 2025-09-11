@@ -41,9 +41,10 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
-        <MainUIAgent />
+        {/* Temporarily disabled ElevenLabs widgets to resolve runtime error */}
+        {/* <MainUIAgent />
         <SecondaryAgent />
-        <CenterAgent />
+        <CenterAgent /> */}
       </TooltipProvider>
     </QueryClientProvider>
   );
