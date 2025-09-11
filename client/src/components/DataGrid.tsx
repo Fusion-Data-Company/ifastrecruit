@@ -150,6 +150,62 @@ function formatCallDuration(seconds: number | null | undefined): string {
   return parts.length > 0 ? parts.join(' ') : '-';
 }
 
+// Utility function to extract meaningful preview from JSON data
+function getJsonDataPreview(data: any, maxLength: number = 80): string {
+  if (!data || typeof data !== 'object') {
+    return String(data) || '-';
+  }
+  
+  try {
+    // Handle arrays
+    if (Array.isArray(data)) {
+      if (data.length === 0) return '[]';
+      const preview = data.slice(0, 2).map(item => {
+        if (typeof item === 'string') return `"${item}"`;
+        if (typeof item === 'object') return '{...}';
+        return String(item);
+      }).join(', ');
+      const suffix = data.length > 2 ? ', ...' : '';
+      return `[${preview}${suffix}]`;
+    }
+    
+    // Handle objects
+    const keys = Object.keys(data);
+    if (keys.length === 0) return '{}';
+    
+    // Try to find meaningful key-value pairs
+    const importantKeys = ['name', 'title', 'type', 'status', 'result', 'score', 'value', 'description'];
+    const foundImportantKey = keys.find(key => importantKeys.includes(key.toLowerCase()));
+    
+    let preview = '';
+    if (foundImportantKey && data[foundImportantKey]) {
+      const value = typeof data[foundImportantKey] === 'string' 
+        ? `"${data[foundImportantKey]}"`
+        : String(data[foundImportantKey]);
+      preview = `${foundImportantKey}: ${value}`;
+    } else {
+      // Show first few key-value pairs
+      const pairs = keys.slice(0, 2).map(key => {
+        const value = data[key];
+        if (typeof value === 'string') return `${key}: "${value}"`;
+        if (typeof value === 'object') return `${key}: {...}`;
+        return `${key}: ${String(value)}`;
+      });
+      preview = pairs.join(', ');
+    }
+    
+    if (keys.length > (foundImportantKey ? 1 : 2)) {
+      preview += ', ...';
+    }
+    
+    // Truncate if too long
+    const result = `{${preview}}`;
+    return result.length > maxLength ? result.substring(0, maxLength - 3) + '...' : result;
+  } catch (error) {
+    return 'Invalid JSON';
+  }
+}
+
 // Expanded Row Content Component
 function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
   return (
@@ -1046,14 +1102,14 @@ export default function DataGrid() {
         header: "Evaluation Criteria",
         cell: ({ getValue }) => {
           const criteria = getValue() as any;
-          const displayText = criteria ? 'JSON Data Available' : '-';
+          const displayText = criteria ? getJsonDataPreview(criteria, 80) : '-';
           const tooltipContent = criteria ? JSON.stringify(criteria, null, 2) : '-';
           return (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base truncate min-w-0">
+                    <div className="text-base font-mono text-sm truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -1065,21 +1121,21 @@ export default function DataGrid() {
             </TooltipProvider>
           );
         },
-        size: 250,
+        size: 280,
       },
       {
         accessorKey: "dataCollectionResults",
         header: "Data Collection Results",
         cell: ({ getValue }) => {
           const results = getValue() as any;
-          const displayText = results ? 'JSON Data Available' : '-';
+          const displayText = results ? getJsonDataPreview(results, 80) : '-';
           const tooltipContent = results ? JSON.stringify(results, null, 2) : '-';
           return (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base truncate min-w-0">
+                    <div className="text-base font-mono text-sm truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -1091,21 +1147,21 @@ export default function DataGrid() {
             </TooltipProvider>
           );
         },
-        size: 250,
+        size: 280,
       },
       {
         accessorKey: "interviewData",
         header: "Interview Data",
         cell: ({ getValue }) => {
           const data = getValue() as any;
-          const displayText = data ? 'JSON Data Available' : '-';
+          const displayText = data ? getJsonDataPreview(data, 80) : '-';
           const tooltipContent = data ? JSON.stringify(data, null, 2) : '-';
           return (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base truncate min-w-0">
+                    <div className="text-base font-mono text-sm truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -1117,7 +1173,7 @@ export default function DataGrid() {
             </TooltipProvider>
           );
         },
-        size: 250,
+        size: 280,
       },
       // === TIMESTAMPS ===
       {
