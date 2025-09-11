@@ -1,0 +1,343 @@
+
+Eleven v3 and Eleven Music API access is now available
+
+
+Logo
+Search
+/
+
+Ask AI
+Community
+Blog
+Help Center
+API Pricing
+Sign up
+
+API REFERENCE
+Introduction
+Authentication
+Streaming
+ENDPOINTS
+
+Text to Speech
+
+Speech to Text
+
+Text to Dialogue
+
+Music
+
+Voice Changer
+
+Sound Effects
+
+Audio Isolation
+
+Text to Voice
+
+Dubbing
+
+Audio Native
+
+Voices
+
+Forced Alignment
+ADMINISTRATION
+
+History
+
+Models
+
+Studio
+
+Pronunciation Dictionaries
+
+Samples
+
+Usage
+
+User
+
+Voice Library
+
+Service Accounts
+
+Workspace
+
+Webhooks
+Agents Platform
+
+Agents
+
+Conversations
+
+Tools
+
+Knowledge Base
+
+Tests
+
+Phone Numbers
+
+Widget
+
+Workspace
+
+SIP Trunk
+
+Twilio
+
+Batch Calling
+
+LLM Usage
+
+MCP
+POST
+Create MCP server
+GET
+List MCP servers
+GET
+Get MCP server
+GET
+List MCP server tools
+
+Approval Policies
+LEGACY
+
+Voices
+
+Knowledge Base
+Agents Platform
+MCP
+Get MCP server
+GET
+
+https://api.elevenlabs.io
+/v1/convai/mcp-servers/:mcp_server_id
+GET
+/v1/convai/mcp-servers/:mcp_server_id
+
+cURL
+
+curl https://api.elevenlabs.io/v1/convai/mcp-servers/mcp_server_id \
+     -H "xi-api-key: xi-api-key"
+Try it
+200
+Retrieved
+
+{
+  "id": "string",
+  "config": {
+    "url": "string",
+    "name": "string",
+    "approval_policy": "auto_approve_all",
+    "tool_approval_hashes": [
+      {
+        "tool_name": "string",
+        "tool_hash": "string",
+        "approval_policy": "auto_approved"
+      }
+    ],
+    "transport": "SSE",
+    "secret_token": {
+      "secret_id": "string"
+    },
+    "request_headers": {},
+    "description": ""
+  },
+  "metadata": {
+    "created_at": 1,
+    "owner_user_id": "string"
+  },
+  "access_info": {
+    "is_creator": true,
+    "creator_name": "string",
+    "creator_email": "string",
+    "role": "admin"
+  },
+  "dependent_agents": [
+    {
+      "type": "unknown"
+    }
+  ]
+}
+Retrieve a specific MCP server configuration from the workspace.
+Path parameters
+mcp_server_id
+string
+Required
+ID of the MCP Server.
+Headers
+xi-api-key
+string
+Required
+Response
+Successful Response
+id
+string
+config
+object
+
+Hide 8 properties
+url
+string or object
+The URL of the MCP server, if this contains a secret please store as a workspace secret, otherwise store as a plain string. Must use https
+
+Hide 2 variants
+string
+OR
+ConvAISecretLocator
+object
+
+Hide 1 properties
+secret_id
+string
+name
+string
+approval_policy
+enum or null
+Defines the MCP server-level approval policy for tool execution.
+Allowed values:
+auto_approve_all
+require_approval_all
+require_approval_per_tool
+tool_approval_hashes
+list of objects or null
+List of tool approval hashes for per-tool approval when approval_policy is REQUIRE_APPROVAL_PER_TOOL
+
+Hide 3 properties
+tool_name
+string
+The name of the MCP tool
+tool_hash
+string
+SHA256 hash of the tool's parameters and description
+approval_policy
+enum or null
+The approval policy for this tool
+Allowed values:
+auto_approved
+requires_approval
+transport
+enum or null
+The transport type used to connect to the MCP server
+Allowed values:
+SSE
+STREAMABLE_HTTP
+secret_token
+object or null
+The secret token (Authorization header) stored as a workspace secret or in-place secret
+
+Hide 2 variants
+ConvAISecretLocator
+object
+
+Hide 1 properties
+secret_id
+string
+OR
+ConvAIUserSecretDBModel
+object
+
+Hide 4 properties
+id
+string
+name
+string
+encrypted_value
+string
+nonce
+string
+request_headers
+map from strings to strings or objects or null
+The headers included in the request
+
+Hide 2 variants
+string
+OR
+ConvAISecretLocator
+object
+
+Hide 1 properties
+secret_id
+string
+description
+string or null
+Defaults to
+metadata
+object
+The metadata of the MCP Server
+
+Hide 2 properties
+created_at
+integer
+owner_user_id
+string or null
+access_info
+object or null
+The access information of the MCP Server
+
+Hide 4 properties
+is_creator
+boolean
+Whether the user making the request is the creator of the agent
+creator_name
+string
+Name of the agent's creator
+creator_email
+string
+Email of the agent's creator
+role
+enum
+The role of the user making the request
+Allowed values:
+admin
+editor
+viewer
+dependent_agents
+list of objects or null
+List of agents that depend on this MCP Server.
+
+Hide 2 variants
+DependentAvailableAgentIdentifier
+object
+
+Hide 5 properties
+id
+string
+name
+string
+created_at_unix_secs
+integer
+access_level
+enum
+Allowed values:
+admin
+editor
+viewer
+type
+"available" or null
+Defaults to available
+OR
+DependentUnknownAgentIdentifier
+object
+
+Show 1 properties
+Errors
+
+422
+Unprocessable Entity Error
+Was this page helpful?
+Yes
+No
+Previous
+Update MCP server approval policy
+Next
+Built with
+Ask AI
+
+
+
+Get MCP server | ElevenLabs Documentation
+Need help?
+Powered by ElevenLabs Conversational AI

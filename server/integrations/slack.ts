@@ -17,7 +17,8 @@ export class SlackIntegration {
 
   async ensurePools(): Promise<void> {
     if (!this.client) {
-      throw new Error("SLACK_BOT_TOKEN not configured - cannot ensure pools");
+      console.log("Slack not configured - skipping pool creation");
+      return;
     }
     try {
       // Ensure round one channel exists
@@ -36,7 +37,7 @@ export class SlackIntegration {
         pathUsed: "api",
       });
     } catch (error) {
-      throw new Error(`Failed to ensure Slack pools: ${String(error)}`);
+      console.log("Failed to ensure Slack pools (non-critical):", error);
     }
   }
 
@@ -76,13 +77,17 @@ export class SlackIntegration {
   }
 
   async postUpdate(channel: string, message: string, blocks?: any): Promise<string | undefined> {
+    if (!this.client) {
+      console.log(`Slack not configured - would have posted: ${message}`);
+      return undefined;
+    }
     try {
       // Resolve channel name to ID if needed
       const channelId = channel.startsWith("#") 
         ? await this.getChannelId(channel.slice(1))
         : channel;
 
-      const response = await this.client!.chat.postMessage({
+      const response = await this.client.chat.postMessage({
         channel: channelId,
         text: message,
         blocks,
@@ -97,7 +102,8 @@ export class SlackIntegration {
 
       return response.ts;
     } catch (error) {
-      throw new Error(`Failed to post Slack update: ${String(error)}`);
+      console.log("Failed to post Slack update (non-critical):", error);
+      return undefined;
     }
   }
 
@@ -115,10 +121,15 @@ export class SlackIntegration {
   }
 
   async postCandidateUpdate(candidateId: string, stage: string, notes?: string): Promise<void> {
+    if (!this.client) {
+      console.log(`Slack not configured - would have posted candidate update for ${candidateId}`);
+      return;
+    }
     try {
       const candidate = await storage.getCandidate(candidateId);
       if (!candidate) {
-        throw new Error("Candidate not found");
+        console.log("Candidate not found for Slack update");
+        return;
       }
 
       const channel = stage === "HIRED" ? this.hiresChannel : this.roundOneChannel;
@@ -158,7 +169,7 @@ export class SlackIntegration {
 
       await this.postUpdate(channel, `Candidate ${candidate.name} moved to ${stage}`, blocks);
     } catch (error) {
-      throw new Error(`Failed to post candidate update: ${String(error)}`);
+      console.log("Failed to post candidate update (non-critical):", error);
     }
   }
 }

@@ -111,6 +111,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // STREAMABLE_HTTP MCP endpoint for ElevenLabs interview agents
+  app.post("/api/mcp", async (req, res) => {
+    try {
+      const { method, params, id, jsonrpc } = req.body;
+
+      // Validate JSON-RPC 2.0 format
+      if (jsonrpc !== "2.0" || !method) {
+        return res.status(400).json({
+          jsonrpc: "2.0",
+          error: { code: -32600, message: "Invalid Request" },
+          id: id || null
+        });
+      }
+
+      let result;
+
+      switch (method) {
+        case "tools/list":
+          const tools = await mcpServer.listTools();
+          result = tools;
+          break;
+
+        case "tools/call":
+          if (!params || !params.name) {
+            return res.status(400).json({
+              jsonrpc: "2.0",
+              error: { code: -32602, message: "Invalid params: name required" },
+              id
+            });
+          }
+          result = await mcpServer.callTool(params.name, params.arguments || {});
+          break;
+
+        default:
+          return res.status(400).json({
+            jsonrpc: "2.0",
+            error: { code: -32601, message: "Method not found" },
+            id
+          });
+      }
+
+      res.json({
+        jsonrpc: "2.0",
+        result,
+        id
+      });
+
+    } catch (error) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: { 
+          code: -32603, 
+          message: "Internal error", 
+          data: String(error) 
+        },
+        id: req.body.id || null
+      });
+    }
+  });
+
   // Campaign management
   app.get("/api/campaigns", async (req, res) => {
     try {

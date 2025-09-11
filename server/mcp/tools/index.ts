@@ -239,6 +239,98 @@ export async function upsertCandidate(args: any) {
   }
 }
 
+// Specialized tool for ElevenLabs interview agents to create candidates
+export async function createCandidateFromInterview(args: any) {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      interviewData,
+      score,
+      notes,
+      pipelineStage = "FIRST_INTERVIEW"
+    } = args;
+
+    // Check if candidate already exists
+    let existingCandidate;
+    try {
+      existingCandidate = await storage.getCandidateByEmail(email);
+    } catch (error) {
+      existingCandidate = null;
+    }
+    
+    if (existingCandidate) {
+      // Update existing candidate with interview data
+      const updated = await storage.updateCandidate(existingCandidate.id, {
+        pipelineStage,
+        score: score || existingCandidate.score,
+      });
+
+      // Create interview record
+      let interview = null;
+      try {
+        interview = await storage.createInterview({
+          candidateId: existingCandidate.id,
+          summary: notes || "Interview completed via ElevenLabs agent",
+          scorecard: interviewData || {},
+          transcript: interviewData?.transcript || "",
+        });
+      } catch (interviewError) {
+        console.log("Failed to create interview record (non-critical):", interviewError);
+      }
+
+      return {
+        success: true,
+        candidate: updated,
+        interview,
+        action: "updated_existing",
+        message: "Candidate updated with interview data"
+      };
+    } else {
+      // Create new candidate from interview (minimal data)
+      const candidateData = {
+        name,
+        email,
+        pipelineStage,
+        score: score || 0,
+        sourceRef: "elevenlabs_interview",
+      };
+      
+      if (phone) candidateData.phone = phone;
+      
+      const candidate = await storage.createCandidate(candidateData);
+
+      // Create interview record (optional)
+      let interview = null;
+      try {
+        interview = await storage.createInterview({
+          candidateId: candidate.id,
+          summary: notes || "Interview completed via ElevenLabs agent",
+          scorecard: interviewData || {},
+          transcript: interviewData?.transcript || "",
+        });
+      } catch (interviewError) {
+        console.log("Failed to create interview record (non-critical):", interviewError);
+      }
+
+      return {
+        success: true,
+        candidate,
+        interview,
+        action: "created_new",
+        message: "New candidate created from interview data"
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: String(error),
+      message: "Failed to create candidate from interview"
+    };
+  }
+}
+
 export async function writeInterview(args: any) {
   try {
     const interview = await storage.createInterview(args);

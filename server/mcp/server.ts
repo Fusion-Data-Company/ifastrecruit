@@ -9,6 +9,7 @@ import {
   createCalendarSlots,
   bookInterview,
   upsertCandidate,
+  createCandidateFromInterview,
   writeInterview,
   updateSlackPools,
   operateBrowser,
@@ -37,6 +38,7 @@ export class MCPServer {
     this.tools.set("create_calendar_slots", createCalendarSlots);
     this.tools.set("book_interview", bookInterview);
     this.tools.set("db.upsert_candidate", upsertCandidate);
+    this.tools.set("create_candidate_from_interview", createCandidateFromInterview);
     this.tools.set("db.write_interview", writeInterview);
     this.tools.set("update_slack_pools", updateSlackPools);
     this.tools.set("operate_browser", operateBrowser);
@@ -104,6 +106,7 @@ export class MCPServer {
       "create_calendar_slots": "Create available calendar slots for interview booking",
       "book_interview": "Book an interview slot and generate ICS file",
       "db.upsert_candidate": "Insert or update candidate record in database",
+      "create_candidate_from_interview": "Create or update candidate from ElevenLabs interview agent data",
       "db.write_interview": "Write interview results and scorecard to database",
       "update_slack_pools": "Ensure Slack channels exist and post updates",
       "operate_browser": "Execute browser automation via Airtop for fallback scenarios",
@@ -142,6 +145,19 @@ export class MCPServer {
           notes: { type: "string" },
         },
         required: ["candidateId", "newStage"],
+      },
+      "create_candidate_from_interview": {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          email: { type: "string" },
+          phone: { type: "string" },
+          interviewData: { type: "object" },
+          score: { type: "number", minimum: 0, maximum: 100 },
+          notes: { type: "string" },
+          pipelineStage: { type: "string", enum: ["NEW", "FIRST_INTERVIEW", "TECHNICAL_SCREEN", "FINAL_INTERVIEW", "OFFER", "HIRED", "REJECTED"] },
+        },
+        required: ["name", "email"],
       },
       // Add other tool schemas as needed
     };
