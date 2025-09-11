@@ -12,6 +12,32 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { motion } from "framer-motion";
+import {
+  ChevronRight,
+  ChevronDown,
+  Expand,
+  Minimize2,
+  Mail,
+  Phone,
+  Clock,
+  CheckCircle,
+  XCircle,
+  User,
+  Copy,
+  StickyNote,
+  ClipboardList,
+  FileText,
+  Settings,
+  BarChart3,
+  Database,
+  Filter,
+  Download,
+  ArrowUpDown,
+  Eye,
+  Edit,
+  Calendar,
+  FileUp
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -77,7 +103,7 @@ function EditableCell({ getValue, row, column, table }: any) {
         onChange={(e) => setValue(e.target.value)}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        className="h-10 text-sm bg-transparent border-accent"
+        className="h-12 text-base bg-transparent border-accent"
         autoFocus
       />
     );
@@ -85,11 +111,11 @@ function EditableCell({ getValue, row, column, table }: any) {
 
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center"
+      className="cursor-pointer hover:bg-accent/10 px-4 py-4 rounded min-h-16 flex items-center"
       onClick={() => setIsEditing(true)}
       data-testid={`editable-${column.id}-${row.original.id}`}
     >
-      <span className="text-sm">{value as string || "—"}</span>
+      <span className="text-base">{value as string || "—"}</span>
     </div>
   );
 }
@@ -108,6 +134,218 @@ function formatCallDuration(seconds: number | null | undefined): string {
   if (remainingSeconds > 0) parts.push(`${remainingSeconds}s`);
   
   return parts.length > 0 ? parts.join(' ') : '-';
+}
+
+// Expanded Row Content Component
+function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
+  return (
+    <div className="bg-muted/20 border-l-4 border-primary/30 p-6 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-4">
+          {/* Interview Notes */}
+          {candidate.notes && candidate.notes !== '-' && (
+            <div className="bg-background rounded-lg p-4 border">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-primary flex items-center">
+                  <StickyNote className="h-4 w-4 mr-2" />
+                  Interview Notes
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => navigator.clipboard.writeText(candidate.notes || '')}
+                  data-testid={`copy-notes-${candidate.id}`}
+                >
+                  <Copy className="h-3 w-3 mr-1" />Copy
+                </Button>
+              </div>
+              <div className="text-base whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                {candidate.notes}
+              </div>
+            </div>
+          )}
+
+          {/* Interview Summary */}
+          {candidate.interviewSummary && candidate.interviewSummary !== '-' && (
+            <div className="bg-background rounded-lg p-4 border">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-primary flex items-center">
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  Interview Summary
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => navigator.clipboard.writeText(candidate.interviewSummary || '')}
+                  data-testid={`copy-summary-${candidate.id}`}
+                >
+                  <Copy className="h-3 w-3 mr-1" />Copy
+                </Button>
+              </div>
+              <div className="text-base whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                {candidate.interviewSummary}
+              </div>
+            </div>
+          )}
+
+          {/* Call Summary Title */}
+          {candidate.callSummaryTitle && candidate.callSummaryTitle !== '-' && (
+            <div className="bg-background rounded-lg p-4 border">
+              <h4 className="text-base font-semibold text-primary mb-2 flex items-center">
+                <Phone className="h-4 w-4 mr-2" />
+                Call Summary Title
+              </h4>
+              <div className="text-base whitespace-pre-wrap leading-relaxed">
+                {candidate.callSummaryTitle}
+              </div>
+            </div>
+          )}
+
+          {/* Transcript Summary */}
+          {candidate.transcriptSummary && candidate.transcriptSummary !== '-' && (
+            <div className="bg-background rounded-lg p-4 border">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-primary flex items-center">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Transcript Summary
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => navigator.clipboard.writeText(candidate.transcriptSummary || '')}
+                  data-testid={`copy-transcript-summary-${candidate.id}`}
+                >
+                  <Copy className="h-3 w-3 mr-1" />Copy
+                </Button>
+              </div>
+              <div className="text-base whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                {candidate.transcriptSummary}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-4">
+          {/* Technical Details */}
+          <div className="bg-background rounded-lg p-4 border">
+            <h4 className="text-base font-semibold text-primary mb-3 flex items-center">
+              <Settings className="h-4 w-4 mr-2" />
+              Technical Details
+            </h4>
+            <div className="grid grid-cols-2 gap-3 text-base">
+              <div>
+                <span className="font-medium text-muted-foreground">Agent:</span>
+                <div className="mt-1">{candidate.agentName || '-'}</div>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">Agent ID:</span>
+                <div className="mt-1 font-mono text-sm">{candidate.agentId || '-'}</div>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">Conversation ID:</span>
+                <div className="mt-1 font-mono text-sm">{candidate.conversationId || '-'}</div>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">Call Status:</span>
+                <div className="mt-1">{candidate.callStatus || '-'}</div>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">Call Duration:</span>
+                <div className="mt-1">{formatCallDuration(candidate.callDuration)}</div>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">Messages:</span>
+                <div className="mt-1">{candidate.messageCount || 0}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Evaluation Criteria */}
+          {candidate.evaluationCriteria != null && (
+            <div className="bg-background rounded-lg p-4 border">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-primary flex items-center">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Evaluation Criteria
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(candidate.evaluationCriteria, null, 2))}
+                  data-testid={`copy-evaluation-${candidate.id}`}
+                >
+                  <Copy className="h-3 w-3 mr-1" />Copy JSON
+                </Button>
+              </div>
+              <div className="bg-muted/50 rounded p-3 max-h-32 overflow-y-auto">
+                <pre className="text-xs font-mono whitespace-pre-wrap">
+                  {JSON.stringify(candidate.evaluationCriteria, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Data Collection Results */}
+          {candidate.dataCollectionResults != null && (
+            <div className="bg-background rounded-lg p-4 border">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold text-primary flex items-center">
+                  <Database className="h-4 w-4 mr-2" />
+                  Data Collection
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(candidate.dataCollectionResults, null, 2))}
+                  data-testid={`copy-data-collection-${candidate.id}`}
+                >
+                  <Copy className="h-3 w-3 mr-1" />Copy JSON
+                </Button>
+              </div>
+              <div className="bg-muted/50 rounded p-3 max-h-32 overflow-y-auto">
+                <pre className="text-xs font-mono whitespace-pre-wrap">
+                  {JSON.stringify(candidate.dataCollectionResults, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Full Interview Transcript - Full Width */}
+      {candidate.interviewTranscript && candidate.interviewTranscript !== '-' && (
+        <div className="bg-background rounded-lg p-4 border">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-base font-semibold text-primary flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Full Interview Transcript
+            </h4>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={() => navigator.clipboard.writeText(candidate.interviewTranscript || '')}
+              data-testid={`copy-transcript-${candidate.id}`}
+            >
+              <Copy className="h-3 w-3 mr-1" />Copy
+            </Button>
+          </div>
+          <div className="bg-muted/50 rounded p-4 max-h-64 overflow-y-auto">
+            <pre className="text-base font-mono whitespace-pre-wrap leading-relaxed">
+              {candidate.interviewTranscript}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Editable score cell with number input
@@ -161,16 +399,16 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
   const score = value as number;
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center space-x-2"
+      className="cursor-pointer hover:bg-accent/10 px-4 py-4 rounded min-h-16 flex items-center space-x-3"
       onClick={() => setIsEditing(true)}
     >
-      <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+      <div className="w-16 h-3 bg-muted rounded-full overflow-hidden">
         <div 
           className="h-full bg-accent rounded-full transition-all duration-300"
           style={{ width: `${score}%` }}
         />
       </div>
-      <span className="text-sm w-10">{score}%</span>
+      <span className="text-base w-12">{score}%</span>
     </div>
   );
 }
@@ -186,6 +424,7 @@ export default function DataGrid() {
   const [viewingCandidate, setViewingCandidate] = useState<Candidate | null>(null);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [detailsCandidate, setDetailsCandidate] = useState<Candidate | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -288,8 +527,76 @@ export default function DataGrid() {
     }
   };
 
+  // Toggle row expansion
+  const toggleRowExpansion = useCallback((candidateId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(candidateId)) {
+        newSet.delete(candidateId);
+      } else {
+        newSet.add(candidateId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Expand all rows
+  const expandAllRows = useCallback(() => {
+    const candidateIds = (currentFilters ? filteredCandidates : data).map(c => c.id);
+    setExpandedRows(new Set(candidateIds));
+  }, [currentFilters, filteredCandidates, data]);
+
+  // Collapse all rows
+  const collapseAllRows = useCallback(() => {
+    setExpandedRows(new Set());
+  }, []);
+
   const columns = useMemo<ColumnDef<Candidate>[]>(
     () => [
+      {
+        id: "expand",
+        header: ({ table }) => {
+          const allExpanded = expandedRows.size === (currentFilters ? filteredCandidates : data).length;
+          const someExpanded = expandedRows.size > 0;
+          
+          return (
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-10 w-10 p-0 hover:bg-accent/20"
+                onClick={() => allExpanded ? collapseAllRows() : expandAllRows()}
+                data-testid="expand-all-toggle"
+                title={allExpanded ? "Collapse all rows" : "Expand all rows"}
+              >
+                {allExpanded ? <Minimize2 className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+              </Button>
+              {someExpanded && (
+                <span className="text-xs text-muted-foreground">
+                  {expandedRows.size}
+                </span>
+              )}
+            </div>
+          );
+        },
+        cell: ({ row }) => {
+          const isExpanded = expandedRows.has(row.original.id);
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0 hover:bg-accent/20"
+              onClick={() => toggleRowExpansion(row.original.id)}
+              data-testid={`expand-toggle-${row.original.id}`}
+              title={isExpanded ? "Collapse row" : "Expand row"}
+            >
+              {isExpanded ? <ChevronDown className="h-4 w-4 transition-transform duration-200" /> : <ChevronRight className="h-4 w-4 transition-transform duration-200" />}
+            </Button>
+          );
+        },
+        size: 80,
+        enableSorting: false,
+      },
       {
         id: "select",
         header: ({ table }) => (
@@ -326,8 +633,8 @@ export default function DataGrid() {
         accessorKey: "name",
         header: "Name",
         cell: (props) => (
-          <div className="flex items-center space-x-2 min-w-0">
-            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-sm flex-shrink-0">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-base font-medium flex-shrink-0">
               {props.row.original.name?.charAt(0)?.toUpperCase() || "?"}
             </div>
             <div className="min-w-0 flex-1">
@@ -335,7 +642,7 @@ export default function DataGrid() {
             </div>
           </div>
         ),
-        size: 200,
+        size: 250,
       },
       {
         accessorKey: "email",
@@ -344,66 +651,28 @@ export default function DataGrid() {
           const email = getValue() as string;
           
           return (
-            <div className="flex items-center space-x-2">
-              <EditableCell getValue={getValue} row={row} column={column} table={table} />
+            <div className="flex items-center space-x-3">
+              <div className="flex-1">
+                <EditableCell getValue={getValue} row={row} column={column} table={table} />
+              </div>
               {email && (
                 <a 
                   href={`mailto:${email}`}
-                  className="text-blue-500 hover:text-blue-600 ml-2"
+                  className="text-blue-500 hover:text-blue-600 flex-shrink-0"
                   data-testid={`email-${row.original.id}`}
                   title="Send email"
                 >
-                  <i className="fas fa-envelope text-sm"></i>
+                  <Mail className="h-4 w-4" />
                 </a>
               )}
             </div>
           );
         },
-        size: 280,
-      },
-      {
-        accessorKey: "phone",
-        header: "Phone",
-        cell: ({ getValue, row, column, table }) => {
-          const phoneNumber = getValue() as string;
-          const formattedPhone = phoneNumber?.replace(/[^\d+]/g, '') || '';
-          
-          return (
-            <div className="flex items-center space-x-2">
-              <EditableCell getValue={getValue} row={row} column={column} table={table} />
-              {formattedPhone && (
-                <a 
-                  href={`tel:${formattedPhone}`}
-                  className="text-blue-500 hover:text-blue-600 ml-2"
-                  data-testid={`call-${row.original.id}`}
-                  title="Call this number"
-                >
-                  <i className="fas fa-phone text-sm"></i>
-                </a>
-              )}
-            </div>
-          );
-        },
-        size: 180,
-      },
-      {
-        accessorKey: "sourceRef",
-        header: "Source",
-        cell: ({ row }) => {
-          const source = row.original.campaignId ? "Indeed" : "Manual";
-          const colorClass = source === "Indeed" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground";
-          return (
-            <Badge className={`${colorClass} rounded-full text-sm`} data-testid={`candidate-source-${row.original.id}`}>
-              {source}
-            </Badge>
-          );
-        },
-        size: 150,
-        enableSorting: false,
+        size: 300,
       },
       {
         accessorKey: "pipelineStage",
-        header: "Stage",
+        header: "Pipeline Stage",
         cell: ({ row, table }) => (
           <Select
             value={row.original.pipelineStage}
@@ -411,7 +680,7 @@ export default function DataGrid() {
               table.options.meta?.updateData(row.index, 'pipelineStage', value);
             }}
           >
-            <SelectTrigger className="glass-input text-sm bg-transparent border-border h-10 w-full" data-testid={`stage-select-${row.original.id}`}>
+            <SelectTrigger className="glass-input text-base bg-transparent border-border h-12 w-full" data-testid={`stage-select-${row.original.id}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -425,66 +694,13 @@ export default function DataGrid() {
             </SelectContent>
           </Select>
         ),
-        size: 160,
+        size: 180,
       },
       {
         accessorKey: "score",
-        header: "Score",
+        header: "Overall Score",
         cell: EditableScoreCell,
-        size: 140,
-      },
-      {
-        accessorKey: "interviewScore",
-        header: "Interview Score",
-        cell: ({ getValue }) => {
-          const value = getValue() as number;
-          return (
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium">{value || 0}</span>
-              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent transition-all duration-200"
-                  style={{ width: `${Math.max(0, Math.min(100, (value || 0)))}%` }}
-                />
-              </div>
-            </div>
-          );
-        },
-        size: 150,
-      },
-      {
-        accessorKey: "notes",
-        header: "Interview Notes",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as string;
-          if (!value || value === '-') {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs">
-                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-80 p-3 text-sm bg-popover border border-border shadow-lg">
-                  <div className="whitespace-pre-wrap">{value}</div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
         size: 160,
-      },
-      {
-        accessorKey: "interviewDuration",
-        header: "Duration",
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
-          return <span className="text-sm">{value || '-'}</span>;
-        },
-        size: 120,
       },
       {
         accessorKey: "agentName",
@@ -492,257 +708,58 @@ export default function DataGrid() {
         cell: ({ getValue }) => {
           const value = getValue() as string;
           return (
-            <Badge variant="secondary" className="text-sm">
-              {value || 'Unknown'}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-base">{value || '-'}</span>
+            </div>
           );
         },
         size: 150,
       },
       {
-        accessorKey: "agentId",
-        header: "Agent ID",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as string;
-          if (!value) {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
+        id: "callComposite",
+        header: "Call Info",
+        cell: ({ row }) => {
+          const duration = formatCallDuration(row.original.callDuration);
+          const isSuccess = row.original.callSuccessful === 'success' || row.original.callSuccessful === 'true';
+          const status = row.original.callStatus;
+          
           return (
-            <Badge variant="outline" className="text-sm font-mono" data-testid={`agent-id-${row.original.id}`}>
-              {value}
-            </Badge>
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-base">{duration}</span>
+              </div>
+              <div className="flex items-center">
+                {isSuccess ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+              </div>
+            </div>
           );
         },
-        size: 180,
+        size: 140,
+        enableSorting: false,
       },
       {
-        accessorKey: "conversationId",
-        header: "Conversation ID",
-        cell: ({ getValue, row }) => {
+        accessorKey: "interviewDate",
+        header: "Interview Date",
+        cell: ({ getValue }) => {
           const value = getValue() as string;
-          if (!value) {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
-          const truncatedValue = value.length > 12 ? `${value.substring(0, 12)}...` : value;
+          const date = value ? new Date(value) : null;
           return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div 
-                    className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs font-mono"
-                    data-testid={`conversation-id-${row.original.id}`}
-                  >
-                    <span className="text-sm">{truncatedValue}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="p-3 text-sm bg-popover border border-border shadow-lg">
-                  <div className="font-mono">{value}</div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-base">
+                {date ? date.toLocaleDateString() : '-'}
+              </span>
+            </div>
           );
         },
         size: 160,
       },
-      {
-        accessorKey: "callSummaryTitle",
-        header: "Interview Title",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as string;
-          return (
-            <div className="p-2 bg-muted/10 rounded min-h-8 max-w-xs" title={value}>
-              <span className="text-sm whitespace-pre-wrap break-words leading-5">{value || '-'}</span>
-            </div>
-          );
-        },
-        size: 200,
-      },
-      {
-        accessorKey: "interviewTranscript",
-        header: "Interview Transcript",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as string;
-          if (!value || value === '-') {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-sm">
-                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value.substring(0, 150)}{value.length > 150 ? '...' : ''}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-2xl p-4 text-sm bg-popover border border-border shadow-lg">
-                  <div className="whitespace-pre-wrap max-h-96 overflow-y-auto">{value}</div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 300,
-      },
-      {
-        accessorKey: "interviewSummary",
-        header: "Interview Summary",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as string;
-          if (!value || value === '-') {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-sm">
-                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value.substring(0, 100)}{value.length > 100 ? '...' : ''}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xl p-4 text-sm bg-popover border border-border shadow-lg">
-                  <div className="whitespace-pre-wrap">{value}</div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 280,
-      },
-      {
-        accessorKey: "transcriptSummary",
-        header: "Transcript Summary",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as string;
-          if (!value || value === '-') {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div 
-                    className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-sm"
-                    data-testid={`transcript-summary-${row.original.id}`}
-                  >
-                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value.substring(0, 120)}{value.length > 120 ? '...' : ''}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xl p-4 text-sm bg-popover border border-border shadow-lg">
-                  <div className="whitespace-pre-wrap">{value}</div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 300,
-      },
-      {
-        accessorKey: "evaluationCriteria",
-        header: "Evaluation Criteria",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as any;
-          if (!value) {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
-          const jsonString = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs">
-                    <span className="text-sm">📊 Criteria Available</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-2xl p-4 text-sm bg-popover border border-border shadow-lg">
-                  <pre className="whitespace-pre-wrap max-h-96 overflow-y-auto text-xs">{jsonString}</pre>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 180,
-      },
-      {
-        accessorKey: "dataCollectionResults",
-        header: "Data Collection",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as any;
-          if (!value) {
-            return <span className="text-sm text-muted-foreground">-</span>;
-          }
-          const jsonString = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs">
-                    <span className="text-sm">📋 Data Available</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-2xl p-4 text-sm bg-popover border border-border shadow-lg">
-                  <pre className="whitespace-pre-wrap max-h-96 overflow-y-auto text-xs">{jsonString}</pre>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 180,
-      },
-      {
-        accessorKey: "callStatus",
-        header: "Call Status",
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
-          const statusColor = value === 'completed' ? 'text-green-600' : value === 'failed' ? 'text-red-600' : 'text-yellow-600';
-          return (
-            <span className={`text-sm font-medium ${statusColor}`}>
-              {value || '-'}
-            </span>
-          );
-        },
-        size: 140,
-      },
-      {
-        accessorKey: "callSuccessful",
-        header: "Call Success",
-        cell: ({ getValue }) => {
-          const value = getValue() as string;
-          const isSuccess = value === 'success' || value === 'true';
-          return (
-            <div className="flex items-center justify-center">
-              <i className={`fas ${isSuccess ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} text-base`}></i>
-              <span className="ml-2 text-sm">{value || '-'}</span>
-            </div>
-          );
-        },
-        size: 140,
-      },
-      {
-        accessorKey: "callDuration",
-        header: "Call Duration",
-        cell: ({ getValue, row }) => {
-          const value = getValue() as number;
-          const formattedDuration = formatCallDuration(value);
-          return (
-            <div className="flex items-center justify-center" data-testid={`call-duration-${row.original.id}`}>
-              <i className="fas fa-clock text-blue-500 text-base mr-2"></i>
-              <span className="text-sm font-medium">{formattedDuration}</span>
-            </div>
-          );
-        },
-        size: 140,
-      },
-      {
-        accessorKey: "messageCount",
-        header: "Messages",
-        cell: ({ getValue }) => {
-          const value = getValue() as number;
-          return (
-            <div className="flex items-center justify-center">
-              <i className="fas fa-comments text-blue-500 text-base mr-2"></i>
-              <span className="text-sm font-medium">{value || 0}</span>
-            </div>
-          );
-        },
         size: 120,
       },
       {
@@ -918,7 +935,7 @@ export default function DataGrid() {
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 120,
+    estimateSize: () => 80,
     overscan: 10,
   });
 
@@ -1017,29 +1034,28 @@ export default function DataGrid() {
             </div>
           </div>
 
-          {/* Virtualized Rows */}
+          {/* Table Rows with Expansion Support */}
           <div 
             ref={parentRef}
-            className="max-h-96 overflow-auto"
+            className="max-h-[80vh] overflow-auto"
             data-testid="candidates-grid"
           >
-            <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
-              {virtualizer.getVirtualItems().map((virtualRow) => {
-                const row = rows[virtualRow.index];
+            <div className="relative">
+              {rows.map((row, index) => {
+                const isExpanded = expandedRows.has(row.original.id);
                 return (
                   <motion.div
                     key={row.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute w-full border-b border-accent/10 hover:bg-accent/5 hover:shadow-sm transition-all duration-200"
-                    style={{
-                      height: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
+                    className={`w-full border-b hover:bg-accent/5 hover:shadow-sm transition-all duration-200 ${
+                      isExpanded ? 'border-primary/20 bg-accent/2' : 'border-accent/10'
+                    }`}
                     data-testid={`candidate-row-${row.original.id}`}
                   >
-                    <div className="flex h-full">
+                    {/* Main Row */}
+                    <div className="flex min-h-20">
                       {row.getVisibleCells().map((cell) => (
                         <div
                           key={cell.id}
@@ -1050,16 +1066,39 @@ export default function DataGrid() {
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                        data-testid={`expanded-content-${row.original.id}`}
+                      >
+                        <ExpandedRowContent candidate={row.original} />
+                      </motion.div>
+                    )}
                   </motion.div>
                 );
               })}
             </div>
 
-            {/* Loading indicator for additional data */}
-            {(tableData || []).length > 100 && (
-              <div className="p-4 text-center text-muted-foreground text-sm">
-                <i className="fas fa-spinner fa-spin mr-2"></i>
-                Virtual scrolling active - {(tableData || []).length.toLocaleString()} candidates loaded
+            {/* Expansion Status */}
+            {expandedRows.size > 0 && (
+              <div className="p-3 text-center text-muted-foreground text-sm bg-muted/20 border-t">
+                <i className="fas fa-expand mr-2"></i>
+                {expandedRows.size} {expandedRows.size === 1 ? 'row' : 'rows'} expanded • 
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-1 text-xs ml-2 underline"
+                  onClick={collapseAllRows}
+                  data-testid="collapse-all-rows"
+                >
+                  Collapse All
+                </Button>
               </div>
             )}
           </div>
