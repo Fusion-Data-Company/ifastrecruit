@@ -42,10 +42,14 @@ function EditableCell({ getValue, row, column, table }: any) {
   const initialValue = getValue();
   const [value, setValue] = useState(initialValue);
   const [isEditing, setIsEditing] = useState(false);
+  const prevInitialValueRef = useRef(initialValue);
 
-  // Reset value when data changes
+  // Reset value when data changes - prevent infinite loops by checking if value actually changed
   useEffect(() => {
-    setValue(initialValue);
+    if (prevInitialValueRef.current !== initialValue) {
+      setValue(initialValue);
+      prevInitialValueRef.current = initialValue;
+    }
   }, [initialValue]);
 
   const onBlur = () => {
@@ -88,14 +92,34 @@ function EditableCell({ getValue, row, column, table }: any) {
   );
 }
 
+// Utility function to format call duration from seconds
+function formatCallDuration(seconds: number | null | undefined): string {
+  if (!seconds || seconds <= 0) return '-';
+  
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  
+  const parts = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (remainingSeconds > 0) parts.push(`${remainingSeconds}s`);
+  
+  return parts.length > 0 ? parts.join(' ') : '-';
+}
+
 // Editable score cell with number input
 function EditableScoreCell({ getValue, row, column, table }: any) {
   const initialValue = getValue() || 0;
   const [value, setValue] = useState(initialValue);
   const [isEditing, setIsEditing] = useState(false);
+  const prevInitialValueRef = useRef(initialValue);
 
   useEffect(() => {
-    setValue(initialValue);
+    if (prevInitialValueRef.current !== initialValue) {
+      setValue(initialValue);
+      prevInitialValueRef.current = initialValue;
+    }
   }, [initialValue]);
 
   const onBlur = () => {
@@ -220,7 +244,7 @@ export default function DataGrid() {
       id: candidate.id,
       updates: { [columnId]: value } as Partial<Candidate>,
     });
-  }, [currentFilters, filteredCandidates, data, updateCandidateMutation]);
+  }, [currentFilters, filteredCandidates, updateCandidateMutation]);
 
   const uploadResumeForCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, resumeURL }: { candidateId: string; resumeURL: string }) => {
@@ -473,6 +497,51 @@ export default function DataGrid() {
         size: 150,
       },
       {
+        accessorKey: "agentId",
+        header: "Agent ID",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as string;
+          if (!value) {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+          return (
+            <Badge variant="outline" className="text-sm font-mono" data-testid={`agent-id-${row.original.id}`}>
+              {value}
+            </Badge>
+          );
+        },
+        size: 180,
+      },
+      {
+        accessorKey: "conversationId",
+        header: "Conversation ID",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as string;
+          if (!value) {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+          const truncatedValue = value.length > 12 ? `${value.substring(0, 12)}...` : value;
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div 
+                    className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-xs font-mono"
+                    data-testid={`conversation-id-${row.original.id}`}
+                  >
+                    <span className="text-sm">{truncatedValue}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="p-3 text-sm bg-popover border border-border shadow-lg">
+                  <div className="font-mono">{value}</div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        size: 160,
+      },
+      {
         accessorKey: "callSummaryTitle",
         header: "Interview Title",
         cell: ({ getValue, row }) => {
@@ -534,6 +603,34 @@ export default function DataGrid() {
           );
         },
         size: 280,
+      },
+      {
+        accessorKey: "transcriptSummary",
+        header: "Transcript Summary",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as string;
+          if (!value || value === '-') {
+            return <span className="text-sm text-muted-foreground">-</span>;
+          }
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div 
+                    className="cursor-help p-2 bg-muted/10 rounded min-h-8 max-w-sm"
+                    data-testid={`transcript-summary-${row.original.id}`}
+                  >
+                    <span className="text-sm whitespace-pre-wrap break-words leading-5">{value.substring(0, 120)}{value.length > 120 ? '...' : ''}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xl p-4 text-sm bg-popover border border-border shadow-lg">
+                  <div className="whitespace-pre-wrap">{value}</div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+        size: 300,
       },
       {
         accessorKey: "evaluationCriteria",
@@ -611,6 +708,21 @@ export default function DataGrid() {
             <div className="flex items-center justify-center">
               <i className={`fas ${isSuccess ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} text-base`}></i>
               <span className="ml-2 text-sm">{value || '-'}</span>
+            </div>
+          );
+        },
+        size: 140,
+      },
+      {
+        accessorKey: "callDuration",
+        header: "Call Duration",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as number;
+          const formattedDuration = formatCallDuration(value);
+          return (
+            <div className="flex items-center justify-center" data-testid={`call-duration-${row.original.id}`}>
+              <i className="fas fa-clock text-blue-500 text-base mr-2"></i>
+              <span className="text-sm font-medium">{formattedDuration}</span>
             </div>
           );
         },
