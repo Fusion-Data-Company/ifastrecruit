@@ -273,8 +273,8 @@ export async function createCandidateFromInterview(args: any) {
         interview = await storage.createInterview({
           candidateId: existingCandidate.id,
           summary: notes || "Interview completed via ElevenLabs agent",
-          scorecard: interviewData || {},
-          transcript: interviewData?.transcript || "",
+          scorecardJson: interviewData || {},
+          transcriptUrl: interviewData?.transcript || "",
         });
       } catch (interviewError) {
         console.log("Failed to create interview record (non-critical):", interviewError);
@@ -289,7 +289,7 @@ export async function createCandidateFromInterview(args: any) {
       };
     } else {
       // Create new candidate from interview (minimal data)
-      const candidateData = {
+      const candidateData: any = {
         name,
         email,
         pipelineStage,
@@ -307,8 +307,8 @@ export async function createCandidateFromInterview(args: any) {
         interview = await storage.createInterview({
           candidateId: candidate.id,
           summary: notes || "Interview completed via ElevenLabs agent",
-          scorecard: interviewData || {},
-          transcript: interviewData?.transcript || "",
+          scorecardJson: interviewData || {},
+          transcriptUrl: interviewData?.transcript || "",
         });
       } catch (interviewError) {
         console.log("Failed to create interview record (non-critical):", interviewError);
