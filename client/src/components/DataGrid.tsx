@@ -117,11 +117,11 @@ function EditableCell({ getValue, row, column, table }: any) {
       <Tooltip>
         <TooltipTrigger asChild>
           <div
-            className="cursor-pointer hover:bg-accent/10 px-4 py-2 rounded min-h-12 flex items-center w-full"
+            className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center w-full min-w-0"
             onClick={() => setIsEditing(true)}
             data-testid={`editable-${column.id}-${row.original.id}`}
           >
-            <span className="text-base leading-relaxed truncate">{displayValue}</span>
+            <span className="text-base leading-relaxed truncate min-w-0 flex-1">{displayValue}</span>
           </div>
         </TooltipTrigger>
         {shouldShowTooltip && (
@@ -413,16 +413,16 @@ function EditableScoreCell({ getValue, row, column, table }: any) {
   const score = value as number;
   return (
     <div
-      className="cursor-pointer hover:bg-accent/10 px-4 py-2 rounded min-h-12 flex items-center space-x-3"
+      className="cursor-pointer hover:bg-accent/10 px-3 py-2 rounded min-h-12 flex items-center space-x-3 min-w-0"
       onClick={() => setIsEditing(true)}
     >
-      <div className="w-20 h-4 bg-muted rounded-full overflow-hidden">
+      <div className="w-20 h-4 bg-muted rounded-full overflow-hidden flex-shrink-0">
         <div 
           className="h-full bg-accent rounded-full transition-all duration-300"
           style={{ width: `${score}%` }}
         />
       </div>
-      <span className="text-base w-16">{score}%</span>
+      <span className="text-base w-16 text-right flex-shrink-0">{score}%</span>
     </div>
   );
 }
@@ -657,14 +657,14 @@ export default function DataGrid() {
           const email = getValue() as string;
           
           return (
-            <div className="flex items-center space-x-3">
-              <div className="flex-1">
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="flex-1 min-w-0">
                 <EditableCell getValue={getValue} row={row} column={column} table={table} />
               </div>
               {email && (
                 <a 
                   href={`mailto:${email}`}
-                  className="text-blue-500 hover:text-blue-600 flex-shrink-0"
+                  className="text-blue-500 hover:text-blue-600 flex-shrink-0 p-1 rounded hover:bg-blue-50 transition-colors"
                   data-testid={`email-${row.original.id}`}
                   title="Send email"
                 >
@@ -682,14 +682,14 @@ export default function DataGrid() {
         cell: ({ getValue, row, column, table }) => {
           const phone = getValue() as string;
           return (
-            <div className="flex items-center space-x-3">
-              <div className="flex-1">
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="flex-1 min-w-0">
                 <EditableCell getValue={getValue} row={row} column={column} table={table} />
               </div>
               {phone && (
                 <a 
                   href={`tel:${phone}`}
-                  className="text-blue-500 hover:text-blue-600 flex-shrink-0"
+                  className="text-blue-500 hover:text-blue-600 flex-shrink-0 p-1 rounded hover:bg-blue-50 transition-colors"
                   data-testid={`phone-${row.original.id}`}
                   title="Call phone"
                 >
@@ -711,7 +711,7 @@ export default function DataGrid() {
               table.options.meta?.updateData(row.index, 'pipelineStage', value);
             }}
           >
-            <SelectTrigger className="glass-input text-base bg-transparent border-border h-10 w-full" data-testid={`stage-select-${row.original.id}`}>
+            <SelectTrigger className="glass-input text-base bg-transparent border-border h-10 w-full min-w-0" data-testid={`stage-select-${row.original.id}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -747,21 +747,21 @@ export default function DataGrid() {
         cell: ({ getValue, row }) => {
           const url = getValue() as string;
           return (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center min-w-0">
               {url ? (
                 <a 
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-600 text-base truncate"
+                  className="text-blue-500 hover:text-blue-600 text-base flex items-center min-w-0 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
                   data-testid={`resume-url-${row.original.id}`}
                   title="Open resume"
                 >
-                  <FileUp className="h-4 w-4 mr-1 inline" />
-                  View Resume
+                  <FileUp className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate min-w-0">View Resume</span>
                 </a>
               ) : (
-                <span className="text-base text-muted-foreground">-</span>
+                <span className="text-base text-muted-foreground px-2 py-1">-</span>
               )}
             </div>
           );
@@ -774,15 +774,15 @@ export default function DataGrid() {
         cell: ({ getValue }) => {
           const tags = (getValue() as string[]) || [];
           return (
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1 min-w-0 py-1">
               {tags.length > 0 ? (
                 tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
+                  <Badge key={index} variant="secondary" className="text-xs flex-shrink-0">
                     {tag}
                   </Badge>
                 ))
               ) : (
-                <span className="text-base text-muted-foreground">-</span>
+                <span className="text-base text-muted-foreground px-2">-</span>
               )}
             </div>
           );
@@ -800,8 +800,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -841,8 +841,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -867,8 +867,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -889,9 +889,9 @@ export default function DataGrid() {
           const value = getValue() as string;
           const date = value ? new Date(value) : null;
           return (
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-base">
+            <div className="flex items-center space-x-2 min-w-0 px-2 py-1">
+              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-base min-w-0 truncate">
                 {date ? date.toLocaleDateString() : '-'}
               </span>
             </div>
@@ -918,8 +918,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base font-mono text-sm truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base font-mono text-sm truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -943,8 +943,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base font-mono text-sm truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base font-mono text-sm truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -964,9 +964,9 @@ export default function DataGrid() {
         cell: ({ getValue }) => {
           const duration = getValue() as number;
           return (
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-base">{formatCallDuration(duration)}</span>
+            <div className="flex items-center space-x-2 min-w-0 px-2 py-1">
+              <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-base min-w-0 truncate">{formatCallDuration(duration)}</span>
             </div>
           );
         },
@@ -995,13 +995,13 @@ export default function DataGrid() {
           const isSuccess = getValue() as string;
           const success = isSuccess === 'success' || isSuccess === 'true';
           return (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 min-w-0 px-2 py-1">
               {success ? (
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
               ) : (
-                <XCircle className="h-4 w-4 text-red-500" />
+                <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
               )}
-              <span className="text-base">{isSuccess || '-'}</span>
+              <span className="text-base min-w-0 truncate">{isSuccess || '-'}</span>
             </div>
           );
         },
@@ -1017,8 +1017,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -1052,8 +1052,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -1078,8 +1078,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -1104,8 +1104,8 @@ export default function DataGrid() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help">
-                    <div className="text-base truncate">
+                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
+                    <div className="text-base truncate min-w-0">
                       {displayText}
                     </div>
                   </div>
@@ -1127,9 +1127,9 @@ export default function DataGrid() {
           const value = getValue() as string;
           const date = value ? new Date(value) : null;
           return (
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-base">
+            <div className="flex items-center space-x-2 min-w-0 px-2 py-1">
+              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-base min-w-0 truncate">
                 {date ? date.toLocaleDateString() : '-'}
               </span>
             </div>
