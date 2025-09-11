@@ -872,22 +872,6 @@ export default function DataGrid() {
         size: 350,
       },
       {
-        accessorKey: "interviewScore",
-        header: "Interview Score",
-        cell: ({ getValue, row, column, table }) => (
-          <EditableScoreCell getValue={getValue} row={row} column={column} table={table} />
-        ),
-        size: 200,
-      },
-      {
-        accessorKey: "interviewDuration",
-        header: "Interview Duration",
-        cell: ({ getValue, row, column, table }) => (
-          <EditableCell getValue={getValue} row={row} column={column} table={table} />
-        ),
-        size: 200,
-      },
-      {
         accessorKey: "interviewSummary",
         header: "Interview Summary",
         cell: ({ getValue }) => {
@@ -1043,50 +1027,6 @@ export default function DataGrid() {
           <EditableCell getValue={getValue} row={row} column={column} table={table} />
         ),
         size: 180,
-      },
-      {
-        accessorKey: "callSuccessful",
-        header: "Call Successful",
-        cell: ({ getValue }) => {
-          const isSuccess = getValue() as string;
-          const success = isSuccess === 'success' || isSuccess === 'true';
-          return (
-            <div className="flex items-center space-x-2 min-w-0 px-2 py-1">
-              {success ? (
-                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-              ) : (
-                <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-              )}
-              <span className="text-base min-w-0 truncate">{isSuccess || '-'}</span>
-            </div>
-          );
-        },
-        size: 180,
-      },
-      {
-        accessorKey: "transcriptSummary",
-        header: "Transcript Summary",
-        cell: ({ getValue }) => {
-          const summary = getValue() as string;
-          const displayText = summary && summary !== '-' ? summary : '-';
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="max-w-xs cursor-help min-w-0 px-2 py-1">
-                    <div className="text-base truncate min-w-0">
-                      {displayText}
-                    </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-md break-words">
-                  <p className="whitespace-pre-wrap">{displayText}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-        size: 350,
       },
       {
         accessorKey: "callSummaryTitle",
