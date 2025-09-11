@@ -633,16 +633,7 @@ export default function DataGrid() {
       {
         accessorKey: "name",
         header: "Name",
-        cell: (props) => (
-          <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-base font-medium flex-shrink-0">
-              {props.row.original.name?.charAt(0)?.toUpperCase() || "?"}
-            </div>
-            <div className="min-w-0 flex-1">
-              <EditableCell {...props} />
-            </div>
-          </div>
-        ),
+        cell: (props) => <EditableCell {...props} />,
         size: 250,
       },
       {
