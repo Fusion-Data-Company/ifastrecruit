@@ -252,6 +252,34 @@ export async function createCandidateFromInterview(args: any) {
       pipelineStage = "FIRST_INTERVIEW"
     } = args;
 
+    console.log('[MCP] createCandidateFromInterview called with:', JSON.stringify(args, null, 2));
+
+    // Extract detailed interview data from interviewData object
+    const extractedData: any = {};
+    if (interviewData) {
+      extractedData.interviewData = interviewData;
+      extractedData.interviewTranscript = interviewData.transcript || '';
+      extractedData.interviewDuration = interviewData.duration || '';
+      extractedData.interviewSummary = interviewData.summary || '';
+      extractedData.evaluationCriteria = interviewData.evaluation_criteria_results || interviewData.evaluationCriteria || null;
+      extractedData.dataCollectionResults = interviewData.data_collection_results || interviewData.dataCollectionResults || null;
+      extractedData.conversationId = interviewData.conversation_id || interviewData.conversationId || '';
+      extractedData.agentId = interviewData.agent_id || interviewData.agentId || '';
+      extractedData.agentName = interviewData.agent_name || interviewData.agentName || '';
+      extractedData.callDuration = interviewData.call_duration_secs || interviewData.callDuration || null;
+      extractedData.messageCount = interviewData.message_count || interviewData.messageCount || null;
+      extractedData.callStatus = interviewData.status || interviewData.callStatus || '';
+      extractedData.callSuccessful = interviewData.call_successful || interviewData.callSuccessful || '';
+      extractedData.transcriptSummary = interviewData.transcript_summary || interviewData.transcriptSummary || '';
+      extractedData.callSummaryTitle = interviewData.call_summary_title || interviewData.callSummaryTitle || '';
+      
+      // Parse dates
+      if (interviewData.interview_date || interviewData.start_time_unix_secs) {
+        const timestamp = interviewData.interview_date || (interviewData.start_time_unix_secs * 1000);
+        extractedData.interviewDate = new Date(timestamp);
+      }
+    }
+
     // Check if candidate already exists
     let existingCandidate;
     try {
@@ -261,20 +289,26 @@ export async function createCandidateFromInterview(args: any) {
     }
     
     if (existingCandidate) {
-      // Update existing candidate with interview data
-      const updated = await storage.updateCandidate(existingCandidate.id, {
+      // Update existing candidate with ALL interview data
+      const updateData = {
         pipelineStage,
         score: score || existingCandidate.score,
-      });
+        interviewScore: score,
+        notes,
+        ...extractedData
+      };
+      
+      console.log('[MCP] Updating existing candidate with data:', updateData);
+      const updated = await storage.updateCandidate(existingCandidate.id, updateData);
 
       // Create interview record
       let interview = null;
       try {
         interview = await storage.createInterview({
           candidateId: existingCandidate.id,
-          summary: notes || "Interview completed via ElevenLabs agent",
+          summary: notes || extractedData.interviewSummary || "Interview completed via ElevenLabs agent",
           scorecardJson: interviewData || {},
-          transcriptUrl: interviewData?.transcript || "",
+          transcriptUrl: extractedData.interviewTranscript || "",
         });
       } catch (interviewError) {
         console.log("Failed to create interview record (non-critical):", interviewError);
@@ -288,17 +322,21 @@ export async function createCandidateFromInterview(args: any) {
         message: "Candidate updated with interview data"
       };
     } else {
-      // Create new candidate from interview (minimal data)
+      // Create new candidate with ALL interview data
       const candidateData: any = {
         name,
         email,
         pipelineStage,
         score: score || 0,
+        interviewScore: score,
         sourceRef: "elevenlabs_interview",
+        notes,
+        ...extractedData
       };
       
       if (phone) candidateData.phone = phone;
       
+      console.log('[MCP] Creating new candidate with data:', candidateData);
       const candidate = await storage.createCandidate(candidateData);
 
       // Create interview record (optional)
@@ -306,9 +344,9 @@ export async function createCandidateFromInterview(args: any) {
       try {
         interview = await storage.createInterview({
           candidateId: candidate.id,
-          summary: notes || "Interview completed via ElevenLabs agent",
+          summary: notes || extractedData.interviewSummary || "Interview completed via ElevenLabs agent",
           scorecardJson: interviewData || {},
-          transcriptUrl: interviewData?.transcript || "",
+          transcriptUrl: extractedData.interviewTranscript || "",
         });
       } catch (interviewError) {
         console.log("Failed to create interview record (non-critical):", interviewError);
@@ -323,6 +361,7 @@ export async function createCandidateFromInterview(args: any) {
       };
     }
   } catch (error) {
+    console.log('[MCP] Error in createCandidateFromInterview:', error);
     return {
       success: false,
       error: String(error),

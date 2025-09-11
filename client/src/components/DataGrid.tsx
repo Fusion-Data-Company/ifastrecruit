@@ -406,6 +406,116 @@ export default function DataGrid() {
         size: 200,
       },
       {
+        accessorKey: "interviewScore",
+        header: "Interview Score",
+        cell: ({ getValue }) => {
+          const value = getValue() as number;
+          return (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium">{value || 0}</span>
+              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent transition-all duration-200"
+                  style={{ width: `${Math.max(0, Math.min(100, (value || 0)))}%` }}
+                />
+              </div>
+            </div>
+          );
+        },
+        size: 180,
+      },
+      {
+        accessorKey: "notes",
+        header: "Interview Notes",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as string;
+          return (
+            <div className="max-w-32 truncate" title={value}>
+              <span className="text-sm">{value || '-'}</span>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "interviewDuration",
+        header: "Duration",
+        cell: ({ getValue }) => {
+          const value = getValue() as string;
+          return <span className="text-sm">{value || '-'}</span>;
+        },
+        size: 120,
+      },
+      {
+        accessorKey: "agentName",
+        header: "Agent",
+        cell: ({ getValue }) => {
+          const value = getValue() as string;
+          return (
+            <Badge variant="secondary" className="text-xs">
+              {value || 'Unknown'}
+            </Badge>
+          );
+        },
+        size: 150,
+      },
+      {
+        accessorKey: "callSummaryTitle",
+        header: "Interview Title",
+        cell: ({ getValue, row }) => {
+          const value = getValue() as string;
+          return (
+            <div className="max-w-40 truncate" title={value}>
+              <span className="text-sm">{value || '-'}</span>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: "interviewDate",
+        header: "Interview Date",
+        cell: ({ getValue }) => {
+          const value = getValue() as string;
+          const date = value ? new Date(value) : null;
+          return (
+            <span className="text-sm">
+              {date ? date.toLocaleDateString() : '-'}
+            </span>
+          );
+        },
+        size: 140,
+      },
+      {
+        id: "interviewData",
+        header: "Details",
+        cell: ({ row }) => {
+          const hasData = row.original.interviewData || row.original.evaluationCriteria;
+          return (
+            <div className="flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-8 h-8 p-0 hover:bg-muted"
+                onClick={() => {
+                  // Show interview details modal
+                  console.log('Interview data:', row.original);
+                }}
+                disabled={!hasData}
+                data-testid={`interview-details-${row.original.id}`}
+                title="View interview details"
+              >
+                <i className={`fas fa-info-circle text-sm ${
+                  hasData ? "text-primary" : "text-muted-foreground"
+                }`}></i>
+              </Button>
+            </div>
+          );
+        },
+        size: 100,
+        enableSorting: false,
+      },
+      {
         id: "interview",
         header: "Interview",
         cell: ({ row }) => (
