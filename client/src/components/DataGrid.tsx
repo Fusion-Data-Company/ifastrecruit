@@ -219,7 +219,7 @@ export default function DataGrid() {
       id: candidate.id,
       updates: { [columnId]: value } as Partial<Candidate>,
     });
-  }, [currentFilters, filteredCandidates, data, updateCandidateMutation]);
+  }, [currentFilters, filteredCandidates, updateCandidateMutation]);
 
   const uploadResumeForCandidateMutation = useMutation({
     mutationFn: async ({ candidateId, resumeURL }: { candidateId: string; resumeURL: string }) => {
@@ -512,7 +512,7 @@ export default function DataGrid() {
         enableSorting: false,
       },
     ],
-    [selectedRows, setSelectedCandidateForFiles]
+    [selectedRows]
   );
 
   // Use filtered candidates for table data, or all candidates if no filters applied
