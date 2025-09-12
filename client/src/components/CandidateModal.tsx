@@ -179,40 +179,74 @@ function ScoreDisplay({ label, score, maxScore = 100 }: {
   );
 }
 
-// Enhanced JsonDataDisplay with better formatting
-function JsonDataDisplay({ data, title }: { data: any; title: string }) {
-  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
-    return (
-      <div className="text-center py-8 text-cyan-200/50">
-        <Info className="w-8 h-8 mx-auto mb-2 opacity-50" />
-        <p>No {title.toLowerCase()} data available</p>
-      </div>
-    );
-  }
+// Enhanced JsonDataDisplay with complete type safety
+function JsonDataDisplay({ data, title }: { data: unknown; title: string }): React.ReactElement {
+  // Type guard to ensure data is safe for rendering
+  const renderSafeData = (input: unknown): React.ReactElement => {
+    if (!input || (typeof input === 'object' && input !== null && Object.keys(input).length === 0)) {
+      return (
+        <div className="text-center py-8 text-cyan-200/50">
+          <Info className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p>No {title.toLowerCase()} data available</p>
+        </div>
+      );
+    }
 
-  // If it's a simple object with key-value pairs, display them nicely
-  if (typeof data === 'object' && !Array.isArray(data)) {
-    return (
-      <div className="space-y-2">
-        {Object.entries(data).map(([key, value]) => (
-          <DataPoint 
-            key={key}
-            label={key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
-            value={String(value || '-')}
-          />
-        ))}
-      </div>
-    );
-  }
+    // Helper function to safely convert unknown values to renderable strings
+    const safeStringConvert = (value: unknown): string => {
+      if (value === null || value === undefined) {
+        return '-';
+      }
+      if (typeof value === 'string') {
+        return value;
+      }
+      if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+      }
+      if (typeof value === 'object') {
+        try {
+          return JSON.stringify(value);
+        } catch {
+          return '[Complex Object]';
+        }
+      }
+      return String(value);
+    };
 
-  // For arrays or complex objects, show formatted JSON
-  return (
-    <ScrollArea className="h-64 rounded-lg bg-slate-900/50 backdrop-blur-sm">
-      <pre className="text-xs text-cyan-100/80 p-3 overflow-x-auto">
-        {JSON.stringify(data, null, 2)}
-      </pre>
-    </ScrollArea>
-  );
+    // If it's a simple object with key-value pairs, display them nicely
+    if (typeof input === 'object' && input !== null && !Array.isArray(input)) {
+      const entries = Object.entries(input as Record<string, unknown>);
+      return (
+        <div className="space-y-2">
+          {entries.map(([key, value]) => (
+            <DataPoint 
+              key={key}
+              label={key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+              value={safeStringConvert(value)}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // For arrays or complex objects, show formatted JSON
+    let jsonString: string;
+    try {
+      jsonString = JSON.stringify(input, null, 2);
+    } catch {
+      jsonString = '[Unable to serialize data]';
+    }
+
+    return (
+      <ScrollArea className="h-64 rounded-lg bg-slate-900/50 backdrop-blur-sm">
+        <pre className="text-xs text-cyan-100/80 p-3 overflow-x-auto">
+          {jsonString}
+        </pre>
+      </ScrollArea>
+    );
+  };
+
+  return renderSafeData(data);
 }
 
 export default function CandidateModal({ candidate, isOpen, onClose }: CandidateModalProps) {
@@ -617,7 +651,7 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                       <CardContent className="mt-4">
                         {candidate.interviewTranscript ? (
                           <EnhancedTranscript 
-                            transcript={candidate.interviewTranscript}
+                            transcript={String(candidate.interviewTranscript)}
                           />
                         ) : (
                           <div className="text-center py-8 text-cyan-200/50">
