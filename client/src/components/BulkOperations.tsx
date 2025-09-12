@@ -182,7 +182,7 @@ export default function BulkOperations({
         Score: candidate.score || 0,
         'Created Date': new Date(candidate.createdAt).toLocaleDateString(),
         Tags: candidate.tags?.join(', ') || '',
-        Source: candidate.campaignId ? 'Indeed' : 'Manual',
+        Source: candidate.campaignId ? 'Apify' : 'Manual',
       }));
 
       // Convert to CSV

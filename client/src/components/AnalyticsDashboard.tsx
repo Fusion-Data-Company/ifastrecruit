@@ -90,7 +90,7 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
       { stage: 'Hired', count: safeC.filter(c => c.pipelineStage === 'HIRED').length, conversionRate: 100, avgTimeInStage: 0 },
     ],
     sourcePerformance: [
-      { source: 'Indeed', candidates: safeC.filter(c => c.campaignId).length, hiredCount: 12, conversionRate: 8.5, avgScore: 78 },
+      { source: 'Apify', candidates: safeC.filter(c => c.campaignId).length, hiredCount: 12, conversionRate: 8.5, avgScore: 78 },
       { source: 'Manual Entry', candidates: safeC.filter(c => !c.campaignId).length, hiredCount: 8, conversionRate: 12.3, avgScore: 82 },
       { source: 'Referrals', candidates: 23, hiredCount: 6, conversionRate: 26.1, avgScore: 89 },
       { source: 'LinkedIn', candidates: 31, hiredCount: 4, conversionRate: 12.9, avgScore: 75 },

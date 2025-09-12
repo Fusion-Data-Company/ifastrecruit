@@ -2,7 +2,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { storage } from "../storage";
 import { 
-  launchIndeedCampaign,
+  launchCampaign,
   manageApifyActor,
   processCandidate,
   sendInterviewLinks,
@@ -31,7 +31,7 @@ export class MCPServer {
     });
 
     this.tools = new Map<string, Function>();
-    this.tools.set("launch_indeed_campaign", launchIndeedCampaign);
+    this.tools.set("launch_campaign", launchCampaign);
     this.tools.set("manage_apify_actor", manageApifyActor);
     this.tools.set("process_candidate", processCandidate);
     this.tools.set("send_interview_links", sendInterviewLinks);

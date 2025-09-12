@@ -399,11 +399,11 @@ const profile = await page.evaluate(() => ({
 return profile;`
                     },
                     {
-                      name: "Indeed Job Scraper",
-                      description: "Scrape job listings from Indeed",
+                      name: "Job Board Scraper",
+                      description: "Scrape job listings from job boards",
                       icon: "fas fa-briefcase",
-                      script: `// Indeed Job Scraper
-await page.goto('https://indeed.com/jobs?q=software+engineer');
+                      script: `// Job Board Scraper
+await page.goto('https://example-jobboard.com/jobs?q=software+engineer');
 await page.waitForSelector('[data-testid="job-title"]');
 const jobs = await page.evaluate(() => 
   Array.from(document.querySelectorAll('[data-testid="job-snippet"]')).map(job => ({

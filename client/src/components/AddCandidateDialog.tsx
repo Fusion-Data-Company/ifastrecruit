@@ -166,7 +166,7 @@ export default function AddCandidateDialog({ open, onOpenChange }: AddCandidateD
                   <FormLabel>Source</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Manual, LinkedIn, Indeed, etc." 
+                      placeholder="Manual, LinkedIn, Referral, etc." 
                       className="glass-input"
                       {...field} 
                       value={field.value || ""}

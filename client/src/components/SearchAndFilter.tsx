@@ -61,7 +61,7 @@ export default function SearchAndFilter({ candidates, onFilterChange, className 
 
   // Get unique sources from candidates
   const availableSources = useMemo(() => {
-    const sources = new Set(candidates.map(c => c.campaignId ? 'Indeed' : 'Manual'));
+    const sources = new Set(candidates.map(c => c.campaignId ? 'Apify' : 'Manual'));
     return Array.from(sources);
   }, [candidates]);
 
@@ -106,7 +106,7 @@ export default function SearchAndFilter({ candidates, onFilterChange, className 
     // Source filter
     if (filters.sources.length > 0) {
       filtered = filtered.filter(candidate => {
-        const source = candidate.campaignId ? 'Indeed' : 'Manual';
+        const source = candidate.campaignId ? 'Apify' : 'Manual';
         return filters.sources.includes(source);
       });
     }

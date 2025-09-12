@@ -1,5 +1,4 @@
 import { storage } from "../../storage";
-import { indeedIntegration } from "../../integrations/indeed";
 import { apifyIntegration } from "../../integrations/apify";
 import { slackIntegration } from "../../integrations/slack";
 import { mailjetIntegration } from "../../integrations/mailjet";
@@ -126,33 +125,30 @@ const CreateCandidateFromInterviewSchema = z.object({
   pipelineStage: z.string().optional().default("FIRST_INTERVIEW"),
 });
 
-export async function launchIndeedCampaign(args: any) {
+export async function launchCampaign(args: any) {
   try {
     const campaign = await storage.createCampaign({
       name: args.title,
-      source: "INDEED",
+      source: "APIFY",
       paramsJson: args,
       status: "ACTIVE",
     });
-
-    const jobId = await indeedIntegration.createCampaign(args);
     
     return {
       success: true,
       campaignId: campaign.id,
-      indeedJobId: jobId,
-      message: "Campaign launched successfully on Indeed",
+      message: "Campaign launched successfully",
     };
   } catch (error) {
     // Fallback to Airtop
     await storage.createAuditLog({
       actor: "mcp",
-      action: "launch_indeed_campaign_fallback",
+      action: "launch_campaign_fallback",
       payloadJson: { error: String(error), args },
       pathUsed: "airtop",
     });
 
-    const result = await airtopIntegration.executeRecipe("indeed.post_job", args);
+    const result = await airtopIntegration.executeRecipe("job.post", args);
     return {
       success: true,
       message: "Campaign launched via Airtop fallback",
@@ -213,9 +209,14 @@ export async function processCandidate(args: any) {
     const newScore = calculateCandidateScore(candidate, newStage);
     await storage.updateCandidate(candidateId, { score: newScore });
 
-    // Update Indeed disposition if source is Indeed
+    // Log candidate disposition change
     if (candidate.sourceRef && newStage === "REJECTED") {
-      await indeedIntegration.postDisposition(candidateId, "rejected");
+      await storage.createAuditLog({
+        actor: "mcp",
+        action: "candidate_disposition_updated",
+        payloadJson: { candidateId, sourceRef: candidate.sourceRef, newStage },
+        pathUsed: "api",
+      });
     }
 
     // Post to appropriate Slack pool

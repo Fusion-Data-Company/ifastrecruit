@@ -5,7 +5,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const campaignSourceEnum = pgEnum("campaign_source", ["INDEED", "APIFY", "MANUAL"]);
+export const campaignSourceEnum = pgEnum("campaign_source", ["APIFY", "MANUAL"]);
 export const pipelineStageEnum = pgEnum("pipeline_stage", [
   "NEW", "FIRST_INTERVIEW", "TECHNICAL_SCREEN", "FINAL_INTERVIEW", "OFFER", "HIRED", "REJECTED"
 ]);
@@ -144,39 +144,7 @@ export const auditLogs = pgTable("audit_logs", {
   ts: timestamp("ts").defaultNow().notNull(),
 });
 
-// Indeed integration tables
-export const indeedJobs = pgTable("indeed_jobs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  company: text("company").notNull(),
-  location: text("location").notNull(),
-  description: text("description").notNull(),
-  requirements: text("requirements"),
-  salary: text("salary"),
-  type: text("type").notNull().default("Full-time"),
-  status: text("status").notNull().default("draft"),
-  indeedJobId: text("indeed_job_id"), // ID from Indeed API
-  applicationsCount: integer("applications_count").default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
 
-export const indeedApplications = pgTable("indeed_applications", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: varchar("job_id").notNull().references(() => indeedJobs.id),
-  candidateId: varchar("candidate_id").references(() => candidates.id),
-  indeedApplicationId: text("indeed_application_id").notNull().unique(),
-  candidateName: text("candidate_name").notNull(),
-  candidateEmail: text("candidate_email").notNull(),
-  resume: text("resume"),
-  coverLetter: text("cover_letter"),
-  screeningAnswers: jsonb("screening_answers"),
-  eeoData: jsonb("eeo_data"),
-  disposition: text("disposition").notNull().default("new"),
-  rawPayload: jsonb("raw_payload"), // Store full Indeed payload
-  appliedAt: timestamp("applied_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
 
 // Apify integration tables
 export const apifyRuns = pgTable("apify_runs", {
@@ -244,23 +212,9 @@ export const candidatesRelations = relations(candidates, ({ one, many }) => ({
   }),
   interviews: many(interviews),
   bookings: many(bookings),
-  indeedApplications: many(indeedApplications),
 }));
 
-export const indeedJobsRelations = relations(indeedJobs, ({ many }) => ({
-  applications: many(indeedApplications),
-}));
 
-export const indeedApplicationsRelations = relations(indeedApplications, ({ one }) => ({
-  job: one(indeedJobs, {
-    fields: [indeedApplications.jobId],
-    references: [indeedJobs.id],
-  }),
-  candidate: one(candidates, {
-    fields: [indeedApplications.candidateId],
-    references: [candidates.id],
-  }),
-}));
 
 export const apifyActorsRelations = relations(apifyActors, ({ many }) => ({
   runs: many(apifyRuns),
@@ -296,8 +250,6 @@ export const insertApifyActorSchema = createInsertSchema(apifyActors).omit({ id:
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, ts: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertWorkflowRuleSchema = createInsertSchema(workflowRules).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertIndeedJobSchema = createInsertSchema(indeedJobs).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertIndeedApplicationSchema = createInsertSchema(indeedApplications).omit({ id: true, createdAt: true });
 export const insertApifyRunSchema = createInsertSchema(apifyRuns).omit({ id: true, createdAt: true });
 export const insertElevenLabsTrackingSchema = createInsertSchema(elevenLabsTracking).omit({ id: true, createdAt: true, updatedAt: true });
 
@@ -310,8 +262,6 @@ export type ApifyActor = typeof apifyActors.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type WorkflowRule = typeof workflowRules.$inferSelect;
-export type IndeedJob = typeof indeedJobs.$inferSelect;
-export type IndeedApplication = typeof indeedApplications.$inferSelect;
 export type ApifyRun = typeof apifyRuns.$inferSelect;
 export type ElevenLabsTracking = typeof elevenLabsTracking.$inferSelect;
 
@@ -323,7 +273,5 @@ export type InsertApifyActor = z.infer<typeof insertApifyActorSchema>;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertWorkflowRule = z.infer<typeof insertWorkflowRuleSchema>;
-export type InsertIndeedJob = z.infer<typeof insertIndeedJobSchema>;
-export type InsertIndeedApplication = z.infer<typeof insertIndeedApplicationSchema>;
 export type InsertApifyRun = z.infer<typeof insertApifyRunSchema>;
 export type InsertElevenLabsTracking = z.infer<typeof insertElevenLabsTrackingSchema>;

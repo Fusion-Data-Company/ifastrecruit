@@ -7,8 +7,6 @@ import {
   insertCampaignSchema, 
   insertInterviewSchema, 
   insertBookingSchema,
-  insertIndeedJobSchema,
-  insertIndeedApplicationSchema,
   insertApifyActorSchema,
   insertApifyRunSchema
 } from "@shared/schema";
@@ -57,7 +55,6 @@ import { dbOptimizer } from "./services/database-optimization";
 import { observabilityService } from "./services/observability";
 import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment.config";
 import { apifyService } from "./services/apify-client";
-import { indeedService } from "./services/indeed-client";
 import { elevenlabsIntegration } from "./integrations/elevenlabs";
 import { elevenLabsAutomation } from "./services/elevenlabs-automation";
 import { WebSocketServer } from "ws";
@@ -511,31 +508,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Indeed integration webhook - protected with API key validation
-  app.post("/api/indeed/applications", validateApiKey, async (req, res) => {
-    try {
-      // Process Indeed application
-      const candidateData = {
-        name: req.body.name,
-        email: req.body.email,
-        phone: req.body.phone,
-        sourceRef: req.body.applicationId,
-        resumeUrl: req.body.resumeUrl,
-        pipelineStage: "NEW" as const,
-      };
-      
-      const candidate = await storage.createCandidate(candidateData);
-      
-      // Broadcast real-time update
-      if (req.app.locals.broadcastCandidateCreated) {
-        req.app.locals.broadcastCandidateCreated(candidate);
-      }
-      
-      res.json({ success: true, candidateId: candidate.id });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to process application" });
-    }
-  });
 
   // Mailjet webhook - protected with API key validation
   app.post("/api/mailjet/webhooks", validateApiKey, async (req, res) => {
@@ -1095,226 +1067,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ======================
-  // INDEED INTEGRATION API
-  // ======================
-
-  // Indeed job management - Returns what Indeed API would provide
-  app.get("/api/indeed/jobs", async (req, res) => {
-    try {
-      const jobs = await storage.getIndeedJobs();
-      
-      // If no stored jobs, show placeholder data demonstrating Indeed API response format
-      if (jobs.length === 0) {
-        const placeholderJobs = [
-          {
-            id: 'indeed-demo-001',
-            title: 'Senior Frontend Developer',
-            company: 'TechFlow Inc',
-            location: 'San Francisco, CA',
-            description: 'Join our engineering team to build next-generation web applications using React, TypeScript, and modern frontend technologies. You will work on user-facing features that serve millions of users daily.',
-            requirements: 'Bachelor\'s in Computer Science, 5+ years React experience, TypeScript proficiency, Experience with state management libraries, Strong problem-solving skills',
-            salary: '$140,000 - $180,000 annually + equity',
-            type: 'Full-time',
-            status: 'active',
-            applicationsCount: 42,
-            createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: 'indeed-demo-002',
-            title: 'Backend Engineer - Node.js',
-            company: 'DataCorp Solutions',
-            location: 'Remote (US)',
-            description: 'We are looking for a skilled Backend Engineer to design and implement scalable APIs and microservices. You\'ll work with Node.js, PostgreSQL, and cloud infrastructure.',
-            requirements: '3+ years Node.js experience, Strong SQL and database design skills, Experience with cloud platforms (AWS/GCP), API design and microservices architecture, Agile development experience',
-            salary: '$110,000 - $150,000 + benefits',
-            type: 'Full-time',
-            status: 'active',
-            applicationsCount: 28,
-            createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-          }
-        ];
-        res.json(placeholderJobs);
-      } else {
-        // Transform stored jobs to match Indeed API format
-        res.json(jobs.map(job => ({
-          id: job.id,
-          title: job.title,
-          company: job.company,
-          location: job.location,
-          description: job.description,
-          requirements: job.requirements,
-          salary: job.salary,
-          type: job.type,
-          status: job.status,
-          applicationsCount: 0, // Would come from Indeed API
-          createdAt: job.createdAt.toISOString()
-        })));
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Indeed jobs" });
-    }
-  });
-
-  app.post("/api/indeed/jobs", async (req, res) => {
-    try {
-      const jobData = insertIndeedJobSchema.parse(req.body);
-      const job = await storage.createIndeedJob(jobData);
-      
-      // TODO: Post to Indeed API when credentials available
-      // const indeedAPI = new IndeedAPI(process.env.INDEED_API_KEY);
-      // const indeedJobId = await indeedAPI.postJob(jobData);
-      // await storage.updateIndeedJob(job.id, { indeedJobId });
-      
-      res.json(job);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid job data", details: String(error) });
-    }
-  });
-
-  // Indeed application delivery (webhook from Indeed)
-  app.post("/api/indeed/applications", async (req, res) => {
-    try {
-      console.log("Indeed application received:", req.body);
-      
-      // Map Indeed payload to our schema
-      const applicationData = {
-        jobId: req.body.jobId || req.body.job_id,
-        indeedApplicationId: req.body.applicationId || req.body.application_id,
-        candidateName: req.body.candidateName || req.body.candidate_name || req.body.name,
-        candidateEmail: req.body.candidateEmail || req.body.candidate_email || req.body.email,
-        resume: req.body.resumeUrl || req.body.resume_url,
-        coverLetter: req.body.coverLetter || req.body.cover_letter,
-        screeningAnswers: req.body.screeningAnswers || req.body.screening_answers || {},
-        eeoData: req.body.eeoData || req.body.eeo_data || {},
-        appliedAt: new Date(req.body.appliedAt || req.body.applied_at || Date.now()),
-        rawPayload: req.body, // Store full payload
-      };
-      
-      const application = await storage.createIndeedApplication(applicationData);
-      
-      // Create candidate record from application
-      const candidateData = {
-        name: applicationData.candidateName,
-        email: applicationData.candidateEmail,
-        phone: req.body.phone,
-        sourceRef: applicationData.indeedApplicationId,
-        resumeUrl: applicationData.resume,
-        pipelineStage: "NEW" as const,
-        tags: ["indeed", "web-application"],
-      };
-      
-      const candidate = await storage.createCandidate(candidateData);
-      
-      // Link application to candidate
-      await storage.updateIndeedApplication(application.id, { candidateId: candidate.id });
-      
-      // Broadcast real-time update
-      if (req.app.locals.broadcastCandidateCreated) {
-        req.app.locals.broadcastCandidateCreated(candidate);
-      }
-      
-      res.json({ success: true, applicationId: application.id, candidateId: candidate.id });
-    } catch (error) {
-      console.error("Indeed application processing failed:", error);
-      res.status(500).json({ error: "Failed to process Indeed application" });
-    }
-  });
-
-  // Indeed disposition sync
-  app.put("/api/indeed/applications/:id/disposition", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { disposition } = req.body;
-      
-      const application = await storage.updateIndeedApplication(id, { disposition });
-      
-      // TODO: Send disposition back to Indeed via GraphQL
-      // const indeedAPI = new IndeedAPI(process.env.INDEED_API_KEY);
-      // await indeedAPI.sendDisposition(application.indeedApplicationId, disposition);
-      
-      // Log audit trail
-      await storage.createAuditLog({
-        actor: "system",
-        action: "disposition_sync",
-        payloadJson: { applicationId: id, disposition, syncedToIndeed: false }, // Will be true when API integrated
-        pathUsed: "api",
-      });
-      
-      res.json(application);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update disposition" });
-    }
-  });
-
-  // Indeed integration status
-  app.get("/api/indeed/status", async (req, res) => {
-    try {
-      const jobs = await storage.getIndeedJobs();
-      const applications = await storage.getIndeedApplications();
-      const recentApplications = applications.filter(
-        app => new Date(app.appliedAt).getTime() > Date.now() - 24 * 60 * 60 * 1000
-      );
-      
-      res.json({
-        connected: !!process.env.INDEED_API_KEY,
-        activeJobs: jobs.filter(j => j.status === 'active').length,
-        totalApplications: applications.length,
-        recentApplications: recentApplications.length,
-        lastApplication: applications[0]?.appliedAt,
-        endpointUrl: `${process.env.APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications`,
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get Indeed status" });
-    }
-  });
-
-  // Get Indeed applications
-  app.get("/api/indeed/applications", async (req, res) => {
-    try {
-      const applications = await storage.getIndeedApplications();
-      
-      // If no stored applications, show placeholder data demonstrating Indeed API response
-      if (applications.length === 0) {
-        const placeholderApplications = [
-          {
-            id: 'app-demo-001',
-            jobId: 'indeed-demo-001',
-            candidateName: 'Sarah Johnson',
-            candidateEmail: 'sarah.johnson@email.com',
-            resume: 'Senior Frontend Developer with 6 years of experience building responsive web applications...',
-            coverLetter: 'I am excited to apply for the Frontend Developer position at TechFlow Inc...',
-            screeningAnswers: {
-              'years_experience': '6 years',
-              'preferred_location': 'San Francisco, CA',
-              'expected_salary': '$150,000'
-            },
-            appliedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            disposition: 'new'
-          },
-          {
-            id: 'app-demo-002',
-            jobId: 'indeed-demo-002',
-            candidateName: 'Michael Chen',
-            candidateEmail: 'michael.chen@email.com',
-            resume: 'Backend Engineer with expertise in Node.js, PostgreSQL, and microservices architecture...',
-            coverLetter: 'I am interested in the Backend Engineer role at DataCorp Solutions...',
-            screeningAnswers: {
-              'years_experience': '4 years',
-              'remote_preference': 'Remote preferred',
-              'expected_salary': '$125,000'
-            },
-            appliedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            disposition: 'reviewed'
-          }
-        ];
-        res.json(placeholderApplications);
-      } else {
-        res.json(applications);
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Indeed applications" });
-    }
-  });
 
   // ======================
   // APIFY INTEGRATION API
@@ -1614,28 +1366,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get Indeed integration status
-  app.get("/api/indeed/status", async (req, res) => {
-    try {
-      const jobs = await storage.getIndeedJobs();
-      const applications = await storage.getIndeedApplications();
-      const recentApplications = applications.filter(
-        app => new Date(app.appliedAt).getTime() > Date.now() - 24 * 60 * 60 * 1000
-      );
-      
-      res.json({
-        connected: !!process.env.INDEED_API_KEY,
-        activeJobs: jobs.filter(j => j.status === 'active').length,
-        totalApplications: applications.length,
-        recentApplications: recentApplications.length,
-        lastApplication: applications[0]?.appliedAt,
-        endpointUrl: `${process.env.APP_BASE_URL || 'https://your-app.replit.app'}/api/indeed/applications`,
-        webhookConfigured: true, // Will check actual webhook setup when API integrated
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to get Indeed status" });
-    }
-  });
 
   // ======================
   // APIFY INTEGRATION API  
@@ -1758,21 +1488,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/integrations/indeed/search", async (req, res) => {
-    try {
-      const { query, location, limit } = req.body;
-      
-      const indeedService = apiManager.getService('indeed') as any;
-      if (!indeedService?.isConfigured()) {
-        return res.status(503).json({ error: "Indeed integration not configured" });
-      }
-
-      const result = await indeedService.searchJobs({ query, location, limit });
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to search Indeed jobs" });
-    }
-  });
 
   app.post("/api/integrations/apify/scrape", async (req, res) => {
     try {
@@ -2124,148 +1839,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Indeed Integration Endpoints
-  app.get("/api/indeed/status", async (req, res) => {
-    try {
-      const connected = indeedService.isApiConnected();
-      const jobs = await storage.getIndeedJobs();
-      const applications = await storage.getIndeedApplications();
-      
-      res.json({
-        connected,
-        activeJobs: jobs.filter(j => j.status === 'active').length,
-        totalJobs: jobs.length,
-        recentApplications: applications.filter(a => 
-          new Date(a.appliedAt) > new Date(Date.now() - 24*60*60*1000)
-        ).length,
-        totalApplications: applications.length,
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Indeed status" });
-    }
-  });
-
-  app.get("/api/indeed/jobs", async (req, res) => {
-    try {
-      const jobs = await storage.getIndeedJobs();
-      res.json(jobs);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch Indeed jobs" });
-    }
-  });
-
-  app.post("/api/indeed/jobs", async (req, res) => {
-    try {
-      const jobData = insertIndeedJobSchema.parse(req.body);
-      
-      // Post to Indeed if API is connected
-      if (indeedService.isApiConnected()) {
-        try {
-          const indeedJob = await indeedService.postJob({
-            title: jobData.title,
-            company: jobData.company,
-            location: jobData.location,
-            description: jobData.description,
-            requirements: jobData.requirements || '',
-            salary: jobData.salary || '',
-            type: jobData.type || 'Full-time',
-          });
-          
-          // Store with Indeed job ID
-          jobData.indeedJobId = indeedJob.jobId;
-          jobData.status = 'active';
-        } catch (error) {
-          console.error("Failed to post to Indeed:", error);
-          // Continue with local storage
-        }
-      }
-      
-      const job = await storage.createIndeedJob(jobData);
-      res.json(job);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to create job", details: String(error) });
-    }
-  });
-
-  app.get("/api/indeed/applications", async (req, res) => {
-    try {
-      const applications = await storage.getIndeedApplications();
-      res.json(applications);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch applications" });
-    }
-  });
-
-  app.post("/api/indeed/applications", async (req, res) => {
-    try {
-      // This endpoint receives Indeed webhook data
-      const applicationData = req.body;
-      
-      if (indeedService.isApiConnected()) {
-        const isValid = await indeedService.validateApplication(applicationData);
-        if (!isValid) {
-          return res.status(400).json({ error: "Invalid application data" });
-        }
-      }
-
-      // Create candidate from application
-      const candidateData = {
-        name: applicationData.candidateName,
-        email: applicationData.candidateEmail,
-        phone: applicationData.phone,
-        stage: 'applied',
-        source: 'indeed',
-        notes: `Applied for ${applicationData.jobTitle || 'position'}`,
-      };
-
-      const candidate = await storage.createCandidate(candidateData);
-
-      // Store application record
-      const application = await storage.createIndeedApplication({
-        indeedApplicationId: applicationData.applicationId,
-        jobId: applicationData.jobId,
-        candidateId: candidate.id,
-        candidateName: applicationData.candidateName,
-        candidateEmail: applicationData.candidateEmail,
-        appliedAt: new Date(applicationData.appliedAt),
-        disposition: 'new',
-        resume: applicationData.resume || null,
-        coverLetter: applicationData.coverLetter || null,
-        screeningAnswers: applicationData.screeningAnswers || {},
-      });
-
-      res.json({ candidate, application });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to process application" });
-    }
-  });
-
-  app.patch("/api/indeed/applications/:id/disposition", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { disposition, reason } = req.body;
-      
-      const application = await storage.getIndeedApplication(id);
-      if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-
-      // Send disposition to Indeed if connected
-      if (indeedService.isApiConnected() && application.indeedApplicationId) {
-        try {
-          await indeedService.sendDisposition(application.indeedApplicationId, disposition, reason);
-        } catch (error) {
-          console.error("Failed to send disposition to Indeed:", error);
-        }
-      }
-
-      // Update local record  
-      const updated = await storage.updateIndeedApplication(id, { disposition });
-      res.json(updated);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update disposition" });
-    }
-  });
 
   // Object storage endpoints
   app.get("/objects/:objectPath(*)", async (req, res) => {

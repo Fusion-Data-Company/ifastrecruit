@@ -75,7 +75,7 @@ export function useMCPClient() {
     description: string;
     requirements?: string[];
   }) => {
-    return await callTool("launch_indeed_campaign", params);
+    return await callTool("launch_campaign", params);
   };
 
   const processCandidate = async (candidateId: string, newStage: string, notes?: string) => {
