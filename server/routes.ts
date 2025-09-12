@@ -616,6 +616,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Pull today's calls for the authorized agent and process them automatically
+  app.post("/api/elevenlabs/pull-todays-calls", async (req, res) => {
+    try {
+      const agentId = "agent_0601k4t9d82qe5ybsgkngct0zzkm"; // Fixed authorized agent
+      
+      // Get today's date range in ISO format
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      const startOfToday = today.toISOString();
+      
+      const endOfToday = new Date(today);
+      endOfToday.setHours(23, 59, 59, 999); // End of today
+      const endOfTodayStr = endOfToday.toISOString();
+      
+      console.log(`[ElevenLabs] Pulling today's calls for agent ${agentId} from ${startOfToday} to ${endOfTodayStr}`);
+      
+      // Get today's conversations
+      const conversationsData = await elevenlabsIntegration.getAgentConversations(agentId, {
+        limit: 100,
+        after: startOfToday,
+        before: endOfTodayStr
+      });
+      
+      console.log(`[ElevenLabs] Found ${conversationsData.conversations.length} conversations for today`);
+      
+      if (conversationsData.conversations.length === 0) {
+        return res.json({
+          success: true,
+          message: "No conversations found for today",
+          agent_id: agentId,
+          date_range: { start: startOfToday, end: endOfTodayStr },
+          processed: 0
+        });
+      }
+      
+      // Enrich each conversation with details and process through MCP tools
+      const processedResults = [];
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const conversation of conversationsData.conversations) {
+        try {
+          // Get detailed conversation data
+          const details = await elevenlabsIntegration.getConversationDetails(conversation.conversation_id);
+          
+          // Get audio info
+          let audioInfo = null;
+          try {
+            audioInfo = await elevenlabsIntegration.getConversationAudio(conversation.conversation_id);
+          } catch (audioError) {
+            console.log(`[ElevenLabs] Could not fetch audio for conversation ${conversation.conversation_id}: ${audioError}`);
+          }
+          
+          // Prepare comprehensive interview data for MCP processing
+          const interviewData = {
+            agent_id: agentId,
+            conversation_id: conversation.conversation_id,
+            transcript: details.transcript ? JSON.stringify(details.transcript) : undefined,
+            created_at: details.created_at,
+            ended_at: details.ended_at,
+            audio_recording_url: audioInfo?.audio_url,
+            conversation_metadata: details.metadata,
+            agent_data: {
+              agent_id: agentId,
+              conversation_details: details,
+              audio_info: audioInfo
+            }
+          };
+          
+          // Try to process through MCP tool
+          try {
+            const mcpResult = await mcpServer.callTool("create_candidate_from_interview", {
+              name: "ElevenLabs Interview Candidate",
+              email: `conversation-${conversation.conversation_id}@temp.elevenlabs.com`,
+              interviewData: interviewData,
+              notes: `Auto-imported from ElevenLabs conversation ${conversation.conversation_id} on ${new Date().toISOString()}`
+            });
+            
+            processedResults.push({
+              conversation_id: conversation.conversation_id,
+              status: "success",
+              result: mcpResult
+            });
+            successCount++;
+          } catch (mcpError) {
+            console.error(`[ElevenLabs] MCP processing failed for conversation ${conversation.conversation_id}:`, mcpError);
+            processedResults.push({
+              conversation_id: conversation.conversation_id,
+              status: "mcp_error",
+              error: String(mcpError),
+              raw_data: interviewData
+            });
+            errorCount++;
+          }
+          
+        } catch (error) {
+          console.error(`[ElevenLabs] Failed to process conversation ${conversation.conversation_id}:`, error);
+          processedResults.push({
+            conversation_id: conversation.conversation_id,
+            status: "error", 
+            error: String(error)
+          });
+          errorCount++;
+        }
+      }
+      
+      console.log(`[ElevenLabs] Processing complete: ${successCount} success, ${errorCount} errors`);
+      
+      res.json({
+        success: true,
+        message: `Processed ${conversationsData.conversations.length} conversations from today`,
+        agent_id: agentId,
+        date_range: { start: startOfToday, end: endOfTodayStr },
+        statistics: {
+          total_found: conversationsData.conversations.length,
+          processed_successfully: successCount,
+          processing_errors: errorCount
+        },
+        results: processedResults
+      });
+      
+    } catch (error) {
+      console.error("[ElevenLabs] Failed to pull today's calls:", error);
+      res.status(500).json({ 
+        error: "Failed to pull today's calls", 
+        details: String(error),
+        agent_id: "agent_0601k4t9d82qe5ybsgkngct0zzkm"
+      });
+    }
+  });
+
   // Import conversations and match them to candidates
   app.post("/api/elevenlabs/import-conversations", async (req, res) => {
     try {
