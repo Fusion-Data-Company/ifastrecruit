@@ -2,9 +2,9 @@
 
 ## Overview
 
-iFast Broker is a sophisticated enterprise recruiting platform that combines AI voice agents with automated candidate pipeline management. The application integrates multiple external services including ElevenLabs for voice agents, Indeed/Apify for job sourcing, Slack for team collaboration, and various other tools to create a comprehensive recruiting workflow automation system.
+iFast Broker is a sophisticated enterprise recruiting platform that combines AI voice agents with automated candidate pipeline management. The application is built exclusively around ElevenLabs agent integration (agent_0601k4t9d82qe5ybsgkngct0zzkm) as the single source of truth for all recruiting data.
 
-The platform is designed as a single-user enterprise solution with real-time capabilities, featuring a modern glassmorphic UI with cyberpunk-inspired design elements. It provides end-to-end recruiting functionality from job posting and candidate sourcing to interview scheduling and team onboarding.
+The platform is designed as a single-user enterprise solution with real-time capabilities, featuring a modern glassmorphic UI with cyberpunk-inspired design elements. It provides comprehensive candidate management and interview tracking, with all data sourced directly from ElevenLabs conversations and automated processing.
 
 ## User Preferences
 
@@ -46,13 +46,10 @@ Preferred communication style: Simple, everyday language.
 - **ElevenLabs**: Voice agent integration for conducting automated interviews and candidate interactions
 - **OpenRouter**: LLM routing service supporting multiple AI models (Claude 3.5 Sonnet, GPT-4 Turbo, GPT-3.5 Turbo) with different profiles for orchestration, research, and fast responses
 
-### Job Sourcing & Automation
-- **Indeed API**: Job posting and applicant management integration
-- **Apify**: Web scraping and automation platform for candidate sourcing from various job sites
-- **Airtop**: Browser automation service serving as fallback for Indeed and Apify operations when primary APIs fail
+### Automation & Browser Services
+- **Airtop**: Browser automation service for advanced workflow automation (available but needs configuration)
 
-### Communication & Collaboration
-- **Slack Web API**: Team collaboration with automated candidate pool management and notifications
+### Communication & Collaboration  
 - **Mailjet**: Transactional email service for interview invitations, booking confirmations, and candidate communications
 
 ### Calendar & Scheduling
