@@ -19,7 +19,7 @@ export async function seedDemoData() {
       {
         name: "ElevenLabs Interview Pipeline",
         status: "ACTIVE",
-        source: "ELEVENLABS"
+        source: "MANUAL"
       }
     ];
 

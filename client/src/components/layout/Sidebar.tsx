@@ -11,10 +11,7 @@ export default function Sidebar() {
     { path: "/", label: "Dashboard", icon: "fas fa-chart-line" },
     { path: "/candidates", label: "Candidates", icon: "fas fa-users" },
     { path: "/interviews", label: "Interviews", icon: "fas fa-calendar-alt" },
-    { path: "/apify", label: "Apify Integration", icon: "fas fa-robot" },
     { path: "/airtop", label: "Airtop Integration", icon: "fas fa-desktop" },
-    { path: "/email", label: "Email Studio", icon: "fas fa-envelope" },
-    { path: "/slack", label: "Slack Pools", icon: "fab fa-slack" },
     { path: "/elevenlabs", label: "ElevenLabs Data", icon: "fas fa-headphones" },
   ];
 
@@ -122,15 +119,13 @@ export default function Sidebar() {
           <h3 className="enterprise-heading text-sm font-semibold mb-3">Silent Agents</h3>
           <div className="grid grid-cols-2 gap-2 text-xs">
             {[
-              { name: "Campaign", status: "active" },
               { name: "Data Proc", status: "active" },
-              { name: "Email", status: "active" },
               { name: "Calendar", status: "active" },
-              { name: "Slack", status: "active" },
-              { name: "Airtop", status: "active" },
+              { name: "Airtop", status: "config" },
+              { name: "Analytics", status: "active" },
             ].map((agent, index) => (
               <div key={agent.name} className="flex items-center space-x-1">
-                <div className={`w-2 h-2 rounded-full ${index % 2 === 0 ? "bg-accent" : "bg-primary"}`}></div>
+                <div className={`w-2 h-2 rounded-full ${agent.status === "config" ? "bg-orange-500" : index % 2 === 0 ? "bg-accent" : "bg-primary"}`}></div>
                 <span data-testid={`silent-agent-${agent.name.toLowerCase().replace(" ", "")}`}>
                   {agent.name}
                 </span>

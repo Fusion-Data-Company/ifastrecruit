@@ -9,10 +9,7 @@ import Candidates from "@/pages/candidates";
 import Interviews from "@/pages/interviews";
 import Interview from "@/pages/interview";
 import Booking from "@/pages/booking";
-import ApifyCenter from "@/pages/apify";
 import AirtopIntegration from "@/pages/AirtopIntegration";
-import EmailStudio from "@/pages/email";
-import SlackPools from "@/pages/slack";
 import ElevenLabsPage from "@/pages/elevenlabs";
 import NotFound from "@/pages/not-found";
 
@@ -25,10 +22,7 @@ function Router() {
       <Route path="/interviews" component={Interviews} />
       <Route path="/interview/:token" component={Interview} />
       <Route path="/booking/:token" component={Booking} />
-      <Route path="/apify" component={ApifyCenter} />
       <Route path="/airtop" component={AirtopIntegration} />
-      <Route path="/email" component={EmailStudio} />
-      <Route path="/slack" component={SlackPools} />
       <Route path="/elevenlabs" component={ElevenLabsPage} />
       <Route component={NotFound} />
     </Switch>

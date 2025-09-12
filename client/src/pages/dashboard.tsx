@@ -4,7 +4,6 @@ import TopBar from "@/components/layout/TopBar";
 import KPIDashboard from "@/components/KPIDashboard";
 import DataGrid from "@/components/DataGrid";
 import PipelineBoard from "@/components/PipelineBoard";
-import ApifyStudio from "@/components/ApifyStudio";
 import Calendar from "@/components/Calendar";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import WorkflowEngine from "@/components/WorkflowEngine";
@@ -12,7 +11,7 @@ import SystemMonitoring from "@/components/SystemMonitoring";
 import AuditLogs from "@/components/AuditLogs";
 import { motion } from "framer-motion";
 
-type TabType = "grid" | "pipeline" | "apify" | "calendar" | "analytics" | "workflow" | "monitoring" | "audit";
+type TabType = "grid" | "pipeline" | "calendar" | "analytics" | "workflow" | "monitoring" | "audit";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabType>("analytics");
@@ -23,8 +22,6 @@ export default function Dashboard() {
         return <DataGrid />;
       case "pipeline":
         return <PipelineBoard />;
-      case "apify":
-        return <ApifyStudio />;
       case "calendar":
         return <Calendar />;
       case "analytics":
@@ -54,7 +51,6 @@ export default function Dashboard() {
               {[
                 { id: "grid", label: "Data Grid", icon: "fas fa-table" },
                 { id: "pipeline", label: "Pipeline", icon: "fas fa-stream" },
-                { id: "apify", label: "Apify Studio", icon: "fas fa-robot" },
                 { id: "calendar", label: "Calendar", icon: "fas fa-calendar" },
                 { id: "analytics", label: "Analytics", icon: "fas fa-chart-bar" },
                 { id: "workflow", label: "Automation", icon: "fas fa-robot" },

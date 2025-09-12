@@ -16,6 +16,19 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 
+// API Response Types
+interface RunActorResponse {
+  runId: string;
+}
+
+interface ImportDatasetResponse {
+  imported: number;
+}
+
+interface DatasetItemsResponse {
+  items: DatasetItem[];
+}
+
 interface ApifyActor {
   id: string;
   name: string;
@@ -154,8 +167,8 @@ export default function ApifyCommandCenter() {
   });
 
   const runActorMutation = useMutation({
-    mutationFn: async ({ actorId, input }: { actorId: string; input: string }) => {
-      return await apiRequest('/api/apify/actors/run', 'POST', { actorId, input: JSON.parse(input) });
+    mutationFn: async ({ actorId, input }: { actorId: string; input: string }): Promise<RunActorResponse> => {
+      return await apiRequest('/api/apify/actors/run', 'POST', { actorId, input: JSON.parse(input) }) as unknown as RunActorResponse;
     },
     onSuccess: (data) => {
       toast({
@@ -175,8 +188,8 @@ export default function ApifyCommandCenter() {
   });
 
   const importDatasetMutation = useMutation({
-    mutationFn: async (items: DatasetItem[]) => {
-      return await apiRequest('/api/apify/import', 'POST', { items });
+    mutationFn: async (items: DatasetItem[]): Promise<ImportDatasetResponse> => {
+      return await apiRequest('/api/apify/import', 'POST', { items }) as unknown as ImportDatasetResponse;
     },
     onSuccess: (data) => {
       toast({
@@ -220,7 +233,7 @@ export default function ApifyCommandCenter() {
 
   const loadDatasetPreview = async (datasetId: string) => {
     try {
-      const response = await apiRequest(`/api/apify/datasets/${datasetId}/items`, 'GET');
+      const response = await apiRequest(`/api/apify/datasets/${datasetId}/items`, 'GET') as unknown as DatasetItemsResponse;
       setPreviewDataset(response.items || []);
       toast({
         title: "Dataset Loaded",
