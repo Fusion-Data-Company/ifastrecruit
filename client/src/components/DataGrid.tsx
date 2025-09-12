@@ -91,7 +91,7 @@ function EnhancedTooltip({
       <TooltipTrigger asChild>
         {children}
       </TooltipTrigger>
-      <TooltipContent side={side} className={`${maxWidth} max-h-60 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg`}>
+      <TooltipContent side={side} className={`${maxWidth} max-h-60 overflow-y-auto border-2 border-primary/20 bg-background backdrop-blur-sm shadow-xl z-50`}>
         <div className="space-y-2">
           {title && <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>}
           <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -122,7 +122,7 @@ function EvaluationCriteriaTooltip({
       <TooltipTrigger asChild>
         {children}
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background backdrop-blur-sm shadow-xl z-50">
         <div className="space-y-3">
           <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
           <div className="space-y-2 text-sm">
@@ -160,7 +160,7 @@ function DataCollectionResultsTooltip({
       <TooltipTrigger asChild>
         {children}
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background backdrop-blur-sm shadow-xl z-50">
         <div className="space-y-3">
           <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
           <div className="space-y-2 text-sm">
@@ -210,7 +210,7 @@ function InterviewDataTooltip({
       <TooltipTrigger asChild>
         {children}
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background backdrop-blur-sm shadow-xl z-50">
         <div className="space-y-3">
           <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
           <div className="space-y-2 text-sm">
@@ -268,7 +268,7 @@ function DateTooltip({
       <TooltipTrigger asChild>
         {children}
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-sm border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+      <TooltipContent side="top" className="max-w-sm border-2 border-primary/20 bg-background backdrop-blur-sm shadow-xl z-50">
         <div className="space-y-2">
           {title && <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>}
           <div className="text-sm space-y-1">
@@ -1183,7 +1183,7 @@ export default function DataGrid() {
             </div>
           );
         },
-        size: 300,
+        size: 450,
       },
       {
         accessorKey: "phone",
@@ -1262,7 +1262,7 @@ export default function DataGrid() {
         accessorKey: "score",
         header: "Overall Score",
         cell: EditableScoreCell,
-        size: 180,
+        size: 280,
       },
       {
         accessorKey: "sourceRef",
