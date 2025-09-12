@@ -1004,10 +1004,18 @@ export class ElevenLabsAgentService {
     // AI-powered expansion for enhanced candidate profile
     const expandedData = await this.expandCandidateDataWithAI(interviewData, basicData);
     
-    return {
+    // Merge data with AI overrides taking precedence
+    const finalData = {
       ...basicData,
-      ...expandedData
+      ...expandedData,
+      // AI name and score override basic extraction
+      name: expandedData.name || basicData.name,
+      overallScore: expandedData.overallScore || basicData.overallScore
     };
+    
+    console.log(`[ElevenLabs Agent] FINAL EXTRACTION RESULTS: name="${finalData.name}", email="${finalData.email}", phone="${finalData.phone}", score=${finalData.overallScore}`);
+    
+    return finalData;
   }
 
   /**
@@ -1019,16 +1027,21 @@ export class ElevenLabsAgentService {
     let phone = null;
     let overallScore = null;
 
+    console.log(`[ElevenLabs Agent] DEBUG - Raw interview data keys:`, Object.keys(interviewData));
+    console.log(`[ElevenLabs Agent] DEBUG - Metadata keys:`, Object.keys(interviewData.conversationMetadata || {}));
+    console.log(`[ElevenLabs Agent] DEBUG - Agent data keys:`, Object.keys(interviewData.agentData || {}));
+
     // === 1. EXTRACT FROM STRUCTURED DATA FIELDS ===
     const dataCollectionResults = interviewData.data_collection_results || interviewData.dataCollectionResults || {};
     const evaluationDetails = interviewData.evaluation_details || interviewData.evaluationDetails || {};
     const conversationMetadata = interviewData.conversation_metadata || interviewData.conversationMetadata || {};
     const agentData = interviewData.agent_data || interviewData.agentData || {};
+    const metadata = interviewData.metadata || {};
 
-    // Try structured data sources first
-    name = name || dataCollectionResults.name || evaluationDetails.candidate_name || conversationMetadata.candidate_name || agentData.user?.name;
-    email = email || dataCollectionResults.email || evaluationDetails.email || conversationMetadata.email || agentData.user?.email;  
-    phone = phone || dataCollectionResults.phone || evaluationDetails.phone || conversationMetadata.phone || agentData.user?.phone;
+    // Try structured data sources first (but these likely don't exist in real API response)
+    name = name || dataCollectionResults.name || evaluationDetails.candidate_name || conversationMetadata.candidate_name || agentData.user?.name || metadata.candidate_name;
+    email = email || dataCollectionResults.email || evaluationDetails.email || conversationMetadata.email || agentData.user?.email || metadata.email;  
+    phone = phone || dataCollectionResults.phone || evaluationDetails.phone || conversationMetadata.phone || agentData.user?.phone || metadata.phone;
 
     // === 2. EXTRACT FROM TRANSCRIPT USING REGEX ===
     const transcript = interviewData.transcript || '';
@@ -1130,16 +1143,18 @@ export class ElevenLabsAgentService {
         }
       }
       
-      // === EXTRACT NAME - Improved logic to get user responses ===
+      // === EXTRACT NAME - Enhanced logic to get user responses ===
       if (!name) {
         // Try multiple name extraction patterns for user responses
         const namePatterns = [
           // Direct name statements
-          /(?:my name is|i'm|i am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
+          /(?:my name is|i'm|i am|call me|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
           // Response to name questions (get text after question patterns)
           /(?:name.*?)\?.*?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-          // Simple first words that look like names in user messages
-          /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/
+          // Names in email format like "Rob at FusionDataCo" -> extract "Rob"
+          /([A-Z][a-z]+)\s+at\s+[A-Za-z0-9.-]+\.[A-Za-z]{2,}/i,
+          // Simple capitalized words that might be names
+          /\b([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]+)?)\b/g
         ];
         
         // Try patterns on individual user messages first
@@ -1149,25 +1164,42 @@ export class ElevenLabsAgentService {
           console.log(`[ElevenLabs Agent] CHECKING USER MESSAGE FOR NAME: "${userMessage}"`);
           
           for (const pattern of namePatterns) {
-            const nameMatch = userMessage.match(pattern);
-            if (nameMatch && nameMatch[1]) {
-              const extractedName = nameMatch[1].trim();
-              console.log(`[ElevenLabs Agent] NAME PATTERN MATCHED: "${extractedName}"`);
+            const nameMatches = userMessage.match(pattern);
+            if (nameMatches) {
+              // Handle global pattern differently
+              const potentialNames = pattern.global ? nameMatches : [nameMatches[1]];
               
-              // Validate it's a real name, not agent text
-              if (extractedName.length >= 2 && 
-                  !extractedName.includes('conv_') && 
-                  !extractedName.includes('conversation') &&
-                  !extractedName.toLowerCase().includes('elevenlabs') &&
-                  !extractedName.toLowerCase().includes('tell me') &&
-                  !extractedName.toLowerCase().includes('what') &&
-                  !extractedName.toLowerCase().includes('how') &&
-                  !extractedName.toLowerCase().includes('why')) {
-                name = extractedName;
-                console.log(`[ElevenLabs Agent] NAME ACCEPTED: "${name}"`);
-                break;
-              } else {
-                console.log(`[ElevenLabs Agent] NAME REJECTED as invalid: "${extractedName}"`);
+              for (const match of potentialNames) {
+                const extractedName = typeof match === 'string' ? match : match[1];
+                if (!extractedName) continue;
+                
+                const cleanName = extractedName.trim();
+                console.log(`[ElevenLabs Agent] NAME PATTERN MATCHED: "${cleanName}"`);
+                
+                // Enhanced validation for real names
+                if (cleanName.length >= 2 && 
+                    !cleanName.includes('conv_') && 
+                    !cleanName.includes('conversation') &&
+                    !cleanName.toLowerCase().includes('elevenlabs') &&
+                    !cleanName.toLowerCase().includes('constance') &&
+                    !cleanName.toLowerCase().includes('agent') &&
+                    !cleanName.toLowerCase().includes('tell me') &&
+                    !cleanName.toLowerCase().includes('what') &&
+                    !cleanName.toLowerCase().includes('how') &&
+                    !cleanName.toLowerCase().includes('why') &&
+                    !cleanName.toLowerCase().includes('good') &&
+                    !cleanName.toLowerCase().includes('future') &&
+                    !cleanName.toLowerCase().includes('sales') &&
+                    !cleanName.toLowerCase().includes('pro') &&
+                    !/^[a-z]+$/.test(cleanName) && // Not all lowercase
+                    !/\d/.test(cleanName) && // No numbers
+                    cleanName.split(' ').length <= 3) { // Not more than 3 words
+                  name = cleanName;
+                  console.log(`[ElevenLabs Agent] NAME ACCEPTED: "${name}"`);
+                  break;
+                } else {
+                  console.log(`[ElevenLabs Agent] NAME REJECTED as invalid: "${cleanName}"`);
+                }
               }
             }
           }
@@ -1191,6 +1223,19 @@ export class ElevenLabsAgentService {
       
       if (scores.length > 0) {
         overallScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+      } else {
+        // Generate a basic score based on conversation length and email presence
+        const transcriptLength = fullTranscriptText.length;
+        if (email && transcriptLength > 1000) {
+          overallScore = 75; // Good engagement if they provided email and had a long conversation
+        } else if (email) {
+          overallScore = 65; // Moderate if email but short conversation
+        } else if (transcriptLength > 500) {
+          overallScore = 50; // Basic engagement without email
+        } else {
+          overallScore = 25; // Low engagement
+        }
+        console.log(`[ElevenLabs Agent] Generated synthetic score: ${overallScore} based on transcript length: ${transcriptLength}, has email: ${!!email}`);
       }
     }
 
@@ -1329,6 +1374,8 @@ BASIC DATA:
 
 RESPOND WITH ONLY THIS JSON STRUCTURE (no other text):
 {
+  "candidateName": "Extract the candidate's actual name from conversation",
+  "overallScore": "Rate candidate 1-100 based on engagement, professionalism, and responses",
   "qualifications": ["education, certifications, licenses"],
   "experience": ["work experience, achievements"],
   "interests": ["interests relating to insurance/sales"],
@@ -1345,11 +1392,18 @@ RESPOND WITH ONLY THIS JSON STRUCTURE (no other text):
 
       if (aiResponse && aiResponse.content) {
         const expandedData = this.extractJsonFromAiResponse(aiResponse.content);
+        console.log(`[ElevenLabs Agent] AI extraction raw response:`, aiResponse.content.substring(0, 500));
+        console.log(`[ElevenLabs Agent] AI extraction parsed data:`, expandedData);
         
         if (expandedData && typeof expandedData === 'object') {
           console.log(`[ElevenLabs Agent] AI expansion successful with ${Object.keys(expandedData).length} fields`);
           
+          console.log(`[ElevenLabs Agent] AI extracted name: "${expandedData.candidateName}", score: ${expandedData.overallScore}`);
+          
           return {
+            // Override basic extraction with AI results if available
+            name: expandedData.candidateName || null,
+            overallScore: typeof expandedData.overallScore === 'number' ? expandedData.overallScore : null,
             aiExpansionData: {
               qualifications: Array.isArray(expandedData.qualifications) ? expandedData.qualifications : [],
               experience: Array.isArray(expandedData.experience) ? expandedData.experience : [],
