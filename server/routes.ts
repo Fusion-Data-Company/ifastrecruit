@@ -230,6 +230,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Audio proxy endpoint for ElevenLabs conversations
+  app.get("/api/audio/:conversationId", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      // Validate conversation ID format
+      if (!conversationId || !conversationId.startsWith('conv_')) {
+        return res.status(400).json({ error: "Invalid conversation ID format" });
+      }
+
+      console.log(`[Audio Proxy] Fetching audio for conversation: ${conversationId}`);
+      
+      // Get audio data from ElevenLabs
+      const audioData = await elevenlabsIntegration.getConversationAudio(conversationId);
+      
+      if (audioData.audio_url) {
+        // If we have a direct URL, redirect to it
+        console.log(`[Audio Proxy] Redirecting to audio URL: ${audioData.audio_url}`);
+        return res.redirect(audioData.audio_url);
+      } else if (audioData.audio_data) {
+        // If we have binary data, stream it directly
+        console.log(`[Audio Proxy] Streaming binary audio data for conversation: ${conversationId}`);
+        
+        const contentType = audioData.content_type || 'audio/mpeg';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `inline; filename="${conversationId}.mp3"`);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        
+        // Convert ArrayBuffer to Buffer and send
+        const buffer = Buffer.from(audioData.audio_data);
+        return res.send(buffer);
+      } else {
+        console.log(`[Audio Proxy] No audio data found for conversation: ${conversationId}`);
+        return res.status(404).json({ error: "Audio not found for this conversation" });
+      }
+    } catch (error) {
+      console.error(`[Audio Proxy] Error serving audio for conversation ${req.params.conversationId}:`, error);
+      res.status(500).json({ 
+        error: "Failed to fetch audio recording", 
+        details: String(error)
+      });
+    }
+  });
+
   // Mount sync monitoring routes
   app.use("/api/sync", syncMonitoringRouter);
 

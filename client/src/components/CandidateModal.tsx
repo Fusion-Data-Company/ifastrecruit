@@ -737,6 +737,20 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                       </Card>
                     )}
 
+                    {/* Audio Recording Player */}
+                    {(candidate.audioRecordingUrl || candidate.conversationId) && candidate.hasAudio && (
+                      <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/40 backdrop-blur-sm border-cyan-500/20">
+                        <CardContent className="mt-6">
+                          <AudioPlayer
+                            audioUrl={candidate.audioRecordingUrl || `/api/audio/${candidate.conversationId}`}
+                            candidateName={candidate.name}
+                            title="Interview Recording"
+                            className="w-full"
+                          />
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Transcript file actions */}
                     {candidate.localTranscriptFileId && (
                       <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/40 backdrop-blur-sm border-cyan-500/20">

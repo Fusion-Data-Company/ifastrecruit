@@ -450,6 +450,26 @@ export class ElevenLabsAgentService {
       const { calls: toolCalls, results: toolResults } = this.extractToolCallsAndResults(conversationDetails.transcript);
       const performanceMetrics = this.extractPerformanceMetrics(conversationDetails.transcript);
       
+      // Get audio recording URL if conversation has audio
+      let audioRecordingUrl: string | null = null;
+      if (conversationDetails.has_audio) {
+        console.log(`[ElevenLabs Agent] Conversation has audio, attempting to get audio URL: ${conversationId}`);
+        try {
+          const audioData = await elevenlabsIntegration.getConversationAudio(conversationId);
+          if (audioData.audio_url) {
+            audioRecordingUrl = audioData.audio_url;
+            console.log(`[ElevenLabs Agent] Audio URL retrieved: ${audioRecordingUrl}`);
+          } else if (audioData.audio_data) {
+            // If we get binary data instead of URL, we'll create a proxy URL that will serve the binary data
+            console.log(`[ElevenLabs Agent] Received binary audio data for conversation: ${conversationId}`);
+            audioRecordingUrl = `/api/audio/${conversationId}`;
+            console.log(`[ElevenLabs Agent] Using proxy audio URL: ${audioRecordingUrl}`);
+          }
+        } catch (error) {
+          console.error(`[ElevenLabs Agent] Failed to get audio data for conversation ${conversationId}:`, error);
+        }
+      }
+      
       // Prepare comprehensive interview data structure with ALL API fields
       const interviewData = {
         // Core fields (keep for backward compatibility)
@@ -531,6 +551,8 @@ export class ElevenLabsAgentService {
         hasAudio: conversationDetails.has_audio,
         hasUserAudio: conversationDetails.has_user_audio,
         hasResponseAudio: conversationDetails.has_response_audio,
+        audio_recording_url: audioRecordingUrl,
+        audioRecordingUrl: audioRecordingUrl,
         
         // User ID (NEW)
         elevenLabsUserId: conversationDetails.user_id,
@@ -592,11 +614,10 @@ export class ElevenLabsAgentService {
       let localAudioFileId: string | null = null;
       let localTranscriptFileId: string | null = null;
 
-      // Download audio recording if available
-      const audioUrl = validationResult.data.audio_recording_url || validationResult.data.audioRecordingUrl;
-      if (audioUrl && extractedData.email) {
+      // Download audio recording if available and we have an email
+      if (validationResult.data.audioRecordingUrl && extractedData.email) {
         console.log(`[ElevenLabs Agent] Downloading audio recording for candidate: ${extractedData.email}`);
-        const audioResult = await fileStorageService.downloadAudioRecording(audioUrl, conversationId);
+        const audioResult = await fileStorageService.downloadAudioRecording(validationResult.data.audioRecordingUrl, conversationId);
         if (audioResult.success && audioResult.file) {
           localAudioFileId = audioResult.file.id;
           console.log(`[ElevenLabs Agent] Audio recording stored with ID: ${localAudioFileId}`);
