@@ -384,33 +384,64 @@ function extractCandidateDataFromPayload(interviewData: any): {
   // === 2. EXTRACT FROM TRANSCRIPT USING REGEX ===
   const transcript = interviewData.transcript || '';
   let fullTranscriptText = '';
+  let userMessages: string[] = [];
+  
+  console.log(`[MCP] 🔍 TRANSCRIPT DEBUG: Type=${typeof transcript}, IsArray=${Array.isArray(transcript)}`);
   
   if (Array.isArray(transcript)) {
     // Join all user messages from conversation
-    fullTranscriptText = transcript
-      .filter(msg => msg.role === 'user' || msg.role === 'human')
-      .map(msg => msg.message || msg.text || '')
-      .join(' ');
+    userMessages = transcript
+      .filter(msg => {
+        const role = msg.role || msg.speaker;
+        return role === 'user' || role === 'human' || role === 'candidate';
+      })
+      .map(msg => msg.message || msg.text || msg.content || '')
+      .filter(text => text && text.length > 3); // Filter out empty/tiny messages
+    
+    fullTranscriptText = userMessages.join(' ');
+    console.log(`[MCP] 🔍 EXTRACTED ${userMessages.length} user messages:`, userMessages.slice(0, 3));
   } else if (typeof transcript === 'string') {
     fullTranscriptText = transcript;
+    console.log(`[MCP] 🔍 TRANSCRIPT as string, length=${fullTranscriptText.length}`);
   }
 
   if (fullTranscriptText) {
-    // Extract email with regex (prioritize common patterns)
+    console.log(`[MCP] 🔍 FULL TRANSCRIPT TEXT: "${fullTranscriptText.substring(0, 200)}..."`);
+    
+    // === EXTRACT EMAIL - Handle both @ and "at" formats ===
     if (!email) {
-      const emailMatch = fullTranscriptText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      // First try normal email format
+      let emailMatch = fullTranscriptText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      
+      // If no @ found, try "at" format like "Rob at FusionDataCo.com"
+      if (!emailMatch) {
+        const atFormatMatch = fullTranscriptText.match(/([a-zA-Z0-9._%+-]+)\s+at\s+([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        if (atFormatMatch) {
+          const constructedEmail = `${atFormatMatch[1]}@${atFormatMatch[2]}`;
+          emailMatch = [constructedEmail]; // Mock the emailMatch array format
+          console.log(`[MCP] 🔍 CONVERTED "at" format to email: "${constructedEmail}"`);
+        }
+      }
+      
       if (emailMatch) {
         const extractedEmail = emailMatch[0].toLowerCase();
+        console.log(`[MCP] 🔍 FOUND EMAIL CANDIDATE: "${extractedEmail}"`);
+        
         // CRITICAL: Reject conversation IDs and temp emails
         if (!extractedEmail.includes('conversation-') && 
             !extractedEmail.includes('@temp.elevenlabs.com') && 
             !extractedEmail.includes('conv_')) {
           email = extractedEmail;
+          console.log(`[MCP] ✅ EMAIL ACCEPTED: "${email}"`);
+        } else {
+          console.log(`[MCP] ❌ EMAIL REJECTED as fake: "${extractedEmail}"`);
         }
+      } else {
+        console.log(`[MCP] ❌ NO EMAIL PATTERN FOUND in transcript`);
       }
     }
     
-    // Extract phone number with regex (US formats)
+    // === EXTRACT PHONE NUMBER ===
     if (!phone) {
       const phoneMatch = fullTranscriptText.match(/(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\d{10})/);
       if (phoneMatch) {
@@ -418,21 +449,72 @@ function extractCandidateDataFromPayload(interviewData: any): {
         if (phone.length === 10) {
           phone = '+1' + phone; // Add US country code
         }
+        console.log(`[MCP] ✅ PHONE EXTRACTED: "${phone}"`);
       }
     }
     
-    // Extract name - look for first substantial response after greeting
+    // === EXTRACT NAME - Improved logic to get user responses ===
     if (!name) {
-      // Look for name after "tell me your name" type requests
-      const nameMatches = fullTranscriptText.match(/(?:name|I'm|I am|My name is)\s+([A-Z][a-z]+(?: [A-Z][a-z]+)*)/i);
-      if (nameMatches && nameMatches[1]) {
-        const extractedName = nameMatches[1].trim();
-        // Validate it's a real name, not a conversation ID
-        if (extractedName.length > 2 && 
-            !extractedName.includes('conv_') && 
-            !extractedName.includes('conversation') &&
-            !extractedName.toLowerCase().includes('elevenlabs')) {
-          name = extractedName;
+      // Try multiple name extraction patterns for user responses
+      const namePatterns = [
+        // Direct name statements
+        /(?:my name is|i'm|i am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
+        // Response to name questions (get text after question patterns)
+        /(?:name.*?)\?.*?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
+        // Simple first words that look like names in user messages
+        /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/
+      ];
+      
+      // Try patterns on individual user messages first
+      for (const userMessage of userMessages) {
+        if (name) break;
+        
+        console.log(`[MCP] 🔍 CHECKING USER MESSAGE FOR NAME: "${userMessage}"`);
+        
+        for (const pattern of namePatterns) {
+          const nameMatch = userMessage.match(pattern);
+          if (nameMatch && nameMatch[1]) {
+            const extractedName = nameMatch[1].trim();
+            console.log(`[MCP] 🔍 NAME PATTERN MATCHED: "${extractedName}"`);
+            
+            // Validate it's a real name, not agent text
+            if (extractedName.length >= 2 && 
+                !extractedName.includes('conv_') && 
+                !extractedName.includes('conversation') &&
+                !extractedName.toLowerCase().includes('elevenlabs') &&
+                !extractedName.toLowerCase().includes('tell me') &&
+                !extractedName.toLowerCase().includes('what') &&
+                !extractedName.toLowerCase().includes('how') &&
+                !extractedName.toLowerCase().includes('why')) {
+              name = extractedName;
+              console.log(`[MCP] ✅ NAME ACCEPTED: "${name}"`);
+              break;
+            } else {
+              console.log(`[MCP] ❌ NAME REJECTED as invalid: "${extractedName}"`);
+            }
+          }
+        }
+      }
+      
+      // Fallback: try patterns on full transcript if no name found in individual messages
+      if (!name) {
+        for (const pattern of namePatterns) {
+          const nameMatch = fullTranscriptText.match(pattern);
+          if (nameMatch && nameMatch[1]) {
+            const extractedName = nameMatch[1].trim();
+            console.log(`[MCP] 🔍 FALLBACK NAME PATTERN: "${extractedName}"`);
+            
+            if (extractedName.length >= 2 && 
+                !extractedName.includes('conv_') && 
+                !extractedName.includes('conversation') &&
+                !extractedName.toLowerCase().includes('elevenlabs') &&
+                !extractedName.toLowerCase().includes('tell me') &&
+                !extractedName.toLowerCase().includes('what')) {
+              name = extractedName;
+              console.log(`[MCP] ✅ FALLBACK NAME ACCEPTED: "${name}"`);
+              break;
+            }
+          }
         }
       }
     }
