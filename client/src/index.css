@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -16,7 +16,7 @@
   --secondary: hsla(217, 32%, 17%, 0.1);
   --secondary-foreground: hsl(213, 31%, 91%);
   --muted: hsla(217, 32%, 17%, 0.06);
-  --muted-foreground: hsl(0, 0%, 100%);
+  --muted-foreground: hsl(213, 20%, 75%);
   --accent: hsl(183, 100%, 67%);
   --accent-foreground: hsl(215, 28%, 7%);
   --destructive: hsl(0, 62.8%, 30.6%);
@@ -51,7 +51,7 @@
   }
 
   body {
-    @apply font-sans antialiased;
+    @apply font-serif antialiased;
     background: linear-gradient(135deg, hsl(215, 28%, 7%) 0%, hsl(217, 32%, 9%) 50%, hsl(215, 28%, 6%) 100%);
     color: var(--foreground);
     min-height: 100vh;

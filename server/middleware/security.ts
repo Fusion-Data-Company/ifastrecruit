@@ -36,8 +36,8 @@ export const securityHeaders = helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://api.elevenlabs.io", "https://elevenlabs.io"],
-      connectSrc: ["'self'", "https://api.elevenlabs.io", "https://elevenlabs.io", "wss:", "ws:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://api.elevenlabs.io", "https://elevenlabs.io", "https://unpkg.com"],
+      connectSrc: ["'self'", "https://api.elevenlabs.io", "https://elevenlabs.io", "https://unpkg.com", "https://*.elevenlabs.io", "wss:", "ws:", "wss://*.elevenlabs.io"],
       imgSrc: ["'self'", "data:", "https:"],
       fontSrc: ["'self'", "https:", "data:"],
       objectSrc: ["'none'"],
