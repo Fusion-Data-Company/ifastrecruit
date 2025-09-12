@@ -250,10 +250,11 @@ export class ElevenLabsAgentService {
         }
       }
 
-      // Store transcript as file if available
+      // Store transcript as file if available (even without email)
       const transcript = validationResult.data.transcript;
-      if (transcript && extractedData.email) {
-        console.log(`[ElevenLabs Agent] Storing transcript for candidate: ${extractedData.email}`);
+      if (transcript) {
+        const candidateIdentifier = extractedData.email || extractedData.name || conversationId;
+        console.log(`[ElevenLabs Agent] Storing transcript for candidate: ${candidateIdentifier}`);
         const transcriptResult = await fileStorageService.storeTranscript(
           typeof transcript === 'string' ? transcript : JSON.stringify(transcript),
           conversationId,
@@ -267,37 +268,61 @@ export class ElevenLabsAgentService {
         }
       }
       
-      // Validate extracted email
-      if (!extractedData.email || 
-          extractedData.email.includes('conversation-') || 
-          extractedData.email.includes('@temp.elevenlabs.com') || 
-          extractedData.email.includes('conv_') ||
-          !extractedData.email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
-        
-        console.error(`[ElevenLabs Agent] Invalid or fake email detected: "${extractedData.email}"`);
-        
-        await storage.createAuditLog({
-          actor: "elevenlabs_agent",
-          action: "candidate_creation_fake_email_rejected", 
-          payloadJson: { 
-            rejectedEmail: extractedData.email,
-            extractedName: extractedData.name,
-            conversationId,
-            interviewData: validationResult.data
-          },
-          pathUsed: "elevenlabs_api",
-        });
+      // Enhanced validation and candidate creation logic
+      let candidateEmail = extractedData.email;
+      let isValidEmail = false;
+      let shouldCreatePartialCandidate = false;
+      
+      // Check if we have a valid email
+      if (candidateEmail && 
+          !candidateEmail.includes('conversation-') && 
+          !candidateEmail.includes('@temp.elevenlabs.com') && 
+          !candidateEmail.includes('conv_') &&
+          candidateEmail.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
+        isValidEmail = true;
+        console.log(`[ElevenLabs Agent] Valid email found: ${candidateEmail}`);
+      } else {
+        // Check if we have enough data to create a partial candidate
+        if (extractedData.name && extractedData.name.length > 2 && extractedData.name !== 'undefined') {
+          shouldCreatePartialCandidate = true;
+          // Generate a synthetic email for internal tracking
+          const nameSlug = extractedData.name.toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+            .replace(/\s+/g, '.') // Replace spaces with dots
+            .substring(0, 20); // Limit length
+          candidateEmail = `${nameSlug}.${conversationId.slice(-8)}@ifast-internal.temp`;
+          console.log(`[ElevenLabs Agent] Creating partial candidate with synthetic email: ${candidateEmail}`);
+        } else {
+          console.error(`[ElevenLabs Agent] Insufficient data for candidate creation: name="${extractedData.name}", email="${extractedData.email}", phone="${extractedData.phone}"`);
+          
+          await storage.createAuditLog({
+            actor: "elevenlabs_agent",
+            action: "candidate_creation_insufficient_data", 
+            payloadJson: { 
+              rejectedEmail: extractedData.email,
+              extractedName: extractedData.name,
+              extractedPhone: extractedData.phone,
+              conversationId,
+              reason: "Insufficient data for candidate creation"
+            },
+            pathUsed: "elevenlabs_api",
+          });
 
-        return {
-          success: false,
-          action: 'failed',
-          error: "Invalid email address - candidate not created",
-          details: { extractedEmail: extractedData.email, extractedName: extractedData.name }
-        };
+          return {
+            success: false,
+            action: 'failed',
+            error: "Insufficient data for candidate creation",
+            details: { extractedData }
+          };
+        }
       }
 
-      // Check if candidate already exists
-      const existingCandidate = await storage.getCandidateByEmail(extractedData.email);
+      // Check if candidate already exists (using final email)
+      let existingCandidate = null;
+      if (isValidEmail) {
+        // Only check for existing candidates if we have a valid email
+        existingCandidate = await storage.getCandidateByEmail(candidateEmail);
+      }
       
       let candidate;
       let action: 'created' | 'updated';
@@ -308,6 +333,7 @@ export class ElevenLabsAgentService {
         candidate = await storage.updateCandidate(existingCandidate.id, {
           // Update basic info if new data is better
           name: extractedData.name || existingCandidate.name,
+          email: candidateEmail, // Use final candidate email (may be synthetic)
           phone: extractedData.phone || existingCandidate.phone,
           
           // Always update interview-specific data
@@ -387,7 +413,7 @@ export class ElevenLabsAgentService {
         action = 'created';
         candidate = await storage.createCandidate({
           name: extractedData.name || `Candidate ${conversationId.slice(-8)}`,
-          email: extractedData.email,
+          email: candidateEmail, // Use final candidate email (may be synthetic)
           phone: extractedData.phone,
           sourceRef: `elevenlabs_${conversationId}`,
           pipelineStage: "FIRST_INTERVIEW",
@@ -468,7 +494,7 @@ export class ElevenLabsAgentService {
       // Create associated interview record
       const interview = await storage.createInterview({
         candidateId: candidate.id,
-        candidateEmail: extractedData.email,
+        candidateEmail: candidateEmail,
         scheduledAt: new Date(validationResult.data.created_at || Date.now()),
         status: "completed",
         completedAt: new Date(validationResult.data.ended_at || Date.now()),
@@ -495,19 +521,27 @@ export class ElevenLabsAgentService {
           interviewId: interview.id,
           conversationId,
           extractedData,
-          agentId: AUTHORIZED_AGENT_ID
+          agentId: AUTHORIZED_AGENT_ID,
+          partialCandidate: shouldCreatePartialCandidate,
+          syntheticEmail: !isValidEmail
         },
         pathUsed: "elevenlabs_api",
       });
 
-      console.log(`[ElevenLabs Agent] Successfully ${action} candidate: ${candidate.id} (${extractedData.name || 'Unknown'} - ${extractedData.email})`);
+      const candidateType = shouldCreatePartialCandidate ? " (partial candidate with synthetic email)" : "";
+      console.log(`[ElevenLabs Agent] Successfully ${action} candidate: ${candidate.id} (${extractedData.name || 'Unknown'} - ${candidateEmail})${candidateType}`);
 
       return {
         success: true,
         candidate,
         interview,
         action,
-        details: extractedData
+        details: {
+          ...extractedData,
+          finalEmail: candidateEmail,
+          isValidEmail,
+          isPartialCandidate: shouldCreatePartialCandidate
+        }
       };
 
     } catch (error) {
@@ -746,9 +780,86 @@ export class ElevenLabsAgentService {
   }
 
   /**
+   * Extract JSON content from AI response, handling malformed responses
+   */
+  private extractJsonFromAiResponse(aiResponse: string): any | null {
+    if (!aiResponse) return null;
+
+    // Try direct parse first
+    try {
+      return JSON.parse(aiResponse);
+    } catch (e) {
+      console.log(`[ElevenLabs Agent] Direct JSON parse failed, attempting extraction...`);
+    }
+
+    // Try to find JSON block in response
+    try {
+      // Look for JSON blocks enclosed in {} 
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const extracted = jsonMatch[0];
+        console.log(`[ElevenLabs Agent] Extracted JSON block: ${extracted.substring(0, 100)}...`);
+        return JSON.parse(extracted);
+      }
+    } catch (e) {
+      console.warn(`[ElevenLabs Agent] JSON block extraction failed:`, e);
+    }
+
+    // Try to find multiple JSON blocks and use the first valid one
+    try {
+      const jsonBlocks = aiResponse.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+      if (jsonBlocks) {
+        for (const block of jsonBlocks) {
+          try {
+            const parsed = JSON.parse(block);
+            console.log(`[ElevenLabs Agent] Found valid JSON in block: ${block.substring(0, 100)}...`);
+            return parsed;
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`[ElevenLabs Agent] Multi-block JSON extraction failed:`, e);
+    }
+
+    // Last resort: try to clean and extract
+    try {
+      // Remove common prefixes
+      let cleaned = aiResponse
+        .replace(/^.*?(?=\{)/s, '') // Remove everything before first {
+        .replace(/\}.*$/s, '}'); // Remove everything after last }
+      
+      if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
+        return JSON.parse(cleaned);
+      }
+    } catch (e) {
+      console.warn(`[ElevenLabs Agent] JSON cleanup extraction failed:`, e);
+    }
+
+    console.error(`[ElevenLabs Agent] All JSON extraction methods failed. AI Response: ${aiResponse.substring(0, 200)}...`);
+    return null;
+  }
+
+  /**
    * Use AI to expand candidate data with intelligent insights
    */
   private async expandCandidateDataWithAI(interviewData: any, basicData: Partial<CandidateExtractedData>): Promise<Pick<CandidateExtractedData, 'aiExpansionData'>> {
+    const defaultAiData = {
+      aiExpansionData: {
+        qualifications: [],
+        experience: [],
+        interests: [],
+        personalityTraits: [],
+        communicationStyle: null,
+        professionalismLevel: null,
+        careerGoals: null,
+        keySkills: [],
+        concernsOrObjections: [],
+        confidenceLevel: null
+      }
+    };
+
     try {
       console.log(`[ElevenLabs Agent] Starting AI expansion of candidate data...`);
 
@@ -773,86 +884,72 @@ export class ElevenLabsAgentService {
         ).join('\n');
       }
 
+      // Skip AI expansion if no meaningful transcript
+      if (!transcript || transcript.trim().length < 20) {
+        console.log(`[ElevenLabs Agent] Skipping AI expansion - insufficient transcript data (${transcript.length} chars)`);
+        return defaultAiData;
+      }
+
       // Create AI prompt for candidate expansion
-      const prompt = `You are analyzing an insurance sales interview transcript to create a comprehensive candidate profile. Extract detailed insights about this candidate.
+      const prompt = `TASK: Extract candidate insights from insurance interview transcript. Return ONLY valid JSON.
 
-INTERVIEW TRANSCRIPT:
-${transcript}
+TRANSCRIPT:
+${transcript.substring(0, 2000)}${transcript.length > 2000 ? '...' : ''}
 
-BASIC DATA EXTRACTED:
+BASIC DATA:
 - Name: ${basicData.name || 'Unknown'}
 - Email: ${basicData.email || 'Unknown'} 
 - Phone: ${basicData.phone || 'Unknown'}
-- Overall Score: ${basicData.overallScore || 'Not scored'}
 
-Please analyze the transcript and provide a JSON response with the following structure:
+RESPOND WITH ONLY THIS JSON STRUCTURE (no other text):
 {
-  "qualifications": ["list of relevant qualifications, certifications, education"],
-  "experience": ["list of relevant work experience, achievements, roles"],
-  "interests": ["list of interests that relate to insurance/sales"],
-  "personalityTraits": ["list of personality traits observed"],
-  "communicationStyle": "description of communication style",
-  "professionalismLevel": number_1_to_10,
-  "careerGoals": "description of stated career goals",
-  "keySkills": ["list of key skills demonstrated"],
-  "concernsOrObjections": ["list of concerns or objections raised"],
-  "confidenceLevel": number_1_to_10
-}
-
-Focus on:
-1. Professional background and qualifications
-2. Sales experience and achievements  
-3. Communication skills and style
-4. Career motivation and goals
-5. Potential concerns or red flags
-6. Overall confidence and professionalism
-
-Provide empty arrays for missing data, not null values. Be specific and detailed based on what you can extract from the transcript.`;
+  "qualifications": ["education, certifications, licenses"],
+  "experience": ["work experience, achievements"],
+  "interests": ["interests relating to insurance/sales"],
+  "personalityTraits": ["observed personality traits"],
+  "communicationStyle": "communication style description",
+  "professionalismLevel": 1-10,
+  "careerGoals": "stated career goals",
+  "keySkills": ["demonstrated skills"],
+  "concernsOrObjections": ["concerns or objections raised"],
+  "confidenceLevel": 1-10
+}`;
 
       const aiResponse = await openrouterIntegration.chat(prompt, "orchestrator");
 
       if (aiResponse && aiResponse.content) {
-        try {
-          const expandedData = JSON.parse(aiResponse.content);
-          console.log(`[ElevenLabs Agent] AI expansion successful:`, expandedData);
+        const expandedData = this.extractJsonFromAiResponse(aiResponse.content);
+        
+        if (expandedData && typeof expandedData === 'object') {
+          console.log(`[ElevenLabs Agent] AI expansion successful with ${Object.keys(expandedData).length} fields`);
           
           return {
             aiExpansionData: {
-              qualifications: expandedData.qualifications || [],
-              experience: expandedData.experience || [],
-              interests: expandedData.interests || [],
-              personalityTraits: expandedData.personalityTraits || [],
+              qualifications: Array.isArray(expandedData.qualifications) ? expandedData.qualifications : [],
+              experience: Array.isArray(expandedData.experience) ? expandedData.experience : [],
+              interests: Array.isArray(expandedData.interests) ? expandedData.interests : [],
+              personalityTraits: Array.isArray(expandedData.personalityTraits) ? expandedData.personalityTraits : [],
               communicationStyle: expandedData.communicationStyle || null,
-              professionalismLevel: expandedData.professionalismLevel || null,
+              professionalismLevel: typeof expandedData.professionalismLevel === 'number' ? expandedData.professionalismLevel : null,
               careerGoals: expandedData.careerGoals || null,
-              keySkills: expandedData.keySkills || [],
-              concernsOrObjections: expandedData.concernsOrObjections || [],
-              confidenceLevel: expandedData.confidenceLevel || null
+              keySkills: Array.isArray(expandedData.keySkills) ? expandedData.keySkills : [],
+              concernsOrObjections: Array.isArray(expandedData.concernsOrObjections) ? expandedData.concernsOrObjections : [],
+              confidenceLevel: typeof expandedData.confidenceLevel === 'number' ? expandedData.confidenceLevel : null
             }
           };
-        } catch (e) {
-          console.warn(`[ElevenLabs Agent] Failed to parse AI response JSON:`, e);
+        } else {
+          console.warn(`[ElevenLabs Agent] AI expansion returned invalid data structure`);
         }
+      } else {
+        console.warn(`[ElevenLabs Agent] AI expansion returned empty response`);
       }
     } catch (error) {
-      console.warn(`[ElevenLabs Agent] AI expansion failed:`, error);
+      console.warn(`[ElevenLabs Agent] AI expansion failed with error:`, error);
     }
 
-    // Return default structure if AI expansion fails
-    return {
-      aiExpansionData: {
-        qualifications: [],
-        experience: [],
-        interests: [],
-        personalityTraits: [],
-        communicationStyle: null,
-        professionalismLevel: null,
-        careerGoals: null,
-        keySkills: [],
-        concernsOrObjections: [],
-        confidenceLevel: null
-      }
-    };
+    // Return default structure if AI expansion fails - this ensures the conversation continues
+    console.log(`[ElevenLabs Agent] Using default AI expansion data (AI expansion failed/skipped)`);
+    return defaultAiData;
   }
 
   // Utility methods

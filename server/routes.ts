@@ -34,6 +34,13 @@ import {
   validateApiKey
 } from "./middleware/security";
 import { 
+  validateSignedUrl, 
+  validateFileAccess, 
+  fileDownloadRateLimit,
+  generateSignedUrl,
+  validateAdminApiKey
+} from "./middleware/file-security";
+import { 
   performanceTracker,
   performanceMonitor,
   compressionOptimizer,
@@ -58,6 +65,8 @@ import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment
 import { apifyService } from "./services/apify-client";
 import { elevenlabsIntegration } from "./integrations/elevenlabs";
 import { elevenLabsAutomation } from "./services/elevenlabs-automation";
+import { elevenLabsReconciliation } from "./services/elevenlabs-reconciliation";
+import { syncMonitoringRouter } from "./routes/sync-monitoring";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
 import cors from "cors";
@@ -158,6 +167,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to stop automation", details: String(error) });
     }
   });
+
+  // ElevenLabs sync verification endpoints
+  app.get("/api/elevenlabs/sync/verify", async (req, res) => {
+    try {
+      const verification = await elevenLabsReconciliation.verifySyncStatus();
+      res.json(verification);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to verify sync status", details: String(error) });
+    }
+  });
+
+  app.post("/api/elevenlabs/sync/backfill", async (req, res) => {
+    try {
+      const options = req.body;
+      const result = await elevenLabsReconciliation.performBackfill(options);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to perform backfill", details: String(error) });
+    }
+  });
+
+  app.get("/api/elevenlabs/sync/gaps", async (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const gaps = await elevenLabsReconciliation.detectGaps(days);
+      res.json(gaps);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to detect gaps", details: String(error) });
+    }
+  });
+
+  app.post("/api/elevenlabs/sync/heal", async (req, res) => {
+    try {
+      const { gaps } = req.body;
+      const result = await elevenLabsReconciliation.healGaps(gaps);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to heal gaps", details: String(error) });
+    }
+  });
+
+  app.get("/api/elevenlabs/health", async (req, res) => {
+    try {
+      const verification = await elevenLabsReconciliation.verifySyncStatus();
+      const health = {
+        status: verification.syncHealth,
+        sync: verification.status,
+        issues: verification.missingCandidates.length + verification.duplicateCandidates.length + verification.invalidCandidates.length,
+        lastSync: verification.lastSuccessfulSyncAt,
+        metrics: {
+          elevenLabsConversations: verification.totalElevenLabsConversations,
+          localCandidates: verification.totalLocalCandidates,
+          missing: verification.missingCandidates.length,
+          duplicates: verification.duplicateCandidates.length,
+          invalid: verification.invalidCandidates.length
+        }
+      };
+      res.json(health);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get health status", details: String(error) });
+    }
+  });
+
+  // Mount sync monitoring routes
+  app.use("/api/sync", syncMonitoringRouter);
 
   // MCP Server endpoints
   app.post("/api/mcp/tools/list", async (req, res) => {

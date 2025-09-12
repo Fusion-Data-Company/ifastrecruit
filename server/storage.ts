@@ -50,9 +50,11 @@ export interface IStorage {
   getCandidates(page?: number, limit?: number): Promise<Candidate[]>;
   getCandidate(id: string): Promise<Candidate | undefined>;
   getCandidateByEmail(email: string): Promise<Candidate | undefined>;
+  getCandidateByConversationId(conversationId: string): Promise<Candidate | undefined>;
   getCandidateByToken(token: string): Promise<Candidate | undefined>;
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
   updateCandidate(id: string, updates: Partial<Candidate>): Promise<Candidate>;
+  upsertCandidateByConversationId(candidate: InsertCandidate): Promise<{ candidate: Candidate; action: 'created' | 'updated' }>;
 
   // Interview methods
   getInterviews(candidateId?: string): Promise<Interview[]>;
@@ -173,6 +175,11 @@ export class DatabaseStorage implements IStorage {
     return candidate || undefined;
   }
 
+  async getCandidateByConversationId(conversationId: string): Promise<Candidate | undefined> {
+    const [candidate] = await db.select().from(candidates).where(eq(candidates.conversationId, conversationId));
+    return candidate || undefined;
+  }
+
   async getCandidateByToken(token: string): Promise<Candidate | undefined> {
     const candidateId = this.tokenStore.get(token);
     if (!candidateId) return undefined;
@@ -194,6 +201,26 @@ export class DatabaseStorage implements IStorage {
   async updateCandidate(id: string, updates: Partial<Candidate>): Promise<Candidate> {
     const [updated] = await db.update(candidates).set(updates).where(eq(candidates.id, id)).returning();
     return updated;
+  }
+
+  async upsertCandidateByConversationId(candidate: InsertCandidate): Promise<{ candidate: Candidate; action: 'created' | 'updated' }> {
+    // Check if conversation_id is provided
+    if (!candidate.conversationId) {
+      throw new Error('conversationId is required for upsert operation');
+    }
+
+    // Try to find existing candidate by conversationId
+    const existing = await this.getCandidateByConversationId(candidate.conversationId);
+
+    if (existing) {
+      // Update existing candidate
+      const updated = await this.updateCandidate(existing.id, candidate);
+      return { candidate: updated, action: 'updated' };
+    } else {
+      // Create new candidate
+      const created = await this.createCandidate(candidate);
+      return { candidate: created, action: 'created' };
+    }
   }
 
   async getInterviews(candidateId?: string): Promise<Interview[]> {

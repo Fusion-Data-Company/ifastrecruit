@@ -1,6 +1,7 @@
 import { elevenlabsIntegration } from "../integrations/elevenlabs";
 import { storage } from "../storage";
 import { elevenLabsAgent } from "./elevenlabs-agent";
+import { elevenLabsPoisonHandler } from "./elevenlabs-poison-handler";
 
 // The specific authorized ElevenLabs agent ID that we monitor
 const AUTHORIZED_AGENT_ID = "agent_0601k4t9d82qe5ybsgkngct0zzkm";
@@ -175,11 +176,33 @@ export class ElevenLabsAutomationService {
             }
 
           } else {
-            console.warn(`[ElevenLabs Automation] Failed to process conversation: ${conversation.conversation_id} - ${result.error}`);
+            // Handle failed processing with poison message detection
+            const retryResult = elevenLabsPoisonHandler.shouldRetryConversation(
+              conversation.conversation_id, 
+              result.error || 'Unknown processing error'
+            );
+            
+            if (retryResult.shouldRetry) {
+              console.warn(`[ElevenLabs Automation] Will retry conversation: ${conversation.conversation_id} - ${retryResult.reason}`);
+            } else {
+              console.error(`[ElevenLabs Automation] Conversation marked as poisoned: ${conversation.conversation_id} - ${retryResult.reason}`);
+            }
           }
 
         } catch (conversationError) {
-          console.error(`[ElevenLabs Automation] Error processing conversation ${conversation.conversation_id}:`, conversationError);
+          // Handle processing exceptions with poison message detection  
+          const errorMessage = conversationError instanceof Error ? conversationError.message : String(conversationError);
+          const retryResult = elevenLabsPoisonHandler.shouldRetryConversation(
+            conversation.conversation_id, 
+            errorMessage
+          );
+          
+          if (retryResult.shouldRetry) {
+            console.warn(`[ElevenLabs Automation] Will retry after error: ${conversation.conversation_id} - ${retryResult.reason}`);
+          } else {
+            console.error(`[ElevenLabs Automation] Conversation poisoned after error: ${conversation.conversation_id} - ${retryResult.reason}`);
+          }
+          
           // Continue with next conversation instead of failing the entire batch
         }
       }

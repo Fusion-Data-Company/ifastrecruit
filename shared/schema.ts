@@ -97,6 +97,7 @@ export const candidates = pgTable("candidates", {
   interviewMetrics: jsonb("interview_metrics"), // Performance metrics and statistics
 }, (table) => ({
   emailUnique: unique().on(table.email),
+  conversationIdUnique: unique().on(table.conversationId),
 }));
 
 export const interviewStatusEnum = pgEnum("interview_status", ["scheduled", "completed", "cancelled", "no-show"]);
