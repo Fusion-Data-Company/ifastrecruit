@@ -90,32 +90,10 @@ export default function SlackPoolsPage() {
     }
   };
 
-  // Mock channels data
-  const mockChannels: SlackChannel[] = [
-    { id: '1', name: 'recruiting-pipeline', purpose: 'Main recruiting updates', memberCount: 12, isActive: true },
-    { id: '2', name: 'interview-scheduling', purpose: 'Interview coordination', memberCount: 8, isActive: true },
-    { id: '3', name: 'candidate-alerts', purpose: 'New candidate notifications', memberCount: 15, isActive: true },
-    { id: '4', name: 'hiring-team', purpose: 'General hiring discussions', memberCount: 20, isActive: false },
-  ];
-
-  const mockMessages: SlackMessage[] = [
-    {
-      id: '1',
-      channel: 'recruiting-pipeline',
-      user: 'iFast Bot',
-      text: 'New candidate John Doe has been added to the pipeline for Senior Developer role',
-      timestamp: new Date().toISOString(),
-      type: 'candidate_notification'
-    },
-    {
-      id: '2',
-      channel: 'interview-scheduling',
-      user: 'iFast Bot',
-      text: 'Interview scheduled for tomorrow at 2:00 PM with Jane Smith',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      type: 'interview_reminder'
-    },
-  ];
+  // No mock data - use real Slack integration data only
+  // Channels and messages should come from actual Slack API or be empty
+  const mockChannels: SlackChannel[] = [];
+  const mockMessages: SlackMessage[] = [];
 
   return (
     <div className="min-h-screen bg-background">

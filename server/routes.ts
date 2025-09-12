@@ -1170,18 +1170,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           realRun = await apifyService.runActor(actor.actorId, input);
         } catch (error) {
-          console.error("Apify API call failed, falling back to mock:", error);
+          console.error("Apify API call failed:", error);
+          return res.status(500).json({ error: "Apify API service unavailable", details: String(error) });
         }
+      } else {
+        return res.status(503).json({ error: "Apify API not configured" });
       }
       
-      // Create run record (real or mock)
+      // Create run record from real Apify data only
       const runData = {
         actorId: actor.id,
-        apifyRunId: realRun?.id || `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        status: realRun?.status || "RUNNING",
-        startedAt: realRun?.startedAt || new Date(),
+        apifyRunId: realRun.id,
+        status: realRun.status,
+        startedAt: realRun.startedAt,
         inputJson: input,
-        logMessages: ["Run started", "Initializing scraper", "Processing requests..."],
+        logMessages: realRun.logMessages || ["Run started"],
       };
       
       const run = await storage.createApifyRun(runData);
@@ -1189,26 +1192,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update actor last run
       await storage.updateApifyActor(actorId, { lastRun: new Date() });
       
-      // Simulate run completion after delay (for demo)
-      setTimeout(async () => {
-        try {
-          await storage.updateApifyRun(run.id, {
-            status: "SUCCEEDED",
-            finishedAt: new Date(),
-            defaultDatasetId: `dataset_${Date.now()}`,
-            outputJson: { itemCount: 50, datasetId: `dataset_${Date.now()}` },
-            statsJson: {
-              requestsFinished: 50,
-              requestsFailed: 2,
-              outputValueCount: 48,
-            },
-          });
-        } catch (error) {
-          console.error("Failed to update mock run:", error);
-        }
-      }, 10000); // Complete after 10 seconds
+      // No mock run simulation - only real Apify data
       
-      res.json({ runId: run.apifyRunId, status: "RUNNING" });
+      res.json({ runId: run.apifyRunId, status: realRun.status });
     } catch (error) {
       console.error("Run start failed:", error);
       res.status(500).json({ error: "Failed to start actor run", details: String(error) });
@@ -1271,22 +1257,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Fallback to mock dataset items
-      const mockItems = Array.from({ length: Number(limit) }, (_, i) => ({
-        id: `item_${i}`,
-        name: `John Doe ${i}`,
-        email: `candidate${i}@example.com`,
-        phone: `+1-555-000${i.toString().padStart(4, '0')}`,
-        company: `TechCorp ${i}`,
-        position: `Software Engineer ${i}`,
-        location: `San Francisco, CA`,
-        experience: `${3 + i} years`,
-        skills: ["JavaScript", "React", "Node.js"],
-        linkedinUrl: `https://linkedin.com/in/johndoe${i}`,
-        source: "LinkedIn",
-      }));
-      
-      res.json({ items: mockItems, count: mockItems.length });
+      // No fallback mock data - return empty result if API unavailable
+      res.json({ items: [], count: 0, message: "Apify API not available - no mock data provided" });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch dataset items" });
     }
