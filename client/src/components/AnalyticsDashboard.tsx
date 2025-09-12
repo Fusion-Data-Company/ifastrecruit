@@ -10,7 +10,7 @@ import {
   AreaChart, Area, RadialBarChart, RadialBar
 } from 'recharts';
 import { useState } from 'react';
-import { format, subDays, startOfDay } from 'date-fns';
+import { format, subDays, startOfDay, differenceInDays, parseISO } from 'date-fns';
 import type { Candidate } from '@shared/schema';
 
 interface AnalyticsDashboardProps {
@@ -78,53 +78,406 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
     queryKey: ["/api/candidates"],
   });
 
-  // Generate analytics data from candidates
-  const safeC = candidates || [];
+  // Generate analytics data from candidates with robust validation
+  const safeC = Array.isArray(candidates) ? candidates : [];
+  
+  // Helper function to safely parse dates
+  const safeParseDate = (dateString: string | null | undefined): Date | null => {
+    if (!dateString) return null;
+    try {
+      const parsed = new Date(dateString);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    } catch {
+      return null;
+    }
+  };
+  
+  // Helper function to safely get score values
+  const getSafeScore = (candidate: Candidate): number => {
+    const score = candidate.overallScore ?? candidate.score ?? 0;
+    return typeof score === 'number' && !isNaN(score) && score >= 0 ? score : 0;
+  };
+  
+  // Helper function to validate pipeline stage
+  const isValidPipelineStage = (stage: string | null | undefined): boolean => {
+    const validStages = ['NEW', 'FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'];
+    return typeof stage === 'string' && validStages.includes(stage);
+  };
+  
+  // Filter candidates with basic data validation
+  const validCandidates = safeC.filter(c => 
+    c && 
+    typeof c.id === 'string' && 
+    typeof c.name === 'string' && 
+    isValidPipelineStage(c.pipelineStage)
+  );
+  
+  // Helper function to calculate time range filtered candidates
+  const getFilteredCandidates = () => {
+    const now = new Date();
+    
+    const getCutoffDate = (days: number): Date => {
+      try {
+        return subDays(now, days);
+      } catch {
+        return new Date(now.getTime() - (days * 24 * 60 * 60 * 1000)); // Fallback calculation
+      }
+    };
+    
+    const filterByTimeRange = (days: number) => {
+      const cutoff = getCutoffDate(days);
+      return validCandidates.filter(c => {
+        const createdDate = safeParseDate(c.createdAt);
+        return createdDate && createdDate >= cutoff;
+      });
+    };
+    
+    switch (timeRange) {
+      case '7d': return filterByTimeRange(7);
+      case '30d': return filterByTimeRange(30);
+      case '90d': return filterByTimeRange(90);
+      case '1y': return filterByTimeRange(365);
+      default: return validCandidates;
+    }
+  };
+  
+  const filteredCandidates = getFilteredCandidates();
+  
+  // Calculate stage progression and conversion rates
+  const stageOrder = ['NEW', 'FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED'];
+  const stageCounts = stageOrder.map(stage => filteredCandidates.filter(c => c.pipelineStage === stage).length);
+  
+  // Calculate conversion rates between stages
+  const calculateConversionRate = (fromStageIndex: number) => {
+    if (fromStageIndex >= stageCounts.length - 1) return 100;
+    const fromCount = stageCounts.slice(fromStageIndex).reduce((sum, count) => sum + count, 0);
+    const toCount = stageCounts.slice(fromStageIndex + 1).reduce((sum, count) => sum + count, 0);
+    return fromCount > 0 ? Math.round((toCount / fromCount) * 100) : 0;
+  };
+  
+  // Calculate average time in stage
+  // Note: Since we don't have stage transition timestamps, this provides an approximation
+  // based on the candidate's overall time in the system. For active candidates, this 
+  // represents minimum time in current stage. For completed stages, this is an estimate.
+  const calculateAvgTimeInStage = (stage: string) => {
+    const candidatesInStage = filteredCandidates.filter(c => c.pipelineStage === stage && c.createdAt);
+    if (candidatesInStage.length === 0) return 0;
+    
+    const totalDays = candidatesInStage.reduce((sum, candidate) => {
+      const createdDate = new Date(candidate.createdAt!);
+      
+      // For candidates with interview dates, use that as a more accurate reference
+      if (candidate.interviewDate) {
+        const interviewDate = new Date(candidate.interviewDate);
+        // If they're past first interview stage, calculate from interview date
+        if (['TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED'].includes(stage)) {
+          return sum + Math.max(1, differenceInDays(new Date(), interviewDate));
+        }
+      }
+      
+      // For active candidates in current stage, calculate time since creation
+      // This gives a minimum time in stage for active candidates
+      return sum + Math.max(1, differenceInDays(new Date(), createdDate));
+    }, 0);
+    
+    return Math.round((totalDays / candidatesInStage.length) * 10) / 10;
+  };
+  
   const analyticsData: AnalyticsData = {
     pipelineMetrics: [
-      { stage: 'New', count: safeC.filter(c => c.pipelineStage === 'NEW').length, conversionRate: 85, avgTimeInStage: 2.3 },
-      { stage: 'First Interview', count: safeC.filter(c => c.pipelineStage === 'FIRST_INTERVIEW').length, conversionRate: 65, avgTimeInStage: 5.1 },
-      { stage: 'In Slack', count: safeC.filter(c => c.pipelineStage === 'TECHNICAL_SCREEN').length, conversionRate: 45, avgTimeInStage: 7.2 },
-      { stage: 'Final Interview', count: safeC.filter(c => c.pipelineStage === 'FINAL_INTERVIEW').length, conversionRate: 78, avgTimeInStage: 4.6 },
-      { stage: 'Offer', count: safeC.filter(c => c.pipelineStage === 'OFFER').length, conversionRate: 92, avgTimeInStage: 3.1 },
-      { stage: 'Hired', count: safeC.filter(c => c.pipelineStage === 'HIRED').length, conversionRate: 100, avgTimeInStage: 0 },
+      { 
+        stage: 'New', 
+        count: stageCounts[0], 
+        conversionRate: calculateConversionRate(0), 
+        avgTimeInStage: calculateAvgTimeInStage('NEW') 
+      },
+      { 
+        stage: 'First Interview', 
+        count: stageCounts[1], 
+        conversionRate: calculateConversionRate(1), 
+        avgTimeInStage: calculateAvgTimeInStage('FIRST_INTERVIEW') 
+      },
+      { 
+        stage: 'In Slack', 
+        count: stageCounts[2], 
+        conversionRate: calculateConversionRate(2), 
+        avgTimeInStage: calculateAvgTimeInStage('TECHNICAL_SCREEN') 
+      },
+      { 
+        stage: 'Final Interview', 
+        count: stageCounts[3], 
+        conversionRate: calculateConversionRate(3), 
+        avgTimeInStage: calculateAvgTimeInStage('FINAL_INTERVIEW') 
+      },
+      { 
+        stage: 'Offer', 
+        count: stageCounts[4], 
+        conversionRate: calculateConversionRate(4), 
+        avgTimeInStage: calculateAvgTimeInStage('OFFER') 
+      },
+      { 
+        stage: 'Hired', 
+        count: stageCounts[5], 
+        conversionRate: 100, 
+        avgTimeInStage: 0 
+      },
     ],
-    sourcePerformance: [
-      { source: 'Apify', candidates: safeC.filter(c => c.campaignId).length, hiredCount: 12, conversionRate: 8.5, avgScore: 78 },
-      { source: 'Manual Entry', candidates: safeC.filter(c => !c.campaignId).length, hiredCount: 8, conversionRate: 12.3, avgScore: 82 },
-      { source: 'Referrals', candidates: 23, hiredCount: 6, conversionRate: 26.1, avgScore: 89 },
-      { source: 'LinkedIn', candidates: 31, hiredCount: 4, conversionRate: 12.9, avgScore: 75 },
-    ],
-    timeMetrics: {
-      avgTimeToHire: 18.5,
-      avgTimeToFirstInterview: 3.2,
-      avgTimeToOffer: 14.7,
-    },
-    scoreDistribution: [
-      { range: '90-100', count: safeC.filter(c => (c.score || 0) >= 90).length, percentage: 15 },
-      { range: '80-89', count: safeC.filter(c => (c.score || 0) >= 80 && (c.score || 0) < 90).length, percentage: 25 },
-      { range: '70-79', count: safeC.filter(c => (c.score || 0) >= 70 && (c.score || 0) < 80).length, percentage: 35 },
-      { range: '60-69', count: safeC.filter(c => (c.score || 0) >= 60 && (c.score || 0) < 70).length, percentage: 20 },
-      { range: '< 60', count: safeC.filter(c => (c.score || 0) < 60).length, percentage: 5 },
-    ],
-    trendsData: Array.from({ length: 30 }, (_, i) => {
-      const date = format(subDays(new Date(), 29 - i), 'MMM dd');
-      return {
-        date,
-        applications: Math.floor(Math.random() * 15) + 5,
-        interviews: Math.floor(Math.random() * 8) + 2,
-        offers: Math.floor(Math.random() * 3) + 1,
-        hires: Math.floor(Math.random() * 2),
+    sourcePerformance: (() => {
+      // Group candidates by their source
+      const sourceGroups: Record<string, Candidate[]> = {};
+      
+      filteredCandidates.forEach(candidate => {
+        let source = 'Unknown';
+        
+        // Determine source based on available data
+        if (candidate.agentId || candidate.conversationId) {
+          source = 'ElevenLabs AI';
+        } else if (candidate.campaignId) {
+          source = 'Apify Campaign';
+        } else if (candidate.sourceRef === 'manual') {
+          source = 'Manual Entry';
+        } else if (candidate.sourceRef) {
+          source = candidate.sourceRef;
+        } else if (candidate.source) {
+          source = candidate.source;
+        }
+        
+        if (!sourceGroups[source]) {
+          sourceGroups[source] = [];
+        }
+        sourceGroups[source].push(candidate);
+      });
+      
+      // Calculate metrics for each source
+      return Object.entries(sourceGroups).map(([source, candidates]) => {
+        const hiredCount = candidates.filter(c => c.pipelineStage === 'HIRED').length;
+        const conversionRate = candidates.length > 0 ? Math.round((hiredCount / candidates.length) * 100 * 10) / 10 : 0;
+        const avgScore = candidates.length > 0 ? 
+          Math.round(candidates.reduce((sum, c) => sum + (c.overallScore || c.score || 0), 0) / candidates.length) : 0;
+        
+        return {
+          source,
+          candidates: candidates.length,
+          hiredCount,
+          conversionRate,
+          avgScore
+        };
+      }).sort((a, b) => b.candidates - a.candidates); // Sort by candidate count
+    })(),
+    timeMetrics: (() => {
+      const hiredCandidates = filteredCandidates.filter(c => c.pipelineStage === 'HIRED' && c.createdAt);
+      const interviewedCandidates = filteredCandidates.filter(c => 
+        ['FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED'].includes(c.pipelineStage) && 
+        c.createdAt
+      );
+      const offerCandidates = filteredCandidates.filter(c => ['OFFER', 'HIRED'].includes(c.pipelineStage) && c.createdAt);
+      
+      // Calculate average time to hire for HIRED candidates
+      // Uses interview date as a proxy for hire progression when available
+      const calculateAvgTimeToHire = (candidates: Candidate[]) => {
+        if (candidates.length === 0) return 0;
+        const totalDays = candidates.reduce((sum, candidate) => {
+          const createdDate = new Date(candidate.createdAt!);
+          // For hired candidates, estimate completion time based on available data
+          // If we have an interview date, add estimated processing time
+          if (candidate.interviewDate) {
+            const interviewDate = new Date(candidate.interviewDate);
+            const baseTime = differenceInDays(interviewDate, createdDate);
+            // Add estimated 7-14 days for post-interview processing (average 10 days)
+            return sum + baseTime + 10;
+          }
+          // Fallback: Use current date but this is less accurate for old hires
+          return sum + Math.max(7, differenceInDays(new Date(), createdDate));
+        }, 0);
+        return Math.round((totalDays / candidates.length) * 10) / 10;
       };
-    }),
-    performanceKPIs: {
-      totalCandidates: safeC.length,
-      activeInPipeline: safeC.filter(c => !['HIRED', 'REJECTED'].includes(c.pipelineStage)).length,
-      averageScore: safeC.length > 0 ? Math.round(safeC.reduce((sum, c) => sum + (c.score || 0), 0) / safeC.length) : 0,
-      conversionRate: 8.7,
-      timeToHire: 18.5,
-      qualityScore: 85,
-    },
+      
+      // Calculate average time to first interview
+      const calculateAvgTimeToInterview = (candidates: Candidate[]) => {
+        if (candidates.length === 0) return 0;
+        const totalDays = candidates.reduce((sum, candidate) => {
+          const createdDate = new Date(candidate.createdAt!);
+          // Use actual interview date if available
+          if (candidate.interviewDate) {
+            return sum + Math.max(0, differenceInDays(new Date(candidate.interviewDate), createdDate));
+          }
+          // For candidates in interview stages without interview date, estimate
+          if (['FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW'].includes(candidate.pipelineStage)) {
+            return sum + Math.max(1, differenceInDays(new Date(), createdDate));
+          }
+          return sum + 0; // Skip candidates without interview data
+        }, 0);
+        
+        // Only count candidates with interview data
+        const candidatesWithInterviews = candidates.filter(c => 
+          c.interviewDate || ['FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW'].includes(c.pipelineStage)
+        );
+        
+        return candidatesWithInterviews.length > 0 ? 
+          Math.round((totalDays / candidatesWithInterviews.length) * 10) / 10 : 0;
+      };
+      
+      // Calculate average time to offer
+      const calculateAvgTimeToOffer = (candidates: Candidate[]) => {
+        if (candidates.length === 0) return 0;
+        const totalDays = candidates.reduce((sum, candidate) => {
+          const createdDate = new Date(candidate.createdAt!);
+          // Estimate offer timing based on interview date + processing time
+          if (candidate.interviewDate) {
+            const interviewDate = new Date(candidate.interviewDate);
+            const baseTime = differenceInDays(interviewDate, createdDate);
+            // Add estimated 3-7 days for post-interview to offer (average 5 days)
+            return sum + baseTime + 5;
+          }
+          // Fallback for offers without interview dates
+          return sum + Math.max(5, differenceInDays(new Date(), createdDate));
+        }, 0);
+        return Math.round((totalDays / candidates.length) * 10) / 10;
+      };
+      
+      return {
+        avgTimeToHire: calculateAvgTimeToHire(hiredCandidates),
+        avgTimeToFirstInterview: calculateAvgTimeToInterview(interviewedCandidates),
+        avgTimeToOffer: calculateAvgTimeToOffer(offerCandidates),
+      };
+    })(),
+    scoreDistribution: (() => {
+      const candidatesWithScores = filteredCandidates.filter(c => (c.overallScore || c.score || 0) > 0);
+      const totalWithScores = candidatesWithScores.length;
+      
+      const ranges = [
+        { range: '90-100', count: candidatesWithScores.filter(c => (c.overallScore || c.score || 0) >= 90).length },
+        { range: '80-89', count: candidatesWithScores.filter(c => (c.overallScore || c.score || 0) >= 80 && (c.overallScore || c.score || 0) < 90).length },
+        { range: '70-79', count: candidatesWithScores.filter(c => (c.overallScore || c.score || 0) >= 70 && (c.overallScore || c.score || 0) < 80).length },
+        { range: '60-69', count: candidatesWithScores.filter(c => (c.overallScore || c.score || 0) >= 60 && (c.overallScore || c.score || 0) < 70).length },
+        { range: '< 60', count: candidatesWithScores.filter(c => (c.overallScore || c.score || 0) < 60 && (c.overallScore || c.score || 0) > 0).length },
+      ];
+      
+      return ranges.map(item => ({
+        ...item,
+        percentage: totalWithScores > 0 ? Math.round((item.count / totalWithScores) * 100) : 0
+      }));
+    })(),
+    trendsData: (() => {
+      const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 365;
+      const dateRange = Array.from({ length: days }, (_, i) => subDays(new Date(), days - 1 - i));
+      
+      return dateRange.map(date => {
+        const dayStart = startOfDay(date);
+        const dayEnd = startOfDay(subDays(dayStart, -1)); // Start of next day
+        
+        // Applications: Count candidates CREATED on this day
+        const dayCandidates = safeC.filter(c => {
+          if (!c.createdAt) return false;
+          const candidateDate = new Date(c.createdAt);
+          return candidateDate >= dayStart && candidateDate < dayEnd;
+        });
+        
+        // Interviews: Count ALL candidates who had interviews on this day (regardless of creation date)
+        const dayInterviews = safeC.filter(c => {
+          if (!c.interviewDate) return false;
+          const interviewDate = new Date(c.interviewDate);
+          return interviewDate >= dayStart && interviewDate < dayEnd;
+        });
+        
+        // Offers: Count ALL candidates who moved to OFFER stage on this day
+        // Note: Since we don't have stage transition dates, we'll approximate by counting 
+        // candidates currently in OFFER stage who were created within the timeframe
+        const dayOffers = safeC.filter(c => {
+          if (c.pipelineStage !== 'OFFER') return false;
+          if (!c.createdAt) return false;
+          const candidateDate = new Date(c.createdAt);
+          return candidateDate >= dayStart && candidateDate < dayEnd;
+        });
+        
+        // Hires: Count ALL candidates who moved to HIRED stage on this day
+        // Note: Since we don't have stage transition dates, we'll approximate by counting 
+        // candidates currently in HIRED stage who were created within the timeframe
+        const dayHires = safeC.filter(c => {
+          if (c.pipelineStage !== 'HIRED') return false;
+          if (!c.createdAt) return false;
+          const candidateDate = new Date(c.createdAt);
+          return candidateDate >= dayStart && candidateDate < dayEnd;
+        });
+        
+        return {
+          date: format(date, days > 90 ? 'MMM dd' : 'MMM dd'),
+          applications: dayCandidates.length,
+          interviews: dayInterviews.length,
+          offers: dayOffers.length,
+          hires: dayHires.length,
+        };
+      });
+    })(),
+    performanceKPIs: (() => {
+      const total = filteredCandidates.length;
+      const active = filteredCandidates.filter(c => 
+        c.pipelineStage && !['HIRED', 'REJECTED'].includes(c.pipelineStage)
+      ).length;
+      const hired = filteredCandidates.filter(c => c.pipelineStage === 'HIRED').length;
+      
+      // Calculate average score using safer methods
+      const candidatesWithValidScores = filteredCandidates.filter(c => getSafeScore(c) > 0);
+      const avgScore = candidatesWithValidScores.length > 0 ? 
+        Math.round(candidatesWithValidScores.reduce((sum, c) => sum + getSafeScore(c), 0) / candidatesWithValidScores.length) : 0;
+      
+      // Overall conversion rate (hired / total) with proper validation
+      const conversionRate = total > 0 ? 
+        Math.round((hired / total) * 100 * 100) / 100 : 0; // Fixed rounding precision
+      
+      // Average time to hire using more accurate calculation
+      const hiredCandidatesWithDates = filteredCandidates.filter(c => 
+        c.pipelineStage === 'HIRED' && safeParseDate(c.createdAt)
+      );
+      
+      const avgTimeToHire = hiredCandidatesWithDates.length > 0 ? 
+        Math.round((hiredCandidatesWithDates.reduce((sum, c) => {
+          const createdDate = safeParseDate(c.createdAt);
+          if (!createdDate) return sum;
+          
+          // Use interview date + estimated processing time for more accurate calculation
+          if (c.interviewDate) {
+            const interviewDate = safeParseDate(c.interviewDate);
+            if (interviewDate) {
+              const baseTime = differenceInDays(interviewDate, createdDate);
+              return sum + baseTime + 10; // Add estimated post-interview processing time
+            }
+          }
+          
+          // Fallback: Use minimum realistic time for hired candidates
+          return sum + Math.max(7, differenceInDays(new Date(), createdDate));
+        }, 0) / hiredCandidatesWithDates.length) * 10) / 10 : 0;
+      
+      // Quality score with enhanced validation
+      const qualityFactors = {
+        avgScore: Math.max(0, Math.min(1, avgScore / 100)), // Clamp to 0-1 range
+        conversionRate: Math.max(0, Math.min(1, conversionRate / 100)), // Clamp to 0-1 range
+        interviewCompletion: total > 0 ? candidatesWithValidScores.length / total : 0,
+        dataCompleteness: total > 0 ? 
+          filteredCandidates.filter(c => 
+            c.email && 
+            typeof c.email === 'string' && 
+            c.name && 
+            typeof c.name === 'string'
+          ).length / total : 0
+      };
+      
+      const qualityScore = Math.round(
+        (qualityFactors.avgScore * 0.4 + 
+         qualityFactors.conversionRate * 0.3 + 
+         qualityFactors.interviewCompletion * 0.2 + 
+         qualityFactors.dataCompleteness * 0.1) * 100
+      );
+      
+      return {
+        totalCandidates: total,
+        activeInPipeline: active,
+        averageScore: avgScore,
+        conversionRate,
+        timeToHire: avgTimeToHire,
+        qualityScore: Math.max(0, Math.min(100, qualityScore)), // Clamp quality score to 0-100
+      };
+    })(),
   };
 
   const renderKPICard = (title: string, value: string | number, subtitle: string, icon: string, trend?: number) => (
