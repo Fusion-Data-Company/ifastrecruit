@@ -217,6 +217,48 @@ export class ElevenLabsAgentService {
   }
 
   /**
+   * Normalize cost values from ElevenLabs API
+   * ElevenLabs may send costs in cents (8987 = $89.87) or USD (89.87)
+   * This function detects the format and normalizes to proper USD amount
+   */
+  private normalizeCost(rawCost: any): number | null {
+    if (!rawCost && rawCost !== 0) {
+      return null;
+    }
+
+    // Convert to number if it's a string
+    let cost = typeof rawCost === 'string' ? parseFloat(rawCost) : rawCost;
+    
+    // Validate it's a valid number
+    if (typeof cost !== 'number' || isNaN(cost) || cost < 0) {
+      console.warn(`[ElevenLabs Agent] Invalid cost value: ${rawCost}`);
+      return null;
+    }
+
+    // If cost is very high (>$200), it's likely in cents - convert to dollars
+    // Typical call costs should be $0.10 - $50.00, rarely exceeding $100
+    if (cost > 200) {
+      cost = cost / 100;
+      console.log(`[ElevenLabs Agent] Normalized cost from cents: ${rawCost} cents -> $${cost.toFixed(2)}`);
+    }
+
+    // Additional validation: reject unrealistic costs
+    if (cost > 200) {
+      console.warn(`[ElevenLabs Agent] REJECTED unrealistic cost: $${cost.toFixed(2)} (original: ${rawCost})`);
+      return null;
+    }
+
+    // Round to 2 decimal places for currency
+    const normalizedCost = Math.round(cost * 100) / 100;
+    
+    if (normalizedCost !== cost) {
+      console.log(`[ElevenLabs Agent] Rounded cost: $${cost} -> $${normalizedCost.toFixed(2)}`);
+    }
+    
+    return normalizedCost;
+  }
+
+  /**
    * Extract rich transcript data including word-level timing, tool calls, and metrics
    */
   private extractRichTranscriptData(transcript: any): any {
@@ -461,8 +503,8 @@ export class ElevenLabsAgentService {
         startTimeUnixSecs: metadata.start_time_unix_secs,
         endTimeUnixSecs: metadata.end_time_unix_secs,
         
-        // Cost and billing (NEW)
-        cost: metadata.cost,
+        // Cost and billing (NEW) - normalized from cents to USD
+        cost: this.normalizeCost(metadata.cost),
         charging: metadata.charging,
         hasChargingTimerTriggered: metadata.has_charging_timer_triggered,
         hasBillingTimerTriggered: metadata.has_billing_timer_triggered,
@@ -717,8 +759,8 @@ export class ElevenLabsAgentService {
           startTimeUnixSecs: validationResult.data.startTimeUnixSecs,
           endTimeUnixSecs: validationResult.data.endTimeUnixSecs,
           
-          // Cost and billing
-          cost: validationResult.data.cost,
+          // Cost and billing - normalized from cents to USD
+          cost: this.normalizeCost(validationResult.data.cost),
           charging: validationResult.data.charging,
           hasChargingTimerTriggered: validationResult.data.hasChargingTimerTriggered,
           hasBillingTimerTriggered: validationResult.data.hasBillingTimerTriggered,
@@ -862,8 +904,8 @@ export class ElevenLabsAgentService {
           startTimeUnixSecs: validationResult.data.startTimeUnixSecs,
           endTimeUnixSecs: validationResult.data.endTimeUnixSecs,
           
-          // Cost and billing
-          cost: validationResult.data.cost,
+          // Cost and billing - normalized from cents to USD
+          cost: this.normalizeCost(validationResult.data.cost),
           charging: validationResult.data.charging,
           hasChargingTimerTriggered: validationResult.data.hasChargingTimerTriggered,
           hasBillingTimerTriggered: validationResult.data.hasBillingTimerTriggered,

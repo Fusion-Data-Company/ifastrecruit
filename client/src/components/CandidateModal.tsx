@@ -63,6 +63,7 @@ import {
 } from 'lucide-react';
 import { AudioPlayer } from '@/components/AudioPlayer';
 import { EnhancedTranscript } from '@/components/EnhancedTranscript';
+import { formatCurrency } from '@/lib/utils';
 import type { Candidate } from '@shared/schema';
 
 interface CandidateModalProps {
@@ -469,7 +470,7 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                     <InfoSection title="Call Metrics" icon={Activity}>
                       <DataPoint label="Start Time" value={formatUnixTime(candidate.startTimeUnixSecs)} icon={Clock} />
                       <DataPoint label="End Time" value={formatUnixTime(candidate.endTimeUnixSecs)} icon={Clock} />
-                      <DataPoint label="Call Cost" value={candidate.cost ? `$${candidate.cost}` : undefined} icon={DollarSign} />
+                      <DataPoint label="Call Cost" value={formatCurrency(candidate.cost)} icon={DollarSign} />
                       <DataPoint label="Successful" value={candidate.callSuccessful} icon={candidate.callSuccessful === 'true' ? CheckCircle : XCircle} />
                       <DataPoint label="Termination" value={candidate.terminationReason} icon={AlertCircle} />
                       <DataPoint label="Feedback Score" value={candidate.feedbackScore} icon={Star} />
