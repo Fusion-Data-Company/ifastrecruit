@@ -97,7 +97,7 @@ function InfoSection({ title, icon: Icon, children, className = "" }: {
   );
 }
 
-// Enhanced DataPoint with copy functionality
+// Enhanced DataPoint with copy functionality and long value wrapping
 function DataPoint({ 
   label, 
   value, 
@@ -114,6 +114,50 @@ function DataPoint({
   if (!value && value !== 0) return null;
   
   const stringValue = String(value);
+  const isLongValue = stringValue.length > 30; // Consider values longer than 30 chars as "long"
+  const isIdField = label.toLowerCase().includes('id') || label.toLowerCase().includes('source');
+  
+  if (isLongValue && isIdField) {
+    // For long IDs, show on 2 lines for better readability
+    const midpoint = Math.ceil(stringValue.length / 2);
+    const firstLine = stringValue.substring(0, midpoint);
+    const secondLine = stringValue.substring(midpoint);
+    
+    return (
+      <div className="group hover:bg-cyan-500/5 rounded px-2 py-2 transition-colors">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm text-cyan-200/70 flex items-center">
+            {Icon && <Icon className="w-3 h-3 mr-1.5 text-cyan-400/60" />}
+            {label}
+          </span>
+          {copyable && onCopy && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => onCopy(stringValue, label)}
+                    data-testid={`copy-${label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Copy {label}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <div className="text-sm font-medium text-white/90 font-mono bg-slate-800/30 rounded px-2 py-1 break-all">
+          <div>{firstLine}</div>
+          <div>{secondLine}</div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="flex items-center justify-between group hover:bg-cyan-500/5 rounded px-2 py-1 transition-colors">
