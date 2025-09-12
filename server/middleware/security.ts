@@ -35,11 +35,11 @@ export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://api.elevenlabs.io", "https://elevenlabs.io", "https://unpkg.com"],
-      connectSrc: ["'self'", "https://api.elevenlabs.io", "https://elevenlabs.io", "https://unpkg.com", "https://*.elevenlabs.io", "wss:", "ws:", "wss://*.elevenlabs.io"],
+      connectSrc: ["'self'", "https://api.elevenlabs.io", "https://elevenlabs.io", "https://unpkg.com", "https://*.elevenlabs.io", "https://fonts.googleapis.com", "https://fonts.gstatic.com", "wss:", "ws:", "wss://*.elevenlabs.io"],
       imgSrc: ["'self'", "data:", "https:"],
-      fontSrc: ["'self'", "https:", "data:"],
+      fontSrc: ["'self'", "https:", "data:", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", "https:"],
       frameSrc: ["'none'"],
