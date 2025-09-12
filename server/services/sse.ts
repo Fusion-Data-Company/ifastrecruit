@@ -66,7 +66,7 @@ export function setupSSE(app: Express) {
       name: candidate.name,
       email: candidate.email,
       pipelineStage: candidate.pipelineStage,
-      source: candidate.campaignId ? 'Indeed' : 'Manual',
+      source: candidate.campaignId ? 'Campaign' : 'Manual',
       timestamp: new Date().toISOString()
     });
   };

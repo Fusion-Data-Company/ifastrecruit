@@ -8,91 +8,6 @@ export interface ExternalAPIService {
   healthCheck(): Promise<boolean>;
 }
 
-// Indeed API Integration
-export class IndeedAPIService implements ExternalAPIService {
-  name = 'Indeed API';
-  private apiKey: string;
-  private publisherId: string;
-
-  constructor() {
-    this.apiKey = process.env.INDEED_API_KEY || '';
-    this.publisherId = process.env.INDEED_PUBLISHER_ID || '';
-  }
-
-  isConfigured(): boolean {
-    return !!(this.apiKey && this.publisherId);
-  }
-
-  async healthCheck(): Promise<boolean> {
-    if (!this.isConfigured()) return false;
-    
-    try {
-      // Mock health check - replace with actual Indeed API call
-      console.log('Performing Indeed API health check...');
-      return true;
-    } catch (error) {
-      console.error('Indeed API health check failed:', error);
-      return false;
-    }
-  }
-
-  async searchJobs(params: {
-    query: string;
-    location?: string;
-    radius?: number;
-    jobType?: string;
-    limit?: number;
-  }) {
-    if (!this.isConfigured()) {
-      throw new Error('Indeed API not configured');
-    }
-
-    // Mock implementation - replace with actual Indeed API integration
-    console.log('Searching Indeed jobs with params:', params);
-    
-    return {
-      jobs: [
-        {
-          title: 'Software Engineer',
-          company: 'Tech Company',
-          location: 'Remote',
-          description: 'Join our engineering team...',
-          url: 'https://indeed.com/job/123',
-          postedDate: new Date().toISOString(),
-        },
-      ],
-      totalResults: 1,
-    };
-  }
-
-  async postJob(jobData: {
-    title: string;
-    description: string;
-    location: string;
-    salary?: string;
-    jobType?: string;
-    requirements?: string[];
-  }) {
-    if (!this.isConfigured()) {
-      throw new Error('Indeed API not configured');
-    }
-
-    // Mock implementation
-    console.log('Posting job to Indeed:', jobData);
-    
-    const jobId = `indeed-${Date.now()}`;
-    
-    // Log to audit trail
-    await storage.createAuditLog({
-      actor: 'system',
-      action: 'job_posted',
-      payloadJson: { platform: 'indeed', jobId, ...jobData },
-      pathUsed: 'api',
-    });
-
-    return { jobId, url: `https://indeed.com/jobs/${jobId}` };
-  }
-}
 
 // Apify Integration
 export class ApifyAPIService implements ExternalAPIService {
@@ -357,7 +272,6 @@ export class ExternalAPIManager {
   private services: Map<string, ExternalAPIService> = new Map();
 
   constructor() {
-    this.services.set('indeed', new IndeedAPIService());
     this.services.set('apify', new ApifyAPIService());
     this.services.set('slack', new SlackAPIService());
     this.services.set('openrouter', new OpenRouterAPIService());

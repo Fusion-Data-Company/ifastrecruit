@@ -14,8 +14,6 @@ export class AirtopIntegration {
     }
     try {
       const recipes: Record<string, Function> = {
-        "indeed.post_job": this.indeedPostJob,
-        "indeed.export_applicants": this.indeedExportApplicants,
         "apify.run_or_fix": this.apifyRunOrFix,
         "site.login_flow": this.siteLoginFlow,
       };
@@ -40,76 +38,6 @@ export class AirtopIntegration {
     }
   }
 
-  private async indeedPostJob(params: any): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/sessions`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        configuration: {
-          timeoutMs: 300000,
-          baseUrl: "https://employers.indeed.com",
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Airtop session creation failed: ${response.statusText}`);
-    }
-
-    const session = await response.json();
-
-    // Execute browser automation to post job
-    const automationResponse = await fetch(`${this.baseUrl}/sessions/${session.data.id}/execute`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        steps: [
-          {
-            action: "navigate",
-            url: "https://employers.indeed.com/post-job",
-          },
-          {
-            action: "fill",
-            selector: 'input[name="title"]',
-            value: params.title,
-          },
-          {
-            action: "fill",
-            selector: 'input[name="location"]',
-            value: params.location,
-          },
-          {
-            action: "fill",
-            selector: 'textarea[name="description"]',
-            value: params.description,
-          },
-          {
-            action: "click",
-            selector: 'button[type="submit"]',
-          },
-        ],
-      }),
-    });
-
-    const automationResult = await automationResponse.json();
-    return {
-      sessionId: session.data.id,
-      jobId: `airtop-${Date.now()}`,
-      success: true,
-      steps: automationResult.data?.steps || [],
-    };
-  }
-
-  private async indeedExportApplicants(params: any): Promise<any> {
-    // Similar pattern for exporting applicants
-    return { success: true, message: "Applicants exported via Airtop" };
-  }
 
   private async apifyRunOrFix(params: any): Promise<any> {
     // Browser automation to run or fix Apify actors

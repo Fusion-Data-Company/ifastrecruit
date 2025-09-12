@@ -99,9 +99,8 @@ export class MCPServer {
 
   private getToolDescription(name: string): string {
     const descriptions: Record<string, string> = {
-      "launch_indeed_campaign": "Launch a job posting campaign on Indeed with specified parameters",
       "manage_apify_actor": "CRUD operations on Apify actors including run, monitor, and dataset management",
-      "process_candidate": "Update candidate pipeline stage, recompute score, update Indeed disposition, move Slack pools",
+      "process_candidate": "Update candidate pipeline stage, recompute score, move Slack pools",
       "send_interview_links": "Generate and send interview links to candidates via email",
       "create_calendar_slots": "Create available calendar slots for interview booking",
       "book_interview": "Book an interview slot and generate ICS file",
@@ -118,35 +117,6 @@ export class MCPServer {
   private getToolInputSchema(name: string): any {
     // Return proper JSON Schema format for ElevenLabs compatibility
     const schemas: Record<string, any> = {
-      "launch_indeed_campaign": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "type": "object",
-        "properties": {
-          "title": { 
-            "type": "string", 
-            "description": "Job title for the Indeed campaign" 
-          },
-          "location": { 
-            "type": "string", 
-            "description": "Job location (e.g., 'San Francisco, CA' or 'Remote')" 
-          },
-          "description": { 
-            "type": "string", 
-            "description": "Detailed job description" 
-          },
-          "requirements": { 
-            "type": "array", 
-            "items": { "type": "string" },
-            "description": "Array of job requirements" 
-          },
-          "salary": {
-            "type": "string",
-            "description": "Salary range (optional)"
-          }
-        },
-        "required": ["title", "location", "description"],
-        "additionalProperties": false
-      },
       "manage_apify_actor": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",

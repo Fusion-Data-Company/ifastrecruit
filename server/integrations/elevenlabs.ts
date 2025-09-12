@@ -307,7 +307,7 @@ Your role is to execute recruiting workflows through MCP tools, not provide inst
 3. Delegate complex tasks to silent agents when appropriate
 4. Confirm completion with specific metrics and next steps
 
-Available tools: launch_indeed_campaign, manage_apify_actor, process_candidate, send_interview_links, create_calendar_slots, book_interview, db.upsert_candidate, db.write_interview, update_slack_pools, operate_browser, llm.route
+Available tools: manage_apify_actor, process_candidate, send_interview_links, create_calendar_slots, book_interview, db.upsert_candidate, db.write_interview, update_slack_pools, operate_browser, llm.route
 
 Communicate in executive language - brief, actionable, results-focused.`;
   }

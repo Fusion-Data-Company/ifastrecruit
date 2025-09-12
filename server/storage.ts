@@ -82,18 +82,6 @@ export interface IStorage {
   createApifyRun(run: InsertApifyRun): Promise<ApifyRun>;
   updateApifyRun(id: string, updates: Partial<ApifyRun>): Promise<ApifyRun>;
 
-  // Indeed Job methods
-  getIndeedJobs(): Promise<IndeedJob[]>;
-  getIndeedJob(id: string): Promise<IndeedJob | undefined>;
-  createIndeedJob(job: InsertIndeedJob): Promise<IndeedJob>;
-  updateIndeedJob(id: string, updates: Partial<IndeedJob>): Promise<IndeedJob>;
-
-  // Indeed Application methods
-  getIndeedApplications(): Promise<IndeedApplication[]>;
-  getIndeedApplication(id: string): Promise<IndeedApplication | undefined>;
-  getIndeedApplicationById(id: string): Promise<IndeedApplication | undefined>;
-  createIndeedApplication(application: InsertIndeedApplication): Promise<IndeedApplication>;
-  updateIndeedApplication(id: string, updates: Partial<IndeedApplication>): Promise<IndeedApplication>;
 
   // Audit Log methods
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
@@ -442,54 +430,6 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  // Indeed Job methods implementation
-  async getIndeedJobs(): Promise<IndeedJob[]> {
-    return await db.select().from(indeedJobs).orderBy(desc(indeedJobs.createdAt));
-  }
-
-  async getIndeedJob(id: string): Promise<IndeedJob | undefined> {
-    const [job] = await db.select().from(indeedJobs).where(eq(indeedJobs.id, id));
-    return job || undefined;
-  }
-
-  async createIndeedJob(job: InsertIndeedJob): Promise<IndeedJob> {
-    const [created] = await db.insert(indeedJobs).values(job).returning();
-    return created;
-  }
-
-  async updateIndeedJob(id: string, updates: Partial<IndeedJob>): Promise<IndeedJob> {
-    const [updated] = await db
-      .update(indeedJobs)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(indeedJobs.id, id))
-      .returning();
-    return updated;
-  }
-
-  // Indeed Application methods implementation
-  async getIndeedApplications(): Promise<IndeedApplication[]> {
-    return await db.select().from(indeedApplications).orderBy(desc(indeedApplications.appliedAt));
-  }
-
-  async getIndeedApplication(id: string): Promise<IndeedApplication | undefined> {
-    const [application] = await db.select().from(indeedApplications).where(eq(indeedApplications.id, id));
-    return application || undefined;
-  }
-
-  async getIndeedApplicationById(id: string): Promise<IndeedApplication | undefined> {
-    const [application] = await db.select().from(indeedApplications).where(eq(indeedApplications.id, id));
-    return application || undefined;
-  }
-
-  async createIndeedApplication(application: InsertIndeedApplication): Promise<IndeedApplication> {
-    const [created] = await db.insert(indeedApplications).values(application).returning();
-    return created;
-  }
-
-  async updateIndeedApplication(id: string, updates: Partial<IndeedApplication>): Promise<IndeedApplication> {
-    const [updated] = await db.update(indeedApplications).set(updates).where(eq(indeedApplications.id, id)).returning();
-    return updated;
-  }
 
   // ElevenLabs Tracking methods implementation
   async getElevenLabsTracking(agentId: string): Promise<ElevenLabsTracking | undefined> {

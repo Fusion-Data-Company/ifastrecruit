@@ -114,13 +114,6 @@ users = pgTable("users", {
 
 ### Integration APIs
 
-#### Indeed Integration
-- `GET /api/indeed/jobs` - Fetch Indeed job postings
-- `POST /api/indeed/jobs` - Create job posting
-- `PUT /api/indeed/jobs/:id` - Update job posting
-- `DELETE /api/indeed/jobs/:id` - Delete job posting
-- `POST /api/indeed/applications` - **WEBHOOK ENDPOINT** - Receives Indeed applications
-- `GET /api/indeed/status` - Get integration status
 
 #### Apify Integration
 - `GET /api/apify/actors` - Fetch Apify actors
@@ -260,25 +253,17 @@ users = pgTable("users", {
 
 ## INTEGRATION READINESS
 
-### Current Indeed Integration Status
-✅ **Indeed API Client**: `server/services/indeed-client.ts`
-✅ **Webhook Endpoint**: `POST /api/indeed/applications`
-✅ **Job Management**: Full CRUD for job postings
-✅ **Application Processing**: Converts Indeed apps to candidates
-✅ **Fallback System**: Airtop integration for API failures
-
 ### Database Schema Ready For
 ✅ **Candidate Storage**: Complete candidate model
-✅ **Source Tracking**: `sourceRef` field for Indeed application IDs
+✅ **Source Tracking**: `sourceRef` field for tracking application sources
 ✅ **Pipeline Management**: `pipelineStage` enum for candidate status
 ✅ **Real-time Updates**: SSE broadcasting for new candidates
 
 ### Integration Points Available
-✅ **Webhook Processing**: `/api/indeed/applications` endpoint active
-✅ **Data Transformation**: Indeed app → Candidate conversion
+✅ **Data Transformation**: Application → Candidate conversion
 ✅ **Error Handling**: Comprehensive error boundary system
 ✅ **Monitoring**: Built-in observability and health checks
 
 ---
 
-This application is a full-stack TypeScript recruitment platform with Indeed integration already partially implemented. The webhook endpoint is live and ready to receive Indeed application data, which gets automatically converted into candidate records in the PostgreSQL database with real-time updates to the frontend.
+This application is a full-stack TypeScript recruitment platform with Apify integration for data sourcing, ElevenLabs for AI voice agents, and real-time candidate pipeline management with PostgreSQL database backend.
