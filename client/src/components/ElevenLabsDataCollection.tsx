@@ -216,23 +216,102 @@ export default function ElevenLabsDataCollection() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    if (!dateString) return 'Not Available';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
 
   const formatDuration = (startTime: string, endTime?: string) => {
-    if (!endTime) return "Ongoing";
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const durationMs = end.getTime() - start.getTime();
-    const minutes = Math.floor(durationMs / 60000);
-    const seconds = Math.floor((durationMs % 60000) / 1000);
-    return `${minutes}m ${seconds}s`;
+    if (!startTime) return 'Unknown Duration';
+    if (!endTime) return 'In Progress';
+    try {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 'Invalid Duration';
+      const durationMs = end.getTime() - start.getTime();
+      if (durationMs < 0) return 'Invalid Duration';
+      const hours = Math.floor(durationMs / 3600000);
+      const minutes = Math.floor((durationMs % 3600000) / 60000);
+      const seconds = Math.floor((durationMs % 60000) / 1000);
+      
+      const parts = [];
+      if (hours > 0) parts.push(`${hours}h`);
+      if (minutes > 0) parts.push(`${minutes}m`);
+      if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+      
+      return parts.join(' ');
+    } catch (error) {
+      return 'Invalid Duration';
+    }
   };
 
   const getConversationStatus = (conversation: ConversationData) => {
     if (conversation.details_error || conversation.audio_error) return "error";
     if (!conversation.ended_at) return "active";
     return "completed";
+  };
+
+  // Extract meaningful conversation title from transcript or metadata
+  const getConversationTitle = (conversation: ConversationData) => {
+    // Try to extract a meaningful title from the conversation
+    if (conversation.details?.transcript && Array.isArray(conversation.details.transcript)) {
+      const firstMessage = conversation.details.transcript.find((msg: any) => 
+        msg.role === 'user' && msg.content && typeof msg.content === 'string' && msg.content.length > 10
+      );
+      if (firstMessage) {
+        const title = firstMessage.content.substring(0, 50).replace(/\n/g, ' ').trim();
+        return title + (firstMessage.content.length > 50 ? '...' : '');
+      }
+    }
+    
+    // Try to get a title from metadata
+    if (conversation.metadata?.title) {
+      return conversation.metadata.title;
+    }
+    
+    // Fallback to a descriptive title based on timing
+    const date = new Date(conversation.created_at);
+    if (!isNaN(date.getTime())) {
+      return `Interview ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    
+    // Final fallback
+    return `Conversation ${conversation.conversation_id.slice(0, 8)}`;
+  };
+
+  // Get detailed audio status
+  const getAudioStatus = (conversation: ConversationData) => {
+    if (!conversation.audio_info) return null;
+    
+    if (conversation.audio_info.has_audio) {
+      const sizeKB = conversation.audio_info.audio_size_bytes 
+        ? Math.round(conversation.audio_info.audio_size_bytes / 1024) 
+        : 0;
+      return {
+        status: 'available',
+        text: sizeKB > 0 ? `Audio (${sizeKB}KB)` : 'Audio Available',
+        icon: Headphones,
+        color: 'text-purple-500'
+      };
+    } else {
+      return {
+        status: 'unavailable',
+        text: 'No Audio',
+        icon: Headphones,
+        color: 'text-muted-foreground'
+      };
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -504,33 +583,54 @@ export default function ElevenLabsDataCollection() {
                         >
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between">
-                              <div className="space-y-1">
+                              <div className="space-y-1 flex-1">
                                 <div className="flex items-center space-x-2">
-                                  <span className="font-mono text-sm">
-                                    {conversation.conversation_id.slice(0, 8)}...
+                                  <span className="font-medium text-sm text-foreground line-clamp-1">
+                                    {getConversationTitle(conversation)}
                                   </span>
                                   {getStatusBadge(getConversationStatus(conversation))}
                                 </div>
-                                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground flex-wrap">
                                   <span className="flex items-center">
-                                    <Calendar className="w-3 h-3 mr-1" />
+                                    <Calendar className="w-3 h-3 mr-1 flex-shrink-0" />
                                     {formatDate(conversation.created_at)}
                                   </span>
                                   <span className="flex items-center">
-                                    <Clock className="w-3 h-3 mr-1" />
+                                    <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
                                     {formatDuration(conversation.created_at, conversation.ended_at)}
                                   </span>
-                                  {conversation.audio_info?.has_audio && (
-                                    <span className="flex items-center text-purple-500">
-                                      <Headphones className="w-3 h-3 mr-1" />
-                                      Audio
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const audioStatus = getAudioStatus(conversation);
+                                    if (audioStatus) {
+                                      const IconComponent = audioStatus.icon;
+                                      return (
+                                        <span className={`flex items-center ${audioStatus.color}`}>
+                                          <IconComponent className="w-3 h-3 mr-1 flex-shrink-0" />
+                                          {audioStatus.text}
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  ID: {conversation.conversation_id.slice(0, 12)}...
                                 </div>
                               </div>
-                              <Button variant="ghost" size="sm">
-                                View Details →
-                              </Button>
+                              <div className="flex flex-col space-y-1">
+                                <Button variant="ghost" size="sm" className="text-xs">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  View Transcript
+                                </Button>
+                                {conversation.audio_info?.has_audio && conversation.audio_info.audio_url && (
+                                  <Button variant="ghost" size="sm" className="text-xs" asChild>
+                                    <a href={conversation.audio_info.audio_url} target="_blank" rel="noopener noreferrer">
+                                      <Play className="w-3 h-3 mr-1" />
+                                      Play Audio
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -607,16 +707,46 @@ export default function ElevenLabsDataCollection() {
                           </div>
                         )}
 
-                        {selectedConversation.details && (
+                        {selectedConversation.details && selectedConversation.details.transcript && (
                           <div className="space-y-2">
                             <h4 className="font-medium flex items-center">
                               <FileText className="w-4 h-4 mr-2" />
-                              Transcript Preview
+                              Conversation Transcript
                             </h4>
-                            <div className="bg-muted/50 p-3 rounded-lg text-sm max-h-40 overflow-y-auto">
-                              <pre className="whitespace-pre-wrap">
-                                {JSON.stringify(selectedConversation.details.transcript, null, 2)}
-                              </pre>
+                            <div className="bg-muted/50 p-4 rounded-lg text-sm max-h-60 overflow-y-auto">
+                              <div className="space-y-3">
+                                {Array.isArray(selectedConversation.details.transcript) ? (
+                                  selectedConversation.details.transcript.map((message: any, index: number) => (
+                                    <div key={index} className="border-l-2 border-primary/20 pl-3">
+                                      <div className="flex items-center space-x-2 mb-1">
+                                        <Badge variant={message.role === 'user' ? 'default' : 'secondary'} className="text-xs">
+                                          {message.role === 'user' ? 'Candidate' : 'Agent'}
+                                        </Badge>
+                                        {message.timestamp && (
+                                          <span className="text-xs text-muted-foreground">
+                                            {new Date(message.timestamp).toLocaleTimeString()}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                                        {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
+                                      </p>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-sm text-muted-foreground">
+                                    <p>Transcript data format: {typeof selectedConversation.details.transcript}</p>
+                                    <div className="mt-2 p-2 bg-muted rounded border">
+                                      <pre className="whitespace-pre-wrap text-xs">
+                                        {typeof selectedConversation.details.transcript === 'string' 
+                                          ? selectedConversation.details.transcript 
+                                          : JSON.stringify(selectedConversation.details.transcript, null, 2)
+                                        }
+                                      </pre>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -699,8 +829,9 @@ export default function ElevenLabsDataCollection() {
                               <div className="flex items-center justify-between">
                                 <div className="space-y-1">
                                   <div className="flex items-center space-x-2">
-                                    <span className="font-mono text-sm">
-                                      {match.conversation_id.slice(0, 8)}...
+                                    <span className="font-medium text-sm">
+                                      Conversation from {new Date(match.conversation_id.includes('_') ? 
+                                        match.conversation_id.split('_')[1] : Date.now()).toLocaleDateString()}
                                     </span>
                                     <Badge variant="default" className="text-xs">
                                       {match.match_type}

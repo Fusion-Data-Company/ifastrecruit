@@ -3016,7 +3016,7 @@ export default function DataGrid() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.conversationMetadata as any, null, 2))}
+                                onClick={() => navigator.clipboard.writeText(`Conversation Metadata:\n${Object.entries(detailsCandidate.conversationMetadata as Record<string, any>).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? (Array.isArray(value) ? value.join(', ') : 'Complex data') : value}`).join('\n')}`)}
                                 data-testid="copy-conversation-metadata"
                               >
                                 <Copy className="h-4 w-4 mr-2" />Copy Data
@@ -3055,11 +3055,41 @@ export default function DataGrid() {
                         )}
 
                         {/* All ElevenLabs Fields Coverage - Complete Data */}
-                        <Card className="p-6 border-2 border-muted">
-                          <h3 className="text-lg font-semibold mb-4 text-muted-foreground flex items-center">
-                            <Database className="h-5 w-5 mr-2" />
-                            Complete ElevenLabs Data Coverage
-                          </h3>
+                        <Card className="p-6 border-2 border-muted bg-gradient-to-r from-muted/10 to-muted/20">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-muted-foreground flex items-center">
+                              <Database className="h-5 w-5 mr-2" />
+                              Complete ElevenLabs Data Coverage
+                            </h3>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const allData = [
+                                  `Agent ID: ${detailsCandidate.agentId || '-'}`,
+                                  `Agent Name: ${detailsCandidate.agentName || '-'}`,
+                                  `Conversation ID: ${detailsCandidate.conversationId || '-'}`,
+                                  `Call Status: ${detailsCandidate.callStatus || '-'}`,
+                                  `Call Successful: ${detailsCandidate.callSuccessful !== undefined ? (detailsCandidate.callSuccessful ? 'Yes' : 'No') : '-'}`,
+                                  `Message Count: ${detailsCandidate.messageCount || '-'}`,
+                                  `Demo Call Performed: ${detailsCandidate.demoCallPerformed !== undefined ? (detailsCandidate.demoCallPerformed ? 'Yes' : 'No') : '-'}`,
+                                  `Kevin Persona Used: ${detailsCandidate.kevinPersonaUsed !== undefined ? (detailsCandidate.kevinPersonaUsed ? 'Yes' : 'No') : '-'}`,
+                                  `Coaching Given: ${detailsCandidate.coachingGiven !== undefined ? (detailsCandidate.coachingGiven ? 'Yes' : 'No') : '-'}`,
+                                  `Pitch Delivered: ${detailsCandidate.pitchDelivered !== undefined ? (detailsCandidate.pitchDelivered ? 'Yes' : 'No') : '-'}`,
+                                  `Preferred Markets: ${Array.isArray(detailsCandidate.preferredMarkets) ? detailsCandidate.preferredMarkets.join(', ') : (detailsCandidate.preferredMarkets || '-')}`,
+                                  `Timeline: ${detailsCandidate.timeline || '-'}`,
+                                  `Recommended Next Steps: ${detailsCandidate.recommendedNextSteps || '-'}`,
+                                  `Audio Recording URL: ${detailsCandidate.audioRecordingUrl ? 'Available' : 'Not Available'}`,
+                                  `Interview Date: ${detailsCandidate.interviewDate ? new Date(detailsCandidate.interviewDate).toLocaleString() : '-'}`,
+                                  `Transcript Summary: ${detailsCandidate.transcriptSummary || '-'}`
+                                ].join('\n');
+                                navigator.clipboard.writeText(`Complete ElevenLabs Data:\n\n${allData}`);
+                              }}
+                              data-testid="copy-complete-data"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />Copy All Data
+                            </Button>
+                          </div>
                           <div className="space-y-6">
                             {/* Core Interview Fields */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
