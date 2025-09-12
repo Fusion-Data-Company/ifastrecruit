@@ -72,7 +72,7 @@ interface CandidateModalProps {
   onClose: () => void;
 }
 
-// Enhanced InfoSection with glassmorphic styling
+// Elite InfoSection with premium glassmorphic styling
 function InfoSection({ title, icon: Icon, children, className = "" }: { 
   title: string; 
   icon: React.ComponentType<any>; 
@@ -80,94 +80,157 @@ function InfoSection({ title, icon: Icon, children, className = "" }: {
   className?: string;
 }) {
   return (
-    <Card className={`h-fit bg-gradient-to-br from-slate-900/40 to-slate-800/40 backdrop-blur-sm border-cyan-500/20 hover:border-cyan-400/30 transition-all duration-300 ${className}`}>
-      <CardHeader className="pb-3 border-b border-cyan-500/10">
-        <CardTitle className="flex items-center space-x-2 text-sm">
-          <div className="p-1.5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg">
-            <Icon className="w-4 h-4 text-cyan-400" />
-          </div>
-          <span className="bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent font-serif">
-            {title}
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 mt-3">
-        {children}
-      </CardContent>
-    </Card>
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className={className}
+    >
+      <Card className="group relative h-fit bg-gradient-to-br from-slate-900/60 via-slate-800/50 to-slate-900/60 backdrop-blur-xl border border-slate-700/30 hover:border-cyan-400/40 transition-all duration-500 hover:shadow-2xl hover:shadow-cyan-500/10 overflow-hidden">
+        {/* Elite background patterns */}
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.1),transparent_50%)] opacity-60" />
+        
+        <CardHeader className="relative pb-4 border-b border-slate-700/40">
+          <CardTitle className="flex items-center space-x-3 text-base font-medium">
+            <div className="relative p-2.5 bg-gradient-to-br from-cyan-600/20 via-blue-600/15 to-purple-600/20 rounded-xl border border-cyan-500/20 shadow-lg">
+              <Icon className="w-5 h-5 text-cyan-300" />
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 to-blue-400/10 rounded-xl blur-sm" />
+            </div>
+            <span className="bg-gradient-to-r from-slate-100 via-white to-cyan-100 bg-clip-text text-transparent font-semibold tracking-wide">
+              {title}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="relative space-y-4 pt-5 pb-6">
+          {children}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
-// Enhanced DataPoint with copy functionality and long value wrapping
+// Elite DataPoint with premium styling and enhanced UX
 function DataPoint({ 
   label, 
   value, 
   icon: Icon, 
   copyable = false,
-  onCopy 
+  onCopy,
+  priority = 'normal',
+  copiedField
 }: { 
   label: string; 
   value: string | number | null | undefined; 
   icon?: React.ComponentType<any>;
   copyable?: boolean;
   onCopy?: (text: string, field: string) => void;
+  priority?: 'high' | 'normal' | 'low';
+  copiedField?: string | null;
 }) {
   if (!value && value !== 0) return null;
   
   const stringValue = String(value);
-  const isLongValue = stringValue.length > 30; // Consider values longer than 30 chars as "long"
+  const isLongValue = stringValue.length > 35;
   const isIdField = label.toLowerCase().includes('id') || label.toLowerCase().includes('source');
   
+  const getPriorityStyles = () => {
+    switch (priority) {
+      case 'high':
+        return {
+          container: 'hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-blue-500/10 border border-transparent hover:border-cyan-400/20',
+          label: 'text-cyan-200 font-semibold',
+          value: 'text-white font-semibold'
+        };
+      case 'low':
+        return {
+          container: 'hover:bg-slate-700/20',
+          label: 'text-slate-400',
+          value: 'text-slate-300'
+        };
+      default:
+        return {
+          container: 'hover:bg-gradient-to-r hover:from-slate-700/30 hover:to-slate-600/20',
+          label: 'text-slate-300',
+          value: 'text-slate-100'
+        };
+    }
+  };
+  
+  const styles = getPriorityStyles();
+  
   if (isLongValue && isIdField) {
-    // For long IDs, show on 2 lines for better readability
     const midpoint = Math.ceil(stringValue.length / 2);
     const firstLine = stringValue.substring(0, midpoint);
     const secondLine = stringValue.substring(midpoint);
     
     return (
-      <div className="group hover:bg-cyan-500/5 rounded px-2 py-2 transition-colors">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-sm text-cyan-200/70 flex items-center">
-            {Icon && <Icon className="w-3 h-3 mr-1.5 text-cyan-400/60" />}
-            {label}
+      <motion.div 
+        whileHover={{ x: 2, scale: 1.005 }}
+        className={`group p-3 rounded-lg transition-all duration-300 ${styles.container}`}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className={`text-sm flex items-center space-x-2 ${styles.label}`}>
+            {Icon && <Icon className="w-4 h-4" />}
+            <span className="font-medium tracking-wide">{label}</span>
           </span>
           {copyable && onCopy && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => onCopy(stringValue, label)}
-                    data-testid={`copy-${label.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
+                  <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-blue-500/20 hover:text-cyan-300 rounded-lg border border-transparent hover:border-cyan-500/30"
+                      onClick={() => onCopy(stringValue, label)}
+                      data-testid={`copy-${label.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      {copiedField === label ? (
+                        <motion.div
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ duration: 0.3, type: "spring" }}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                        </motion.div>
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                  </motion.div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Copy {label}</p>
+                <TooltipContent side="top" className="bg-slate-800/95 border-slate-700/50 backdrop-blur-sm">
+                  <p className="text-xs font-medium text-slate-200">
+                    {copiedField === label ? '✨ Copied!' : `Copy ${label}`}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
         </div>
-        <div className="text-sm font-medium text-white/90 font-mono bg-slate-800/30 rounded px-2 py-1 break-all">
-          <div>{firstLine}</div>
-          <div>{secondLine}</div>
+        <div className="bg-slate-800/40 border border-slate-700/40 rounded-md px-3 py-2 font-mono text-sm backdrop-blur-sm">
+          <div className={`break-all ${styles.value}`}>{firstLine}</div>
+          <div className={`break-all ${styles.value}`}>{secondLine}</div>
         </div>
-      </div>
+      </motion.div>
     );
   }
   
   return (
-    <div className="flex items-center justify-between group hover:bg-cyan-500/5 rounded px-2 py-1 transition-colors">
-      <span className="text-sm text-cyan-200/70 flex items-center">
-        {Icon && <Icon className="w-3 h-3 mr-1.5 text-cyan-400/60" />}
-        {label}
+    <motion.div 
+      whileHover={{ x: 2, scale: 1.005 }}
+      className={`group flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${styles.container}`}
+    >
+      <span className={`text-sm flex items-center space-x-2 ${styles.label}`}>
+        {Icon && <Icon className="w-4 h-4" />}
+        <span className="font-medium tracking-wide">{label}</span>
       </span>
-      <div className="flex items-center space-x-2">
-        <span className="text-sm font-medium text-white/90">{stringValue}</span>
+      <div className="flex items-center space-x-3">
+        <span className={`text-sm font-medium ${styles.value} max-w-xs truncate`} title={stringValue}>
+          {stringValue}
+        </span>
         {copyable && onCopy && (
           <TooltipProvider>
             <Tooltip>
@@ -175,52 +238,134 @@ function DataPoint({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => onCopy(stringValue, label)}
+                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-cyan-500/20 hover:text-cyan-300"
+                  onClick={() => onCopy && onCopy(stringValue, label)}
                   data-testid={`copy-${label.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  <Copy className="w-3 h-3" />
+                  {copiedField === label ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>Copy {label}</p>
+              <TooltipContent side="top">
+                <p className="text-xs">Copy {label}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-// Enhanced ScoreDisplay with gradient bars
-function ScoreDisplay({ label, score, maxScore = 100 }: { 
+// Elite ScoreDisplay with premium data visualization
+function ScoreDisplay({ label, score, maxScore = 100, showTarget = false }: { 
   label: string; 
   score: number | null | undefined; 
-  maxScore?: number; 
+  maxScore?: number;
+  showTarget?: boolean;
 }) {
   if (!score && score !== 0) return null;
   
   const percentage = (score / maxScore) * 100;
-  const getScoreGradient = (pct: number) => {
-    if (pct >= 80) return "from-emerald-500 to-green-400";
-    if (pct >= 60) return "from-yellow-500 to-amber-400";
-    return "from-red-500 to-orange-400";
+  const targetPercentage = showTarget ? 80 : null; // 80% target line
+  
+  const getScoreData = (pct: number) => {
+    if (pct >= 90) return {
+      gradient: "from-emerald-400 via-green-400 to-emerald-500",
+      textColor: "text-emerald-400",
+      shadowColor: "shadow-emerald-500/30",
+      bgGlow: "bg-emerald-500/10",
+      rating: "Outstanding",
+      icon: <Award className="w-4 h-4" />
+    };
+    if (pct >= 80) return {
+      gradient: "from-green-400 via-emerald-400 to-green-500",
+      textColor: "text-green-400",
+      shadowColor: "shadow-green-500/30",
+      bgGlow: "bg-green-500/10",
+      rating: "Excellent",
+      icon: <Star className="w-4 h-4" />
+    };
+    if (pct >= 70) return {
+      gradient: "from-yellow-400 via-amber-400 to-yellow-500",
+      textColor: "text-yellow-400",
+      shadowColor: "shadow-yellow-500/30",
+      bgGlow: "bg-yellow-500/10",
+      rating: "Good",
+      icon: <TrendingUp className="w-4 h-4" />
+    };
+    if (pct >= 60) return {
+      gradient: "from-orange-400 via-amber-400 to-orange-500",
+      textColor: "text-orange-400",
+      shadowColor: "shadow-orange-500/30",
+      bgGlow: "bg-orange-500/10",
+      rating: "Fair",
+      icon: <Clock className="w-4 h-4" />
+    };
+    return {
+      gradient: "from-red-400 via-pink-400 to-red-500",
+      textColor: "text-red-400",
+      shadowColor: "shadow-red-500/30",
+      bgGlow: "bg-red-500/10",
+      rating: "Needs Improvement",
+      icon: <AlertCircle className="w-4 h-4" />
+    };
   };
   
+  const scoreData = getScoreData(percentage);
+  
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="text-cyan-200/70">{label}</span>
-        <span className="font-medium text-white">{score}/{maxScore}</span>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-4 p-4 rounded-lg bg-slate-800/30 border border-slate-700/40 backdrop-blur-sm"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className={`p-2 rounded-lg ${scoreData.bgGlow} border border-slate-600/30`}>
+            <div className={scoreData.textColor}>
+              {scoreData.icon}
+            </div>
+          </div>
+          <div>
+            <span className="text-slate-300 font-medium tracking-wide">{label}</span>
+            <div className={`text-xs ${scoreData.textColor} font-semibold`}>{scoreData.rating}</div>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className={`text-2xl font-bold ${scoreData.textColor}`}>{score}</span>
+          <span className="text-slate-400 text-sm">/{maxScore}</span>
+          <div className={`text-xs ${scoreData.textColor} font-medium`}>{Math.round(percentage)}%</div>
+        </div>
       </div>
-      <div className="w-full bg-slate-800/50 rounded-full h-2.5 backdrop-blur-sm">
-        <div 
-          className={`h-2.5 rounded-full transition-all duration-500 bg-gradient-to-r ${getScoreGradient(percentage)} shadow-lg`}
-          style={{ width: `${percentage}%` }}
-        />
+      
+      <div className="relative">
+        <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden border border-slate-600/30">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${percentage}%` }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+            className={`h-full bg-gradient-to-r ${scoreData.gradient} ${scoreData.shadowColor} shadow-lg relative overflow-hidden`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent" />
+          </motion.div>
+          
+          {/* Target line */}
+          {targetPercentage && (
+            <div 
+              className="absolute top-0 h-full w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50"
+              style={{ left: `${targetPercentage}%` }}
+            >
+              <div className="absolute -top-1 -left-2 text-xs text-cyan-400 font-bold">Target</div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -362,154 +507,299 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden bg-gradient-to-br from-slate-900/95 via-blue-950/95 to-teal-950/95 backdrop-blur-xl border-cyan-500/20">
-          <DialogHeader className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-cyan-600/10 to-teal-600/10 rounded-lg blur-xl" />
-            <DialogTitle className="flex items-center space-x-3 text-xl font-serif relative z-10">
-              <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg">
-                <User className="w-6 h-6 text-cyan-400" />
-              </div>
-              <span className="bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
-                {candidate.name || 'Unknown Candidate'}
-              </span>
-              <Badge className={`${getStageColor(candidate.pipelineStage)} text-white px-3 py-1 shadow-lg`}>
-                {candidate.pipelineStage?.replace('_', ' ')}
-              </Badge>
-              {candidate.elevenLabsUserId && (
-                <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1 shadow-lg">
-                  <Bot className="w-3 h-3 mr-1" />
-                  ElevenLabs Verified
-                </Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-cyan-200/70">
-              <Sparkles className="inline w-4 h-4 mr-1 text-yellow-400" />
-              Complete candidate profile with advanced AI interview analysis and performance metrics
-            </DialogDescription>
+        <DialogContent className="max-w-[95vw] max-h-[96vh] overflow-hidden bg-gradient-to-br from-slate-950/98 via-slate-900/96 to-slate-950/98 backdrop-blur-2xl border border-slate-700/40 shadow-2xl shadow-cyan-500/5 rounded-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.03),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(6,182,212,0.03),transparent_50%)]" />
+          
+          <DialogHeader className="relative pb-6 border-b border-slate-700/50">
+            <div className="absolute -inset-4 bg-gradient-to-r from-cyan-600/10 via-blue-600/10 to-purple-600/10 blur-2xl opacity-60" />
+            
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="relative z-10"
+            >
+              <DialogTitle className="flex items-center space-x-4 text-2xl font-bold mb-3">
+                <div className="relative">
+                  <div className="p-3 bg-gradient-to-br from-cyan-600/30 via-blue-600/25 to-purple-600/30 rounded-2xl border border-cyan-500/30 shadow-xl shadow-cyan-500/20 backdrop-blur-sm">
+                    <User className="w-8 h-8 text-cyan-300" />
+                  </div>
+                  <div className="absolute -inset-2 bg-gradient-to-br from-cyan-400/20 to-purple-400/20 rounded-2xl blur-lg" />
+                </div>
+                
+                <div className="flex-1">
+                  <h1 className="bg-gradient-to-r from-slate-100 via-white to-cyan-100 bg-clip-text text-transparent font-bold tracking-tight">
+                    {candidate.name || 'Unknown Candidate'}
+                  </h1>
+                  <div className="flex items-center space-x-3 mt-2">
+                    <Badge className={`${getStageColor(candidate.pipelineStage)} text-white px-4 py-1.5 shadow-xl border-0 font-semibold tracking-wide`}>
+                      {candidate.pipelineStage?.replace('_', ' ')}
+                    </Badge>
+                    {candidate.elevenLabsUserId && (
+                      <Badge className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 text-white px-4 py-1.5 shadow-xl border-0 font-semibold">
+                        <Bot className="w-4 h-4 mr-2" />
+                        AI Verified
+                      </Badge>
+                    )}
+                    {candidate.overallScore && candidate.overallScore >= 80 && (
+                      <Badge className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-amber-950 px-4 py-1.5 shadow-xl border-0 font-bold">
+                        <Award className="w-4 h-4 mr-2" />
+                        High Performer
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Elite Score Display in Header */}
+                {candidate.overallScore && (
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+                    className="relative"
+                  >
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-cyan-500/30 border border-cyan-400/40">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-white">{candidate.overallScore}</div>
+                        <div className="text-xs text-cyan-100 font-semibold">AI SCORE</div>
+                      </div>
+                    </div>
+                    <div className="absolute -inset-2 bg-gradient-to-br from-cyan-500/30 to-purple-500/30 rounded-2xl blur-xl opacity-60" />
+                  </motion.div>
+                )}
+              </DialogTitle>
+              
+              <DialogDescription className="flex items-center space-x-2 text-slate-300 text-base">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                <span className="font-medium">Enterprise-grade candidate intelligence with AI-powered insights</span>
+              </DialogDescription>
+            </motion.div>
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full mt-6">
-            <TabsList className="grid w-full grid-cols-7 bg-gradient-to-r from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-cyan-500/20">
-              <TabsTrigger value="overview" className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600">
-                <User className="w-4 h-4" />
-                <span>Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="interview" className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600">
-                <MessageSquare className="w-4 h-4" />
-                <span>Interview</span>
-              </TabsTrigger>
-              <TabsTrigger value="technical" className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600">
-                <Cpu className="w-4 h-4" />
-                <span>Technical</span>
-              </TabsTrigger>
-              <TabsTrigger value="transcript" className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600">
-                <FileText className="w-4 h-4" />
-                <span>Transcript</span>
-              </TabsTrigger>
-              <TabsTrigger value="evaluation" className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600">
-                <BarChart3 className="w-4 h-4" />
-                <span>Evaluation</span>
-              </TabsTrigger>
-              <TabsTrigger value="metadata" className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600">
-                <Database className="w-4 h-4" />
-                <span>Metadata</span>
-              </TabsTrigger>
-              <TabsTrigger value="audio" className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:to-blue-600">
-                <Headphones className="w-4 h-4" />
-                <span>Audio</span>
-              </TabsTrigger>
-            </TabsList>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <TabsList className="grid w-full grid-cols-7 bg-gradient-to-r from-slate-800/60 via-slate-700/50 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 p-1.5 rounded-2xl shadow-xl shadow-slate-900/50">
+                <TabsTrigger 
+                  value="overview" 
+                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:inline tracking-wide">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="interview" 
+                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="hidden sm:inline tracking-wide">Interview</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="technical" 
+                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                >
+                  <Cpu className="w-4 h-4" />
+                  <span className="hidden sm:inline tracking-wide">Technical</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="transcript" 
+                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline tracking-wide">Transcript</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="evaluation" 
+                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  <span className="hidden sm:inline tracking-wide">Analytics</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="metadata" 
+                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                >
+                  <Database className="w-4 h-4" />
+                  <span className="hidden sm:inline tracking-wide">Data</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="audio" 
+                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                >
+                  <Headphones className="w-4 h-4" />
+                  <span className="hidden sm:inline tracking-wide">Audio</span>
+                </TabsTrigger>
+              </TabsList>
+            </motion.div>
 
-            <div className="mt-4 h-[calc(95vh-220px)]">
-              <ScrollArea className="h-full">
-                {/* Overview Tab */}
-                <TabsContent value="overview" className="space-y-6 mt-0">
+            <div className="mt-6 h-[calc(96vh-280px)]">
+              <ScrollArea className="h-full pr-4">
+                <AnimatePresence mode="wait">
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    key={activeTab}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
                   >
-                    {/* Contact Information */}
-                    <InfoSection title="Contact Information" icon={User}>
-                      <DataPoint label="Name" value={candidate.name} icon={User} />
-                      <DataPoint label="Email" value={candidate.email} icon={Mail} copyable onCopy={copyToClipboard} />
-                      <DataPoint label="Phone" value={candidate.phone} icon={Phone} copyable onCopy={copyToClipboard} />
-                      <DataPoint label="Source" value={candidate.sourceRef} icon={Link} />
-                      <DataPoint label="Campaign" value={candidate.campaignId} icon={Target} copyable onCopy={copyToClipboard} />
+                {/* Overview Tab */}
+                <TabsContent value="overview" className="space-y-8 mt-0 px-2">
+                  {/* Elite Performance Summary Bar */}
+                  {candidate.overallScore && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                      className="mb-8"
+                    >
+                      <ScoreDisplay 
+                        label="Overall Performance"
+                        score={candidate.overallScore} 
+                        showTarget={true}
+                      />
+                    </motion.div>
+                  )}
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+                    {/* Essential Information - High Priority */}
+                    <InfoSection title="Essential Information" icon={User} className="lg:col-span-1">
+                      <DataPoint label="Name" value={candidate.name} icon={User} priority="high" />
+                      <DataPoint label="Email" value={candidate.email} icon={Mail} copyable onCopy={copyToClipboard} priority="high" copiedField={copiedField} />
+                      <DataPoint label="Phone" value={candidate.phone} icon={Phone} copyable onCopy={copyToClipboard} priority="high" copiedField={copiedField} />
+                      <DataPoint label="Source" value={candidate.sourceRef} icon={Link} priority="normal" />
+                      <DataPoint label="Campaign" value={candidate.campaignId} icon={Target} copyable onCopy={copyToClipboard} priority="normal" copiedField={copiedField} />
                     </InfoSection>
 
-                    {/* Pipeline Status */}
-                    <InfoSection title="Pipeline Status" icon={Target}>
-                      <DataPoint label="Stage" value={candidate.pipelineStage?.replace('_', ' ')} icon={Activity} />
-                      <DataPoint label="Overall Score" value={candidate.score ? `${candidate.score}/100` : undefined} icon={Star} />
-                      <DataPoint label="Created" value={formatDate(candidate.createdAt)} icon={Calendar} />
-                      <DataPoint label="Updated" value={formatDate(candidate.createdAt)} icon={Clock} />
+                    {/* Performance & Status */}
+                    <InfoSection title="Performance & Status" icon={TrendingUp} className="lg:col-span-1">
+                      <DataPoint label="Pipeline Stage" value={candidate.pipelineStage?.replace('_', ' ')} icon={Activity} priority="high" />
+                      {candidate.score && (
+                        <DataPoint label="Legacy Score" value={`${candidate.score}/100`} icon={Star} priority="normal" />
+                      )}
+                      <DataPoint label="Created" value={formatDate(candidate.createdAt)} icon={Calendar} priority="normal" />
+                      <DataPoint label="Last Updated" value={formatDate(candidate.createdAt)} icon={Clock} priority="low" />
+                      
+                      {/* Enhanced Tags Display */}
                       {candidate.tags && candidate.tags.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {candidate.tags.map((tag, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs border-cyan-500/30 text-cyan-300">
-                              {tag}
-                            </Badge>
-                          ))}
+                        <div className="mt-4 p-3 bg-slate-800/40 rounded-lg border border-slate-700/40">
+                          <div className="text-sm font-medium text-slate-300 mb-2 flex items-center">
+                            <Package className="w-4 h-4 mr-2" />
+                            Tags
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {candidate.tags.map((tag, idx) => (
+                              <Badge key={idx} variant="outline" className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-cyan-500/40 text-cyan-300 font-medium px-3 py-1">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </InfoSection>
 
-                    {/* Conversation Metadata */}
-                    <InfoSection title="Conversation Details" icon={MessageSquare}>
-                      <DataPoint label="Conversation ID" value={candidate.conversationId} icon={Hash} copyable onCopy={copyToClipboard} />
-                      <DataPoint label="Agent ID" value={candidate.agentId} icon={Bot} copyable onCopy={copyToClipboard} />
-                      <DataPoint label="Agent Name" value={candidate.agentName} icon={User} />
-                      <DataPoint label="Status" value={candidate.conversationStatus || candidate.callStatus} icon={Activity} />
-                      <DataPoint label="Interview Date" value={formatDate(candidate.interviewDate)} icon={Calendar} />
-                      <DataPoint label="Duration" value={formatDuration(candidate.callDuration)} icon={Timer} />
-                      <DataPoint label="Messages" value={candidate.messageCount} icon={MessageSquare} />
+                    {/* AI Interview Intelligence */}
+                    <InfoSection title="AI Interview Intelligence" icon={Brain} className="lg:col-span-2 xl:col-span-1">
+                      <DataPoint label="Conversation ID" value={candidate.conversationId} icon={Hash} copyable onCopy={copyToClipboard} priority="normal" copiedField={copiedField} />
+                      <DataPoint label="Agent ID" value={candidate.agentId} icon={Bot} copyable onCopy={copyToClipboard} priority="normal" copiedField={copiedField} />
+                      <DataPoint label="Agent Name" value={candidate.agentName} icon={User} priority="normal" />
+                      <DataPoint label="Status" value={candidate.conversationStatus || candidate.callStatus} icon={Activity} priority="high" />
+                      <DataPoint label="Interview Date" value={formatDate(candidate.interviewDate)} icon={Calendar} priority="high" />
+                      <DataPoint label="Duration" value={formatDuration(candidate.callDuration)} icon={Timer} priority="normal" />
+                      <DataPoint label="Messages" value={candidate.messageCount} icon={MessageSquare} priority="normal" />
                     </InfoSection>
 
-                    {/* Call Metrics */}
-                    <InfoSection title="Call Metrics" icon={Activity}>
-                      <DataPoint label="Start Time" value={formatUnixTime(candidate.startTimeUnixSecs)} icon={Clock} />
-                      <DataPoint label="End Time" value={formatUnixTime(candidate.endTimeUnixSecs)} icon={Clock} />
-                      <DataPoint label="Call Cost" value={formatCurrency(candidate.cost)} icon={DollarSign} />
-                      <DataPoint label="Successful" value={candidate.callSuccessful} icon={candidate.callSuccessful === 'true' ? CheckCircle : XCircle} />
-                      <DataPoint label="Termination" value={candidate.terminationReason} icon={AlertCircle} />
-                      <DataPoint label="Feedback Score" value={candidate.feedbackScore} icon={Star} />
+                    {/* Business Intelligence & Analytics */}
+                    <InfoSection title="Business Intelligence" icon={BarChart3} className="lg:col-span-1">
+                      <DataPoint label="Call Cost" value={formatCurrency(candidate.cost)} icon={DollarSign} priority="high" />
+                      <DataPoint label="Start Time" value={formatUnixTime(candidate.startTimeUnixSecs)} icon={Clock} priority="normal" />
+                      <DataPoint label="End Time" value={formatUnixTime(candidate.endTimeUnixSecs)} icon={Clock} priority="low" />
+                      <DataPoint label="Call Successful" value={candidate.callSuccessful} icon={candidate.callSuccessful === 'true' ? CheckCircle : XCircle} priority="high" />
+                      <DataPoint label="Termination Reason" value={candidate.terminationReason} icon={AlertCircle} priority="normal" />
+                      <DataPoint label="Feedback Score" value={candidate.feedbackScore} icon={Star} priority="normal" />
                     </InfoSection>
 
-                    {/* Audio Status */}
-                    <InfoSection title="Audio Status" icon={Headphones}>
-                      <DataPoint label="Has Audio" value={candidate.hasAudio ? 'Yes' : 'No'} icon={candidate.hasAudio ? CheckCircle : XCircle} />
-                      <DataPoint label="User Audio" value={candidate.hasUserAudio ? 'Yes' : 'No'} icon={candidate.hasUserAudio ? Mic : XCircle} />
-                      <DataPoint label="Agent Audio" value={candidate.hasResponseAudio ? 'Yes' : 'No'} icon={candidate.hasResponseAudio ? Volume2 : XCircle} />
-                      <DataPoint label="Local Audio" value={candidate.localAudioFileId ? 'Stored' : 'Not stored'} icon={Database} />
-                      <DataPoint label="Transcript Stored" value={candidate.localTranscriptFileId ? 'Yes' : 'No'} icon={FileText} />
+                    {/* Media & Content Status */}
+                    <InfoSection title="Media & Content" icon={Headphones} className="lg:col-span-1">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className={`flex items-center space-x-2 p-2 rounded-lg ${candidate.hasAudio ? 'bg-green-500/20 border border-green-500/40' : 'bg-red-500/20 border border-red-500/40'}`}>
+                            <Headphones className={`w-4 h-4 ${candidate.hasAudio ? 'text-green-400' : 'text-red-400'}`} />
+                            <span className={`text-sm font-medium ${candidate.hasAudio ? 'text-green-300' : 'text-red-300'}`}>
+                              {candidate.hasAudio ? 'Audio Available' : 'No Audio'}
+                            </span>
+                          </div>
+                          
+                          <div className={`flex items-center space-x-2 p-2 rounded-lg ${candidate.hasUserAudio ? 'bg-green-500/20 border border-green-500/40' : 'bg-gray-500/20 border border-gray-500/40'}`}>
+                            <Mic className={`w-4 h-4 ${candidate.hasUserAudio ? 'text-green-400' : 'text-gray-400'}`} />
+                            <span className={`text-sm font-medium ${candidate.hasUserAudio ? 'text-green-300' : 'text-gray-300'}`}>
+                              User Audio
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className={`flex items-center space-x-2 p-2 rounded-lg ${candidate.hasResponseAudio ? 'bg-green-500/20 border border-green-500/40' : 'bg-gray-500/20 border border-gray-500/40'}`}>
+                            <Volume2 className={`w-4 h-4 ${candidate.hasResponseAudio ? 'text-green-400' : 'text-gray-400'}`} />
+                            <span className={`text-sm font-medium ${candidate.hasResponseAudio ? 'text-green-300' : 'text-gray-300'}`}>
+                              Agent Audio
+                            </span>
+                          </div>
+                          
+                          <div className={`flex items-center space-x-2 p-2 rounded-lg ${candidate.localTranscriptFileId ? 'bg-green-500/20 border border-green-500/40' : 'bg-gray-500/20 border border-gray-500/40'}`}>
+                            <FileText className={`w-4 h-4 ${candidate.localTranscriptFileId ? 'text-green-400' : 'text-gray-400'}`} />
+                            <span className={`text-sm font-medium ${candidate.localTranscriptFileId ? 'text-green-300' : 'text-gray-300'}`}>
+                              Transcript
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <DataPoint label="Local Audio File" value={candidate.localAudioFileId ? 'Stored' : 'Not available'} icon={Database} priority="low" />
                     </InfoSection>
 
-                    {/* ElevenLabs Connection */}
-                    <InfoSection title="ElevenLabs Integration" icon={Bot}>
-                      <DataPoint label="User ID" value={candidate.elevenLabsUserId} icon={UserCheck} copyable onCopy={copyToClipboard} />
-                      <DataPoint label="Channel ID" value={candidate.channelId} icon={Wifi} copyable onCopy={copyToClipboard} />
-                      <DataPoint label="API Version" value={candidate.conversationApiVersion} icon={Code} />
-                      <DataPoint label="Creation Method" value={candidate.creationMethod} icon={Settings} />
-                      <DataPoint label="Auth Method" value={candidate.authorizationMethod} icon={Key} />
-                      <DataPoint label="Source" value={candidate.source} icon={Globe} />
-                      <DataPoint label="Client IP" value={candidate.clientIp} icon={Globe} copyable onCopy={copyToClipboard} />
+                    {/* Technical Integration */}
+                    <InfoSection title="System Integration" icon={Zap} className="lg:col-span-2 xl:col-span-1">
+                      <DataPoint label="ElevenLabs User ID" value={candidate.elevenLabsUserId} icon={UserCheck} copyable onCopy={copyToClipboard} priority="normal" copiedField={copiedField} />
+                      <DataPoint label="Channel ID" value={candidate.channelId} icon={Wifi} copyable onCopy={copyToClipboard} priority="low" copiedField={copiedField} />
+                      <DataPoint label="API Version" value={candidate.conversationApiVersion} icon={Code} priority="low" />
+                      <DataPoint label="Creation Method" value={candidate.creationMethod} icon={Settings} priority="low" />
+                      <DataPoint label="Auth Method" value={candidate.authorizationMethod} icon={Key} priority="low" />
+                      <DataPoint label="Source Platform" value={candidate.source} icon={Globe} priority="normal" />
+                      <DataPoint label="Client IP" value={candidate.clientIp} icon={Globe} copyable onCopy={copyToClipboard} priority="low" copiedField={copiedField} />
                     </InfoSection>
-                  </motion.div>
+                  </div>
 
-                  {/* Notes Section */}
+                  {/* Elite Notes Section */}
                   {candidate.notes && (
-                    <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/40 backdrop-blur-sm border-cyan-500/20">
-                      <CardHeader className="border-b border-cyan-500/10">
-                        <CardTitle className="flex items-center space-x-2 text-sm">
-                          <FileText className="w-4 h-4 text-cyan-400" />
-                          <span className="font-serif">Notes</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="mt-3">
-                        <p className="text-sm leading-relaxed text-cyan-100/80">{candidate.notes}</p>
-                      </CardContent>
-                    </Card>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.3 }}
+                      className="mt-8"
+                    >
+                      <Card className="bg-gradient-to-br from-slate-900/70 via-slate-800/60 to-slate-900/70 backdrop-blur-xl border border-slate-600/40 shadow-2xl shadow-slate-900/30">
+                        <CardHeader className="border-b border-slate-600/40 pb-4">
+                          <CardTitle className="flex items-center space-x-3 text-lg font-semibold">
+                            <div className="p-2 bg-gradient-to-br from-amber-600/20 to-orange-600/20 rounded-lg border border-amber-500/30">
+                              <FileText className="w-5 h-5 text-amber-400" />
+                            </div>
+                            <span className="bg-gradient-to-r from-slate-100 to-amber-100 bg-clip-text text-transparent font-semibold tracking-wide">
+                              Interview Notes
+                            </span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                          <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-6">
+                            <p className="text-base leading-relaxed text-slate-200 font-medium">
+                              {candidate.notes}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
                   )}
                 </TabsContent>
 
@@ -969,6 +1259,8 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                     </Card>
                   </motion.div>
                 </TabsContent>
+                  </motion.div>
+                </AnimatePresence>
               </ScrollArea>
             </div>
           </Tabs>
