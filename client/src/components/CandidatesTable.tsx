@@ -43,7 +43,8 @@ import {
   Loader2,
   Check,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Bot
 } from 'lucide-react';
 import CandidateModal from '@/components/CandidateModal';
 import type { Candidate } from '@shared/schema';
@@ -207,24 +208,44 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
       <div className={`
         group relative border rounded-xl overflow-hidden
         ${isEditing 
-          ? 'bg-gradient-to-br from-blue-50/50 to-teal-50/50 border-blue-300 shadow-2xl ring-2 ring-blue-400/20' 
-          : 'bg-white hover:shadow-xl border-gray-200/50 hover:border-blue-200 dark:bg-gray-900/50 dark:border-gray-700/50'
+          ? 'bg-gradient-to-br from-blue-950/95 to-teal-900/95 border-cyan-400/50 shadow-2xl ring-2 ring-cyan-400/30 backdrop-blur-xl' 
+          : 'bg-gradient-to-br from-slate-900/95 to-slate-800/95 hover:from-slate-850/95 hover:to-slate-750/95 border-slate-700/50 hover:border-cyan-500/50 hover:shadow-2xl hover:shadow-cyan-500/20'
         }
-        transition-all duration-300 backdrop-blur-sm
+        transition-all duration-500 backdrop-blur-xl transform hover:scale-[1.02]
+        before:absolute before:inset-0 before:bg-gradient-to-r before:from-cyan-500/0 before:via-cyan-500/5 before:to-purple-500/0 before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-500
       `}>
-        {/* Enterprise-grade gradient overlay on hover */}
+        {/* Elite holographic overlay on hover */}
         <AnimatePresence>
           {isHovered && !isEditing && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-teal-600/5 pointer-events-none"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 pointer-events-none"
             />
           )}
         </AnimatePresence>
 
-        <div className="p-5 relative">
+        {/* Futuristic border glow effect */}
+        <motion.div
+          className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          style={{
+            filter: 'blur(8px)',
+            transform: 'scale(1.1)',
+          }}
+        />
+
+        {/* Animated corner accents */}
+        <div className="absolute top-0 left-0 w-12 h-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="absolute top-2 left-2 w-6 h-0.5 bg-gradient-to-r from-cyan-400 to-transparent"></div>
+          <div className="absolute top-2 left-2 w-0.5 h-6 bg-gradient-to-b from-cyan-400 to-transparent"></div>
+        </div>
+        <div className="absolute top-0 right-0 w-12 h-12 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="absolute top-2 right-2 w-6 h-0.5 bg-gradient-to-l from-cyan-400 to-transparent"></div>
+          <div className="absolute top-2 right-2 w-0.5 h-6 bg-gradient-to-b from-cyan-400 to-transparent"></div>
+        </div>
+
+        <div className="p-6 relative z-10">
           {/* Edit Mode Toggle with Premium Animation */}
           <div className="absolute top-4 right-4 z-10">
             {!isEditing ? (
@@ -235,7 +256,7 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                   e.stopPropagation();
                   setIsEditing(true);
                 }}
-                className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:from-blue-700 hover:to-teal-700"
+                className="p-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg hover:shadow-xl hover:shadow-cyan-500/50 transition-all duration-300 hover:from-cyan-500 hover:to-blue-500 border border-cyan-500/30"
                 data-testid={`button-edit-${candidate.id}`}
               >
                 <Edit3 className="w-4 h-4" />
@@ -247,7 +268,7 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                   whileTap={{ scale: 0.95 }}
                   onClick={form.handleSubmit(handleSave)}
                   disabled={updateMutation.isPending}
-                  className="p-2 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+                  className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg hover:shadow-xl hover:shadow-emerald-500/50 transition-all duration-300 disabled:opacity-50 border border-emerald-500/30"
                   data-testid={`button-save-${candidate.id}`}
                 >
                   {updateMutation.isPending ? (
@@ -261,7 +282,7 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                   whileTap={{ scale: 0.95 }}
                   onClick={handleCancel}
                   disabled={updateMutation.isPending}
-                  className="p-2 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+                  className="p-2 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg hover:shadow-xl hover:shadow-red-500/50 transition-all duration-300 disabled:opacity-50 border border-red-500/30"
                   data-testid={`button-cancel-${candidate.id}`}
                 >
                   <X className="w-4 h-4" />
@@ -282,11 +303,11 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                     <FormItem>
                       <FormControl>
                         <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400" />
                           <Input
                             {...field}
                             placeholder="Candidate Name"
-                            className="pl-10 bg-white/90 border-blue-200 focus:border-teal-500 shadow-sm focus:shadow-md transition-all duration-300 focus:ring-2 focus:ring-teal-500/20"
+                            className="pl-10 bg-slate-800/50 border-slate-600 focus:border-cyan-400 text-white placeholder:text-slate-400 shadow-sm focus:shadow-md focus:shadow-cyan-500/20 transition-all duration-300 focus:ring-2 focus:ring-cyan-500/20 backdrop-blur-sm"
                             data-testid={`input-name-${candidate.id}`}
                           />
                         </div>
@@ -305,12 +326,12 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                       <FormItem>
                         <FormControl>
                           <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400" />
                             <Input
                               {...field}
                               type="email"
                               placeholder="Email"
-                              className="pl-10 bg-white/90 border-blue-200 focus:border-teal-500 shadow-sm focus:shadow-md transition-all duration-300 focus:ring-2 focus:ring-teal-500/20"
+                              className="pl-10 bg-slate-800/50 border-slate-600 focus:border-cyan-400 text-white placeholder:text-slate-400 shadow-sm focus:shadow-md focus:shadow-cyan-500/20 transition-all duration-300 focus:ring-2 focus:ring-cyan-500/20 backdrop-blur-sm"
                               data-testid={`input-email-${candidate.id}`}
                             />
                           </div>
@@ -381,26 +402,37 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
             >
               {/* Header with Name and Score */}
               <div className="flex items-start justify-between pr-12">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 flex items-center justify-center shadow-lg">
-                    <User className="w-6 h-6 text-white" />
+                <div className="flex items-center space-x-4">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 flex items-center justify-center shadow-xl shadow-cyan-500/25">
+                      <User className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="absolute -inset-1 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-xl opacity-30 blur-sm"></div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center">
-                      {candidate.name || 'Unknown'}
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-transparent bg-gradient-to-r from-cyan-200 via-white to-cyan-200 bg-clip-text flex items-center">
+                      {candidate.name || 'Unknown Candidate'}
                       {candidate.overallScore && candidate.overallScore >= 80 && (
-                        <Sparkles className="w-4 h-4 ml-2 text-amber-500 animate-pulse" />
+                        <Sparkles className="w-5 h-5 ml-2 text-amber-400 animate-pulse drop-shadow-lg" />
                       )}
                     </h3>
-                    <div className="flex items-center space-x-3 mt-1">
-                      <Badge className={`${getStageColor(candidate.pipelineStage)} text-white border-0`}>
+                    <div className="flex items-center space-x-3 mt-2">
+                      <Badge className={`${getStageColor(candidate.pipelineStage)} text-white border-0 shadow-lg`}>
                         {getStageIcon(candidate.pipelineStage)}
                         <span className="ml-1">{candidate.pipelineStage?.replace('_', ' ')}</span>
                       </Badge>
                       {candidate.conversationId && (
-                        <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-200">
+                        <Badge className="bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white border-purple-300/30 shadow-lg">
                           <MessageSquare className="w-3 h-3 mr-1" />
-                          Interviewed
+                          AI Interviewed
+                        </Badge>
+                      )}
+                      {candidate.agentId && (
+                        <Badge className="bg-gradient-to-r from-emerald-500/80 to-green-500/80 text-white border-emerald-300/30 shadow-lg">
+                          <Bot className="w-3 h-3 mr-1" />
+                          <span className="truncate max-w-24" title={candidate.agentId}>
+                            {candidate.agentId.length > 12 ? `${candidate.agentId.substring(0, 12)}...` : candidate.agentId}
+                          </span>
                         </Badge>
                       )}
                     </div>
@@ -411,65 +443,76 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                 {candidate.overallScore !== null && candidate.overallScore !== undefined && (
                   <div className="flex flex-col items-center">
                     <motion.div 
-                      className={`text-2xl font-bold ${getScoreColor(candidate.overallScore)}`}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
+                      className="relative"
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
                       transition={{ type: "spring", stiffness: 260, damping: 20 }}
                     >
-                      {candidate.overallScore}
+                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-xl shadow-cyan-500/30 border border-cyan-400/30">
+                        <span className={`text-xl font-bold text-white`}>
+                          {candidate.overallScore}
+                        </span>
+                      </div>
+                      <div className="absolute -inset-1 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl opacity-30 blur-sm"></div>
                     </motion.div>
-                    <div className="text-xs text-gray-500 uppercase tracking-wider">Score</div>
+                    <div className="text-xs text-cyan-300 uppercase tracking-wider font-semibold mt-1">AI Score</div>
                   </div>
                 )}
               </div>
 
-              {/* Contact Information with Hover Effects */}
-              <div className="space-y-2 pl-15">
+              {/* Contact Information with Futuristic Hover Effects */}
+              <div className="space-y-3 pl-18 mt-4">
                 <motion.a
                   href={`mailto:${candidate.email}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
-                  whileHover={{ x: 2 }}
+                  className="inline-flex items-center space-x-3 text-sm text-slate-300 hover:text-cyan-400 transition-all duration-300 group bg-slate-800/30 px-3 py-2 rounded-lg hover:bg-slate-700/30 backdrop-blur-sm border border-slate-700/50 hover:border-cyan-500/50"
+                  whileHover={{ x: 4, scale: 1.02 }}
                   data-testid={`link-email-${candidate.id}`}
                 >
-                  <Mail className="w-4 h-4 group-hover:text-blue-600" />
-                  <span className="group-hover:underline">{candidate.email}</span>
+                  <Mail className="w-4 h-4 group-hover:text-cyan-400 transition-colors" />
+                  <span className="group-hover:text-cyan-300">{candidate.email}</span>
                 </motion.a>
 
                 {candidate.phone && (
                   <motion.a
                     href={`tel:${candidate.phone}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
-                    whileHover={{ x: 2 }}
+                    className="inline-flex items-center space-x-3 text-sm text-slate-300 hover:text-cyan-400 transition-all duration-300 group bg-slate-800/30 px-3 py-2 rounded-lg hover:bg-slate-700/30 backdrop-blur-sm border border-slate-700/50 hover:border-cyan-500/50"
+                    whileHover={{ x: 4, scale: 1.02 }}
                     data-testid={`link-phone-${candidate.id}`}
                   >
-                    <Phone className="w-4 h-4 group-hover:text-blue-600" />
-                    <span className="group-hover:underline">{candidate.phone}</span>
+                    <Phone className="w-4 h-4 group-hover:text-cyan-400 transition-colors" />
+                    <span className="group-hover:text-cyan-300">{candidate.phone}</span>
                   </motion.a>
                 )}
 
                 {candidate.interviewDate && (
-                  <div className="inline-flex items-center space-x-2 text-sm text-gray-600">
-                    <Calendar className="w-4 h-4" />
+                  <div className="inline-flex items-center space-x-3 text-sm text-slate-300 bg-slate-800/30 px-3 py-2 rounded-lg backdrop-blur-sm border border-slate-700/50">
+                    <Calendar className="w-4 h-4 text-purple-400" />
                     <span>Interviewed: {formatDate(candidate.interviewDate)}</span>
                   </div>
                 )}
               </div>
 
               {/* Additional Metadata */}
-              <div className="flex items-center justify-between pl-15 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between pl-18 pt-4 mt-4 border-t border-slate-700/50">
                 <div className="flex items-center space-x-4">
                   {candidate.callDuration && (
-                    <div className="flex items-center space-x-1 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      <span>{Math.floor(candidate.callDuration / 60)}m</span>
+                    <div className="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/30 px-2 py-1 rounded-md">
+                      <Clock className="w-3 h-3 text-cyan-400" />
+                      <span>{Math.floor(candidate.callDuration / 60)}m call</span>
                     </div>
                   )}
                   {candidate.score && candidate.score > 0 && (
-                    <div className="flex items-center space-x-1 text-xs text-gray-500">
-                      <Star className="w-3 h-3" />
-                      <span>Score: {candidate.score}</span>
+                    <div className="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/30 px-2 py-1 rounded-md">
+                      <Star className="w-3 h-3 text-amber-400" />
+                      <span>Legacy: {candidate.score}</span>
+                    </div>
+                  )}
+                  {candidate.messageCount && (
+                    <div className="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/30 px-2 py-1 rounded-md">
+                      <MessageSquare className="w-3 h-3 text-purple-400" />
+                      <span>{candidate.messageCount} messages</span>
                     </div>
                   )}
                 </div>
@@ -477,14 +520,14 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 border border-cyan-500/30 hover:border-cyan-400/50 transition-all duration-300 backdrop-blur-sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     onViewDetails(candidate);
                   }}
                   data-testid={`button-view-${candidate.id}`}
                 >
-                  <Eye className="w-4 h-4 mr-1" />
+                  <Eye className="w-4 h-4 mr-2" />
                   View Details
                 </Button>
               </div>
