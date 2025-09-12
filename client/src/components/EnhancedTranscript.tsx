@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, User, Bot, Clock, Copy, Search, Filter, Download } from "lucide-react";
+import { MessageSquare, User, Bot, Clock, Copy, Search, Filter, Download, ChevronDown, ChevronUp, BarChart3, Users, Timer } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface TranscriptMessage {
   speaker: 'agent' | 'candidate';
@@ -41,6 +42,7 @@ export function EnhancedTranscript({
   messageCount,
   className 
 }: EnhancedTranscriptProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showOnlyCandidate, setShowOnlyCandidate] = useState(false);
   const [showOnlyAgent, setShowOnlyAgent] = useState(false);
@@ -56,8 +58,8 @@ export function EnhancedTranscript({
       
       // Handle direct array format
       if (Array.isArray(parsed)) {
-        return parsed.map((item: any) => ({
-          speaker: item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate',
+        return parsed.map((item: any): TranscriptMessage => ({
+          speaker: (item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate') as 'agent' | 'candidate',
           message: (item.message || item.text || String(item)).replace(/\s+/g, ' ').trim(),
           timestamp: item.timestamp,
           duration: item.duration
@@ -68,8 +70,8 @@ export function EnhancedTranscript({
       if (parsed && typeof parsed === 'object') {
         const messagesArray = parsed.messages || parsed.transcript || parsed.data || [];
         if (Array.isArray(messagesArray) && messagesArray.length > 0) {
-          return messagesArray.map((item: any) => ({
-            speaker: item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate',
+          return messagesArray.map((item: any): TranscriptMessage => ({
+            speaker: (item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate') as 'agent' | 'candidate',
             message: (item.message || item.text || String(item)).replace(/\s+/g, ' ').trim(),
             timestamp: item.timestamp,
             duration: item.duration
@@ -78,12 +80,12 @@ export function EnhancedTranscript({
         
         // Handle single object with text content
         if (parsed.message || parsed.text) {
-          return [{
-            speaker: parsed.speaker === 'agent' || parsed.speaker === 'ai' ? 'agent' : 'candidate',
+          return ([{
+            speaker: (parsed.speaker === 'agent' || parsed.speaker === 'ai' ? 'agent' : 'candidate') as 'agent' | 'candidate',
             message: (parsed.message || parsed.text).replace(/\s+/g, ' ').trim(),
             timestamp: parsed.timestamp,
             duration: parsed.duration
-          }].filter(msg => msg.message.length > 0);
+          }] as TranscriptMessage[]).filter(msg => msg.message.length > 0);
         }
       }
     } catch {
@@ -255,6 +257,34 @@ export function EnhancedTranscript({
   const getAgentMessageCount = () => 
     messages.filter(msg => msg.speaker === 'agent').length;
 
+  // Calculate conversation highlights for summary
+  const getConversationHighlights = () => {
+    if (messages.length === 0) return null;
+    
+    const totalWords = messages.reduce((acc, msg) => 
+      acc + msg.message.split(' ').length, 0);
+    
+    const conversationFlow = messageGroups.length;
+    const avgWordsPerMessage = Math.round(totalWords / messages.length);
+    
+    // Get first and last few words for preview
+    const firstMessage = messages[0]?.message || '';
+    const lastMessage = messages[messages.length - 1]?.message || '';
+    const preview = firstMessage.length > 60 ? 
+      firstMessage.slice(0, 60) + '...' : firstMessage;
+    
+    return {
+      totalWords,
+      conversationFlow,
+      avgWordsPerMessage,
+      preview,
+      firstMessage,
+      lastMessage
+    };
+  };
+
+  const highlights = getConversationHighlights();
+
   if (!transcript || transcript.trim() === '' || transcript === '-') {
     return (
       <Card className={`p-6 border-2 border-muted ${className}`}>
@@ -287,208 +317,287 @@ export function EnhancedTranscript({
   }
 
   return (
-    <Card className={`border-2 border-primary/20 ${className}`}>
-      {/* Header */}
-      <div className="p-6 border-b bg-gradient-to-r from-primary/5 to-secondary/5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold flex items-center">
-              <MessageSquare className="h-5 w-5 mr-2" />
-              Interview Transcript
-            </h3>
-            {candidateName && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Interview with {candidateName}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={copyTranscript}
-              data-testid="copy-transcript"
-            >
-              <Copy className="h-4 w-4 mr-1" />
-              Copy
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={downloadTranscript}
-              data-testid="download-transcript"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Download
-            </Button>
-          </div>
-        </div>
-
-        {/* Interview Metadata */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
-          {interviewDate && (
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Clock className="h-4 w-4 mr-1" />
-              {formatInterviewDate(interviewDate)}
-            </div>
-          )}
-          {duration && (
-            <Badge variant="outline">
-              Duration: {duration}
-            </Badge>
-          )}
-          <Badge variant="outline">
-            {messages.length} messages ({messageGroups.length} groups)
-          </Badge>
-          <Badge variant="outline">
-            Agent: {getAgentMessageCount()} • Candidate: {getCandidateMessageCount()}
-          </Badge>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search transcript..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-              data-testid="transcript-search"
-            />
-          </div>
-          <Button
-            variant={showOnlyAgent ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setShowOnlyAgent(!showOnlyAgent);
-              setShowOnlyCandidate(false);
-            }}
-            data-testid="filter-agent"
-          >
-            <Bot className="h-4 w-4 mr-1" />
-            Agent ({getAgentMessageCount()})
-          </Button>
-          <Button
-            variant={showOnlyCandidate ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setShowOnlyCandidate(!showOnlyCandidate);
-              setShowOnlyAgent(false);
-            }}
-            data-testid="filter-candidate"
-          >
-            <User className="h-4 w-4 mr-1" />
-            Candidate ({getCandidateMessageCount()})
-          </Button>
-        </div>
-      </div>
-
-      {/* Transcript Messages - Responsive Layout */}
-      <ScrollArea className="h-[400px] md:h-[500px] lg:h-[600px] p-3">
-        {filteredGroups.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Filter className="h-8 w-8 mx-auto mb-2" />
-            No messages match your search criteria.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredGroups.map((group, groupIndex) => (
-              <div key={groupIndex} className="group">
-                <div className={`flex items-start space-x-2 ${
-                  group.speaker === 'agent' 
-                    ? 'justify-start' 
-                    : 'justify-end'
-                }`}>
-                  {group.speaker === 'agent' && (
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
-                        <Bot className="h-3 w-3 text-primary" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className={`max-w-[85%] ${
-                    group.speaker === 'agent' 
-                      ? 'bg-primary/5 border-primary/20' 
-                      : 'bg-secondary/10 border-secondary/20'
-                  } border rounded-lg p-2`}>
-                    {/* Speaker header with timestamp range */}
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {group.speaker === 'agent' ? agentName : candidateName || 'Candidate'}
-                      </span>
-                      {(group.startTimestamp || group.endTimestamp) && (
-                        <span className="text-xs text-muted-foreground">
-                          {group.startTimestamp}
-                          {group.startTimestamp !== group.endTimestamp && group.endTimestamp && 
-                            ` - ${group.endTimestamp}`
-                          }
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Messages in the group */}
-                    <div className="space-y-1">
-                      {group.messages.map((message, messageIndex) => (
-                        <p key={messageIndex} className="text-sm leading-tight">
-                          {searchTerm && message.message.toLowerCase().includes(searchTerm.toLowerCase()) ? (
-                            // Safe search highlighting without regex crashes
-                            (() => {
-                              const lowerMessage = message.message.toLowerCase();
-                              const lowerSearchTerm = searchTerm.toLowerCase();
-                              const parts = [];
-                              let lastIndex = 0;
-                              let index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
-                              
-                              while (index !== -1) {
-                                // Add text before match
-                                if (index > lastIndex) {
-                                  parts.push(message.message.slice(lastIndex, index));
-                                }
-                                // Add highlighted match
-                                parts.push(
-                                  <mark key={`match-${index}`} className="bg-yellow-200 dark:bg-yellow-800">
-                                    {message.message.slice(index, index + searchTerm.length)}
-                                  </mark>
-                                );
-                                lastIndex = index + searchTerm.length;
-                                index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
-                              }
-                              
-                              // Add remaining text
-                              if (lastIndex < message.message.length) {
-                                parts.push(message.message.slice(lastIndex));
-                              }
-                              
-                              return parts;
-                            })()
-                          ) : (
-                            message.message
-                          )}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {group.speaker === 'candidate' && (
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="w-6 h-6 bg-secondary/10 rounded-full flex items-center justify-center">
-                        <User className="h-3 w-3 text-secondary" />
-                      </div>
-                    </div>
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      <Card className={`border border-primary/20 bg-gradient-to-br from-white/80 to-gray-50/80 dark:from-gray-900/80 dark:to-gray-800/80 backdrop-blur-xl shadow-lg hover:shadow-xl transition-all duration-300 ${className}`}>
+        {/* Professional Summary Header */}
+        <CollapsibleTrigger asChild>
+          <div className="p-6 cursor-pointer hover:bg-gradient-to-r hover:from-primary/5 hover:to-secondary/5 transition-all duration-300 border-b border-primary/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <MessageSquare className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold flex items-center text-gray-900 dark:text-gray-100">
+                    Interview Transcript
+                    {candidateName && (
+                      <Badge variant="secondary" className="ml-3 bg-primary/10 text-primary border-primary/20">
+                        {candidateName}
+                      </Badge>
+                    )}
+                  </h3>
+                  {highlights && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-md truncate">
+                      {highlights.preview}
+                    </p>
                   )}
                 </div>
-                
-                {/* Minimal separation between groups */}
-                {groupIndex < filteredGroups.length - 1 && (
-                  <div className="h-2" />
-                )}
               </div>
-            ))}
+              
+              <div className="flex items-center space-x-3">
+                {/* Quick Stats */}
+                <div className="hidden md:flex items-center space-x-4 mr-4">
+                  <div className="flex items-center space-x-2 bg-white/60 dark:bg-gray-800/60 px-3 py-2 rounded-lg backdrop-blur-sm border border-primary/10">
+                    <Timer className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">{duration || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-white/60 dark:bg-gray-800/60 px-3 py-2 rounded-lg backdrop-blur-sm border border-primary/10">
+                    <Users className="h-4 w-4 text-secondary" />
+                    <span className="text-sm font-medium">{messages.length}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-white/60 dark:bg-gray-800/60 px-3 py-2 rounded-lg backdrop-blur-sm border border-primary/10">
+                    <BarChart3 className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium">{messageGroups.length} exchanges</span>
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyTranscript();
+                    }}
+                    className="bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 backdrop-blur-sm border border-primary/10"
+                    data-testid="copy-transcript"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadTranscript();
+                    }}
+                    className="bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80 backdrop-blur-sm border border-primary/10"
+                    data-testid="download-transcript"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {/* Expand/Collapse Icon */}
+                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+                  {isExpanded ? (
+                    <ChevronUp className="h-4 w-4 text-primary" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-primary" />
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile Quick Stats */}
+            <div className="md:hidden mt-4 flex items-center space-x-3">
+              <Badge variant="outline" className="bg-white/60 dark:bg-gray-800/60 border-primary/20">
+                {duration || 'N/A'}
+              </Badge>
+              <Badge variant="outline" className="bg-white/60 dark:bg-gray-800/60 border-primary/20">
+                {messages.length} messages
+              </Badge>
+              <Badge variant="outline" className="bg-white/60 dark:bg-gray-800/60 border-primary/20">
+                {messageGroups.length} exchanges
+              </Badge>
+            </div>
           </div>
-        )}
-      </ScrollArea>
-    </Card>
+        </CollapsibleTrigger>
+
+
+        
+        {/* Expanded Content Area */}
+        <CollapsibleContent className="border-t border-primary/10">
+          <div className="bg-gradient-to-b from-gray-50/50 to-white/50 dark:from-gray-800/50 dark:to-gray-900/50">
+            {/* Enhanced Header with Metadata */}
+            <div className="p-6 border-b border-primary/10">
+              <div className="flex flex-wrap items-center gap-4 mb-4">
+                {interviewDate && (
+                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 bg-white/60 dark:bg-gray-800/60 px-3 py-2 rounded-lg backdrop-blur-sm border border-primary/10">
+                    <Clock className="h-4 w-4 mr-2" />
+                    {formatInterviewDate(interviewDate)}
+                  </div>
+                )}
+                <div className="flex items-center space-x-3">
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                    {messages.length} messages
+                  </Badge>
+                  <Badge variant="outline" className="bg-secondary/10 text-secondary border-secondary/20">
+                    {messageGroups.length} exchanges
+                  </Badge>
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                    Agent: {getAgentMessageCount()}
+                  </Badge>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                    Candidate: {getCandidateMessageCount()}
+                  </Badge>
+                </div>
+              </div>
+              
+              {/* Enhanced Search and Filters */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[250px]">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search conversation..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-primary/20 focus:border-primary/40 focus:ring-primary/20"
+                    data-testid="transcript-search"
+                  />
+                </div>
+                <Button
+                  variant={showOnlyAgent ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowOnlyAgent(!showOnlyAgent);
+                    setShowOnlyCandidate(false);
+                  }}
+                  className={`${showOnlyAgent ? 'bg-primary hover:bg-primary/90' : 'bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80'} backdrop-blur-sm border-primary/20`}
+                  data-testid="filter-agent"
+                >
+                  <Bot className="h-4 w-4 mr-2" />
+                  Agent ({getAgentMessageCount()})
+                </Button>
+                <Button
+                  variant={showOnlyCandidate ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowOnlyCandidate(!showOnlyCandidate);
+                    setShowOnlyAgent(false);
+                  }}
+                  className={`${showOnlyCandidate ? 'bg-secondary hover:bg-secondary/90' : 'bg-white/60 dark:bg-gray-800/60 hover:bg-white/80 dark:hover:bg-gray-700/80'} backdrop-blur-sm border-secondary/20`}
+                  data-testid="filter-candidate"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Candidate ({getCandidateMessageCount()})
+                </Button>
+              </div>
+            </div>
+
+            
+            {/* Enhanced Transcript Messages */}
+            <ScrollArea className="h-[400px] md:h-[500px] lg:h-[600px] p-6 bg-gradient-to-b from-white/40 to-gray-50/40 dark:from-gray-900/40 dark:to-gray-800/40">
+              {filteredGroups.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+                    <Filter className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No matches found</h3>
+                  <p className="text-gray-600 dark:text-gray-400">Try adjusting your search criteria or filters</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {filteredGroups.map((group, groupIndex) => (
+                    <div key={groupIndex} className="group">
+                      <div className={`flex items-start space-x-4 ${
+                        group.speaker === 'agent' 
+                          ? 'justify-start' 
+                          : 'justify-end flex-row-reverse space-x-reverse'
+                      }`}>
+                        {/* Speaker Avatar */}
+                        <div className="flex-shrink-0">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-sm border ${
+                            group.speaker === 'agent'
+                              ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-primary/20'
+                              : 'bg-gradient-to-br from-secondary/20 to-secondary/10 border-secondary/20'
+                          }`}>
+                            {group.speaker === 'agent' ? (
+                              <Bot className="h-5 w-5 text-primary" />
+                            ) : (
+                              <User className="h-5 w-5 text-secondary" />
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Message Content */}
+                        <div className={`max-w-[75%] md:max-w-[85%] ${
+                          group.speaker === 'agent' 
+                            ? 'bg-gradient-to-br from-white/90 to-primary/5 border-primary/20' 
+                            : 'bg-gradient-to-br from-white/90 to-secondary/5 border-secondary/20'
+                        } border rounded-2xl p-4 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200`}>
+                          {/* Speaker Header */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {group.speaker === 'agent' ? agentName : candidateName || 'Candidate'}
+                              </span>
+                              <Badge variant="secondary" className={`text-xs ${
+                                group.speaker === 'agent' 
+                                  ? 'bg-primary/10 text-primary border-primary/20'
+                                  : 'bg-secondary/10 text-secondary border-secondary/20'
+                              }`}>
+                                {group.messages.length} message{group.messages.length > 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                            {(group.startTimestamp || group.endTimestamp) && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/60 px-2 py-1 rounded-md">
+                                {group.startTimestamp}
+                                {group.startTimestamp !== group.endTimestamp && group.endTimestamp && 
+                                  ` - ${group.endTimestamp}`
+                                }
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Messages */}
+                          <div className="space-y-3">
+                            {group.messages.map((message, messageIndex) => (
+                              <div key={messageIndex} className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                                {searchTerm && message.message.toLowerCase().includes(searchTerm.toLowerCase()) ? (
+                                  (() => {
+                                    const lowerMessage = message.message.toLowerCase();
+                                    const lowerSearchTerm = searchTerm.toLowerCase();
+                                    const parts = [];
+                                    let lastIndex = 0;
+                                    let index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
+                                    
+                                    while (index !== -1) {
+                                      if (index > lastIndex) {
+                                        parts.push(message.message.slice(lastIndex, index));
+                                      }
+                                      parts.push(
+                                        <mark key={`match-${index}`} className="bg-yellow-200/80 dark:bg-yellow-800/60 px-1 py-0.5 rounded">
+                                          {message.message.slice(index, index + searchTerm.length)}
+                                        </mark>
+                                      );
+                                      lastIndex = index + searchTerm.length;
+                                      index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
+                                    }
+                                    
+                                    if (lastIndex < message.message.length) {
+                                      parts.push(message.message.slice(lastIndex));
+                                    }
+                                    
+                                    return parts;
+                                  })()
+                                ) : (
+                                  message.message
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
