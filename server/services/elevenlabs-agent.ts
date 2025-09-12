@@ -5,7 +5,7 @@ import { fileStorageService } from "./file-storage";
 import { z } from "zod";
 
 // The specific authorized ElevenLabs agent ID that we monitor
-const AUTHORIZED_AGENT_ID = "agent_0601k4t9d82qe5ybsgkngct0zzkm";
+const AUTHORIZED_AGENT_ID = "agent_3401k4612x44fqcvzgj0hz2shnhv";
 
 // Comprehensive ElevenLabs interview data validation schema
 const ElevenLabsInterviewDataSchema = z.object({
