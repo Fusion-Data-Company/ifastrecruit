@@ -78,7 +78,7 @@ const BULK_ACTIONS = [
 const PIPELINE_STAGES = [
   { value: 'NEW', label: 'New Applications' },
   { value: 'FIRST_INTERVIEW', label: 'First Interview' },
-  { value: 'TECHNICAL_SCREEN', label: 'Technical Screen' },
+  { value: 'TECHNICAL_SCREEN', label: 'In Slack' },
   { value: 'FINAL_INTERVIEW', label: 'Final Interview' },
   { value: 'OFFER', label: 'Offer Extended' },
   { value: 'HIRED', label: 'Hired' },

@@ -381,7 +381,7 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                         <SelectContent>
                           <SelectItem value="NEW">🆕 New</SelectItem>
                           <SelectItem value="FIRST_INTERVIEW">📞 First Interview</SelectItem>
-                          <SelectItem value="TECHNICAL_SCREEN">💻 Technical Screen</SelectItem>
+                          <SelectItem value="TECHNICAL_SCREEN">💬 In Slack</SelectItem>
                           <SelectItem value="FINAL_INTERVIEW">🎯 Final Interview</SelectItem>
                           <SelectItem value="OFFER">💼 Offer</SelectItem>
                           <SelectItem value="HIRED">✅ Hired</SelectItem>

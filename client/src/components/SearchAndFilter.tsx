@@ -32,7 +32,7 @@ interface SearchAndFilterProps {
 const PIPELINE_STAGES = [
   { value: 'NEW', label: 'New Applications', color: 'bg-muted' },
   { value: 'FIRST_INTERVIEW', label: 'First Interview', color: 'bg-primary/20' },
-  { value: 'TECHNICAL_SCREEN', label: 'Technical Screen', color: 'bg-accent/20' },
+  { value: 'TECHNICAL_SCREEN', label: 'In Slack', color: 'bg-accent/20' },
   { value: 'FINAL_INTERVIEW', label: 'Final Interview', color: 'bg-primary/30' },
   { value: 'OFFER', label: 'Offer Extended', color: 'bg-secondary/30' },
   { value: 'HIRED', label: 'Hired', color: 'bg-accent/30' },

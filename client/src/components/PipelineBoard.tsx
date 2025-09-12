@@ -208,7 +208,7 @@ export default function PipelineBoard() {
     },
     {
       id: "TECHNICAL_SCREEN",
-      name: "Technical Screen",
+      name: "In Slack",
       color: "bg-orange-500/20 text-orange-700",
       candidates: candidates?.filter(c => c.pipelineStage === "TECHNICAL_SCREEN") || [],
     },

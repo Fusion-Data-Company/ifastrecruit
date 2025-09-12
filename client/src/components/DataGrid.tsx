@@ -61,6 +61,88 @@ import { EnhancedTranscript } from "@/components/EnhancedTranscript";
 import type { Candidate } from "@shared/schema";
 import type { UploadResult } from "@uppy/core";
 
+// Type interfaces for JSONB structured data
+interface EvaluationCriteriaData {
+  communicationScore?: number;
+  salesAptitudeScore?: number;
+  motivationScore?: number;
+  coachabilityScore?: number;
+  professionalPresenceScore?: number;
+  overallScore?: number;
+  [key: string]: any;
+}
+
+interface DataCollectionResultsData {
+  whyInsurance?: string;
+  whyNow?: string;
+  salesExperience?: string;
+  difficultCustomerStory?: string;
+  consultativeSelling?: string;
+  preferredMarkets?: string[] | string;
+  timeline?: string;
+  recommendedNextSteps?: string;
+  demoCallPerformed?: boolean;
+  kevinPersonaUsed?: boolean;
+  coachingGiven?: boolean;
+  pitchDelivered?: boolean;
+  strengths?: string[];
+  developmentAreas?: string[];
+  [key: string]: any;
+}
+
+interface InterviewData {
+  agentId?: string;
+  agentName?: string;
+  conversationId?: string;
+  transcript?: string;
+  duration?: string;
+  callDurationSecs?: number;
+  summary?: string;
+  status?: string;
+  callSuccessful?: boolean;
+  messageCount?: number;
+  transcriptSummary?: string;
+  callSummaryTitle?: string;
+  audioRecordingUrl?: string;
+  interviewDate?: string;
+  startTimeUnixSecs?: number;
+  [key: string]: any;
+}
+
+// Type guards for JSONB data
+function isEvaluationCriteriaData(data: unknown): data is EvaluationCriteriaData {
+  return data != null && typeof data === 'object';
+}
+
+function isDataCollectionResultsData(data: unknown): data is DataCollectionResultsData {
+  return data != null && typeof data === 'object';
+}
+
+function isInterviewData(data: unknown): data is InterviewData {
+  return data != null && typeof data === 'object';
+}
+
+// Helper function to safely access properties with both snake_case and camelCase variants
+function getNestedProperty(obj: any, camelKey: string, snakeKey: string): any {
+  if (!obj || typeof obj !== 'object') return undefined;
+  return obj[camelKey] ?? obj[snakeKey];
+}
+
+// Helper function to safely render JSON values as React nodes
+function renderJsonValue(value: unknown): React.ReactNode {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 // Extend table meta interface for inline editing
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends RowData> {
@@ -112,10 +194,10 @@ function EvaluationCriteriaTooltip({
   title = "Evaluation Criteria" 
 }: {
   children: React.ReactNode;
-  data: any;
+  data: unknown;
   title?: string;
 }) {
-  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+  if (!isEvaluationCriteriaData(data) || Object.keys(data).length === 0) {
     return <>{children}</>;
   }
 
@@ -128,13 +210,13 @@ function EvaluationCriteriaTooltip({
         <div className="space-y-3">
           <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
           <div className="space-y-2 text-sm">
-            {data.communication_score && <div><strong>Communication:</strong> {data.communication_score}/100</div>}
-            {data.sales_aptitude_score && <div><strong>Sales Aptitude:</strong> {data.sales_aptitude_score}/100</div>}
-            {data.motivation_score && <div><strong>Motivation:</strong> {data.motivation_score}/100</div>}
-            {data.coachability_score && <div><strong>Coachability:</strong> {data.coachability_score}/100</div>}
-            {data.professional_presence_score && <div><strong>Professional Presence:</strong> {data.professional_presence_score}/100</div>}
-            {data.overall_score && <div><strong>Overall Score:</strong> {data.overall_score}/100</div>}
-            {Object.entries(data).filter(([key]) => !key.includes('score')).map(([key, value]) => (
+            {data.communicationScore && <div><strong>Communication:</strong> {data.communicationScore}/100</div>}
+            {data.salesAptitudeScore && <div><strong>Sales Aptitude:</strong> {data.salesAptitudeScore}/100</div>}
+            {data.motivationScore && <div><strong>Motivation:</strong> {data.motivationScore}/100</div>}
+            {data.coachabilityScore && <div><strong>Coachability:</strong> {data.coachabilityScore}/100</div>}
+            {data.professionalPresenceScore && <div><strong>Professional Presence:</strong> {data.professionalPresenceScore}/100</div>}
+            {data.overallScore && <div><strong>Overall Score:</strong> {data.overallScore}/100</div>}
+            {Object.entries(data).filter(([key]) => !key.includes('Score') && !key.includes('score')).map(([key, value]) => (
               <div key={key}><strong>{key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}:</strong> {String(value || '-')}</div>
             ))}
           </div>
@@ -150,10 +232,10 @@ function DataCollectionResultsTooltip({
   title = "Data Collection Results" 
 }: {
   children: React.ReactNode;
-  data: any;
+  data: unknown;
   title?: string;
 }) {
-  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+  if (!isDataCollectionResultsData(data) || Object.keys(data).length === 0) {
     return <>{children}</>;
   }
 
@@ -166,24 +248,24 @@ function DataCollectionResultsTooltip({
         <div className="space-y-3">
           <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
           <div className="space-y-2 text-sm">
-            {data.why_insurance && <div><strong>Why Insurance:</strong> {data.why_insurance}</div>}
-            {data.why_now && <div><strong>Why Now:</strong> {data.why_now}</div>}
-            {data.sales_experience && <div><strong>Sales Experience:</strong> {data.sales_experience}</div>}
-            {data.difficult_customer_story && <div><strong>Difficult Customer Story:</strong> {data.difficult_customer_story}</div>}
-            {data.consultative_selling && <div><strong>Consultative Selling:</strong> {data.consultative_selling}</div>}
-            {data.preferred_markets && <div><strong>Preferred Markets:</strong> {Array.isArray(data.preferred_markets) ? data.preferred_markets.join(', ') : data.preferred_markets}</div>}
+            {data.whyInsurance && <div><strong>Why Insurance:</strong> {data.whyInsurance}</div>}
+            {data.whyNow && <div><strong>Why Now:</strong> {data.whyNow}</div>}
+            {data.salesExperience && <div><strong>Sales Experience:</strong> {data.salesExperience}</div>}
+            {data.difficultCustomerStory && <div><strong>Difficult Customer Story:</strong> {data.difficultCustomerStory}</div>}
+            {data.consultativeSelling && <div><strong>Consultative Selling:</strong> {data.consultativeSelling}</div>}
+            {data.preferredMarkets && <div><strong>Preferred Markets:</strong> {Array.isArray(data.preferredMarkets) ? data.preferredMarkets.join(', ') : data.preferredMarkets}</div>}
             {data.timeline && <div><strong>Timeline:</strong> {data.timeline}</div>}
-            {data.recommended_next_steps && <div><strong>Recommended Next Steps:</strong> {data.recommended_next_steps}</div>}
-            {data.demo_call_performed !== undefined && <div><strong>Demo Call Performed:</strong> {data.demo_call_performed ? 'Yes' : 'No'}</div>}
-            {data.kevin_persona_used !== undefined && <div><strong>Kevin Persona Used:</strong> {data.kevin_persona_used ? 'Yes' : 'No'}</div>}
-            {data.coaching_given !== undefined && <div><strong>Coaching Given:</strong> {data.coaching_given ? 'Yes' : 'No'}</div>}
-            {data.pitch_delivered !== undefined && <div><strong>Pitch Delivered:</strong> {data.pitch_delivered ? 'Yes' : 'No'}</div>}
+            {data.recommendedNextSteps && <div><strong>Recommended Next Steps:</strong> {data.recommendedNextSteps}</div>}
+            {data.demoCallPerformed !== undefined && <div><strong>Demo Call Performed:</strong> {data.demoCallPerformed ? 'Yes' : 'No'}</div>}
+            {data.kevinPersonaUsed !== undefined && <div><strong>Kevin Persona Used:</strong> {data.kevinPersonaUsed ? 'Yes' : 'No'}</div>}
+            {data.coachingGiven !== undefined && <div><strong>Coaching Given:</strong> {data.coachingGiven ? 'Yes' : 'No'}</div>}
+            {data.pitchDelivered !== undefined && <div><strong>Pitch Delivered:</strong> {data.pitchDelivered ? 'Yes' : 'No'}</div>}
             {data.strengths && Array.isArray(data.strengths) && <div><strong>Strengths:</strong> {data.strengths.join(', ')}</div>}
-            {data.development_areas && Array.isArray(data.development_areas) && <div><strong>Development Areas:</strong> {data.development_areas.join(', ')}</div>}
+            {data.developmentAreas && Array.isArray(data.developmentAreas) && <div><strong>Development Areas:</strong> {data.developmentAreas.join(', ')}</div>}
             {Object.entries(data).filter(([key]) => ![
-              'why_insurance', 'why_now', 'sales_experience', 'difficult_customer_story', 'consultative_selling',
-              'preferred_markets', 'timeline', 'recommended_next_steps', 'demo_call_performed', 'kevin_persona_used',
-              'coaching_given', 'pitch_delivered', 'strengths', 'development_areas'
+              'whyInsurance', 'whyNow', 'salesExperience', 'difficultCustomerStory', 'consultativeSelling',
+              'preferredMarkets', 'timeline', 'recommendedNextSteps', 'demoCallPerformed', 'kevinPersonaUsed',
+              'coachingGiven', 'pitchDelivered', 'strengths', 'developmentAreas'
             ].includes(key)).map(([key, value]) => (
               <div key={key}><strong>{key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}:</strong> {String(value || '-')}</div>
             ))}
@@ -200,10 +282,10 @@ function InterviewDataTooltip({
   title = "Interview Data" 
 }: {
   children: React.ReactNode;
-  data: any;
+  data: unknown;
   title?: string;
 }) {
-  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+  if (!isInterviewData(data) || Object.keys(data).length === 0) {
     return <>{children}</>;
   }
 
@@ -216,12 +298,12 @@ function InterviewDataTooltip({
         <div className="space-y-3">
           <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
           <div className="space-y-2 text-sm">
-            {data.agent_id && <div><strong>Agent ID:</strong> {data.agent_id}</div>}
-            {data.agent_name && <div><strong>Agent Name:</strong> {data.agent_name}</div>}
-            {data.conversation_id && <div><strong>Conversation ID:</strong> {data.conversation_id}</div>}
+            {data.agentId && <div><strong>Agent ID:</strong> {data.agentId}</div>}
+            {data.agentName && <div><strong>Agent Name:</strong> {data.agentName}</div>}
+            {data.conversationId && <div><strong>Conversation ID:</strong> {data.conversationId}</div>}
             {data.transcript && <div><strong>Transcript Preview:</strong> {data.transcript.substring(0, 200)}...</div>}
             {data.duration && <div><strong>Duration:</strong> {data.duration}</div>}
-            {data.call_duration_secs && <div><strong>Call Duration:</strong> {formatCallDuration(data.call_duration_secs)}</div>}
+            {data.callDurationSecs && <div><strong>Call Duration:</strong> {formatCallDuration(data.callDurationSecs)}</div>}
             {data.summary && <div><strong>Summary:</strong> {data.summary}</div>}
             {data.status && <div><strong>Status:</strong> {data.status}</div>}
             {data.call_successful !== undefined && <div><strong>Call Successful:</strong> {data.call_successful ? 'Yes' : 'No'}</div>}
@@ -245,7 +327,7 @@ function DateTooltip({
   title 
 }: {
   children: React.ReactNode;
-  date: string | Date | null;
+  date: string | Date | null | undefined;
   title?: string;
 }) {
   if (!date) {
@@ -598,40 +680,40 @@ function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
               <div className="bg-muted/50 rounded p-3 max-h-32 overflow-y-auto">
                 {candidate.evaluationCriteria && Object.keys(candidate.evaluationCriteria).length > 0 ? (
                   <div className="space-y-2">
-                    {candidate.evaluationCriteria.communication_score && (
+                    {getNestedProperty(candidate.evaluationCriteria, 'communicationScore', 'communication_score') && (
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium">Communication:</span>
-                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.communication_score}/100</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{getNestedProperty(candidate.evaluationCriteria, 'communicationScore', 'communication_score')}/100</span>
                       </div>
                     )}
-                    {candidate.evaluationCriteria.sales_aptitude_score && (
+                    {getNestedProperty(candidate.evaluationCriteria, 'salesAptitudeScore', 'sales_aptitude_score') && (
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium">Sales Aptitude:</span>
-                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.sales_aptitude_score}/100</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{getNestedProperty(candidate.evaluationCriteria, 'salesAptitudeScore', 'sales_aptitude_score')}/100</span>
                       </div>
                     )}
-                    {candidate.evaluationCriteria.motivation_score && (
+                    {getNestedProperty(candidate.evaluationCriteria, 'motivationScore', 'motivation_score') && (
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium">Motivation:</span>
-                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.motivation_score}/100</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{getNestedProperty(candidate.evaluationCriteria, 'motivationScore', 'motivation_score')}/100</span>
                       </div>
                     )}
-                    {candidate.evaluationCriteria.coachability_score && (
+                    {getNestedProperty(candidate.evaluationCriteria, 'coachabilityScore', 'coachability_score') && (
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium">Coachability:</span>
-                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.coachability_score}/100</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{getNestedProperty(candidate.evaluationCriteria, 'coachabilityScore', 'coachability_score')}/100</span>
                       </div>
                     )}
-                    {candidate.evaluationCriteria.professional_presence_score && (
+                    {getNestedProperty(candidate.evaluationCriteria, 'professionalPresenceScore', 'professional_presence_score') && (
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium">Professional Presence:</span>
-                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.professional_presence_score}/100</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{getNestedProperty(candidate.evaluationCriteria, 'professionalPresenceScore', 'professional_presence_score')}/100</span>
                       </div>
                     )}
-                    {candidate.evaluationCriteria.overall_score && (
+                    {getNestedProperty(candidate.evaluationCriteria, 'overallScore', 'overall_score') && (
                       <div className="flex justify-between items-center font-semibold">
                         <span className="text-xs">Overall Score:</span>
-                        <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">{candidate.evaluationCriteria.overall_score}/100</span>
+                        <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">{getNestedProperty(candidate.evaluationCriteria, 'overallScore', 'overall_score')}/100</span>
                       </div>
                     )}
                   </div>
@@ -665,42 +747,43 @@ function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
               <div className="bg-muted/50 rounded p-3 max-h-32 overflow-y-auto">
                 {candidate.dataCollectionResults && Object.keys(candidate.dataCollectionResults).length > 0 ? (
                   <div className="space-y-2">
-                    {candidate.dataCollectionResults.why_insurance && (
+                    {getNestedProperty(candidate.dataCollectionResults, 'whyInsurance', 'why_insurance') && (
                       <div>
                         <div className="text-xs font-medium text-primary">Why Insurance:</div>
-                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{candidate.dataCollectionResults.why_insurance.substring(0, 100)}...</div>
+                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{String(getNestedProperty(candidate.dataCollectionResults, 'whyInsurance', 'why_insurance')).substring(0, 100)}...</div>
                       </div>
                     )}
-                    {candidate.dataCollectionResults.sales_experience && (
+                    {getNestedProperty(candidate.dataCollectionResults, 'salesExperience', 'sales_experience') && (
                       <div>
                         <div className="text-xs font-medium text-primary">Sales Experience:</div>
-                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{candidate.dataCollectionResults.sales_experience.substring(0, 100)}...</div>
+                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{String(getNestedProperty(candidate.dataCollectionResults, 'salesExperience', 'sales_experience')).substring(0, 100)}...</div>
                       </div>
                     )}
-                    {candidate.dataCollectionResults.preferred_markets && (
+                    {getNestedProperty(candidate.dataCollectionResults, 'preferredMarkets', 'preferred_markets') && (
                       <div>
                         <div className="text-xs font-medium text-primary">Preferred Markets:</div>
                         <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">
-                          {Array.isArray(candidate.dataCollectionResults.preferred_markets) 
-                            ? candidate.dataCollectionResults.preferred_markets.join(', ') 
-                            : candidate.dataCollectionResults.preferred_markets}
+                          {(() => {
+                            const markets = getNestedProperty(candidate.dataCollectionResults, 'preferredMarkets', 'preferred_markets');
+                            return Array.isArray(markets) ? markets.join(', ') : String(markets || '-');
+                          })()}
                         </div>
                       </div>
                     )}
-                    {candidate.dataCollectionResults.timeline && (
+                    {getNestedProperty(candidate.dataCollectionResults, 'timeline', 'timeline') && (
                       <div>
                         <div className="text-xs font-medium text-primary">Timeline:</div>
-                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{candidate.dataCollectionResults.timeline}</div>
+                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{String(getNestedProperty(candidate.dataCollectionResults, 'timeline', 'timeline'))}</div>
                       </div>
                     )}
                     <div className="flex gap-2 flex-wrap mt-2">
-                      {candidate.dataCollectionResults.demo_call_performed && (
+                      {getNestedProperty(candidate.dataCollectionResults, 'demoCallPerformed', 'demo_call_performed') && (
                         <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Demo Call Done</span>
                       )}
-                      {candidate.dataCollectionResults.coaching_given && (
+                      {getNestedProperty(candidate.dataCollectionResults, 'coachingGiven', 'coaching_given') && (
                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Coaching Given</span>
                       )}
-                      {candidate.dataCollectionResults.pitch_delivered && (
+                      {getNestedProperty(candidate.dataCollectionResults, 'pitchDelivered', 'pitch_delivered') && (
                         <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Pitch Delivered</span>
                       )}
                     </div>
@@ -1221,7 +1304,7 @@ export default function DataGrid() {
           const stageDescriptions = {
             'NEW': 'New candidate - recently added to the system',
             'FIRST_INTERVIEW': 'First Interview - initial screening completed',
-            'TECHNICAL_SCREEN': 'Technical Screen - technical evaluation in progress',
+            'TECHNICAL_SCREEN': 'In Slack - candidate moved to Slack channel',
             'FINAL_INTERVIEW': 'Final Interview - final evaluation stage',
             'OFFER': 'Offer - job offer has been extended',
             'HIRED': 'Hired - candidate has accepted and joined',
@@ -1248,7 +1331,7 @@ export default function DataGrid() {
                 <SelectContent>
                   <SelectItem value="NEW">New</SelectItem>
                   <SelectItem value="FIRST_INTERVIEW">First Interview</SelectItem>
-                  <SelectItem value="TECHNICAL_SCREEN">Technical Screen</SelectItem>
+                  <SelectItem value="TECHNICAL_SCREEN">In Slack</SelectItem>
                   <SelectItem value="FINAL_INTERVIEW">Final Interview</SelectItem>
                   <SelectItem value="OFFER">Offer</SelectItem>
                   <SelectItem value="HIRED">Hired</SelectItem>
@@ -2734,9 +2817,9 @@ export default function DataGrid() {
                         transcript={detailsCandidate.interviewTranscript || ''}
                         candidateName={detailsCandidate.name}
                         agentName={detailsCandidate.agentName || 'AI Agent'}
-                        interviewDate={detailsCandidate.interviewDate}
+                        interviewDate={detailsCandidate.interviewDate || undefined}
                         duration={detailsCandidate.interviewDuration || (detailsCandidate.callDuration ? formatCallDuration(detailsCandidate.callDuration) : undefined)}
-                        messageCount={detailsCandidate.messageCount}
+                        messageCount={detailsCandidate.messageCount || undefined}
                         className="flex-1"
                       />
 
@@ -3142,7 +3225,7 @@ export default function DataGrid() {
                                         {Object.entries(detailsCandidate.evaluationCriteria as Record<string, any>).map(([key, value]) => (
                                           <div key={key} className="bg-background rounded p-2">
                                             <div className="text-xs font-medium text-muted-foreground">{key.replace(/_/g, ' ')}</div>
-                                            <div className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value || '-')}</div>
+                                            <div className="text-sm">{renderJsonValue(value)}</div>
                                           </div>
                                         ))}
                                       </div>
@@ -3167,7 +3250,7 @@ export default function DataGrid() {
                                         {Object.entries(detailsCandidate.dataCollectionResults as Record<string, any>).map(([key, value]) => (
                                           <div key={key} className="bg-background rounded p-2">
                                             <div className="text-xs font-medium text-muted-foreground">{key.replace(/_/g, ' ')}</div>
-                                            <div className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value || '-')}</div>
+                                            <div className="text-sm">{renderJsonValue(value)}</div>
                                           </div>
                                         ))}
                                       </div>

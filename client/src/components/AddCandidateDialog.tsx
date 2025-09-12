@@ -148,7 +148,7 @@ export default function AddCandidateDialog({ open, onOpenChange }: AddCandidateD
                     <SelectContent>
                       <SelectItem value="NEW">New Applications</SelectItem>
                       <SelectItem value="FIRST_INTERVIEW">First Interview</SelectItem>
-                      <SelectItem value="TECHNICAL_SCREEN">Technical Screen</SelectItem>
+                      <SelectItem value="TECHNICAL_SCREEN">In Slack</SelectItem>
                       <SelectItem value="FINAL_INTERVIEW">Final Interview</SelectItem>
                       <SelectItem value="OFFER">Offer</SelectItem>
                     </SelectContent>

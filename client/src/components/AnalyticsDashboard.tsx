@@ -84,7 +84,7 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
     pipelineMetrics: [
       { stage: 'New', count: safeC.filter(c => c.pipelineStage === 'NEW').length, conversionRate: 85, avgTimeInStage: 2.3 },
       { stage: 'First Interview', count: safeC.filter(c => c.pipelineStage === 'FIRST_INTERVIEW').length, conversionRate: 65, avgTimeInStage: 5.1 },
-      { stage: 'Technical Screen', count: safeC.filter(c => c.pipelineStage === 'TECHNICAL_SCREEN').length, conversionRate: 45, avgTimeInStage: 7.2 },
+      { stage: 'In Slack', count: safeC.filter(c => c.pipelineStage === 'TECHNICAL_SCREEN').length, conversionRate: 45, avgTimeInStage: 7.2 },
       { stage: 'Final Interview', count: safeC.filter(c => c.pipelineStage === 'FINAL_INTERVIEW').length, conversionRate: 78, avgTimeInStage: 4.6 },
       { stage: 'Offer', count: safeC.filter(c => c.pipelineStage === 'OFFER').length, conversionRate: 92, avgTimeInStage: 3.1 },
       { stage: 'Hired', count: safeC.filter(c => c.pipelineStage === 'HIRED').length, conversionRate: 100, avgTimeInStage: 0 },
