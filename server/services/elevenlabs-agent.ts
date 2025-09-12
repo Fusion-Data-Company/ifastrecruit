@@ -168,6 +168,55 @@ export class ElevenLabsAgentService {
   }
 
   /**
+   * Format transcript data into human-readable plain text
+   */
+  private formatTranscriptToPlainText(transcript: any): string {
+    if (!transcript) return "";
+    
+    let formattedText = "";
+    
+    // Handle array of messages
+    if (Array.isArray(transcript)) {
+      formattedText = transcript
+        .map((msg: any) => {
+          const speaker = msg.role || msg.speaker || "Unknown";
+          const message = msg.content || msg.text || msg.message || "";
+          const timestamp = msg.timestamp || msg.created_at || "";
+          
+          // Format: "[Timestamp] Speaker: Message"
+          if (timestamp) {
+            const date = new Date(timestamp);
+            if (!isNaN(date.getTime())) {
+              return `[${date.toLocaleTimeString()}] ${speaker}: ${message}`;
+            }
+          }
+          return `${speaker}: ${message}`;
+        })
+        .filter(line => line && line.trim().length > 0)
+        .join("\n\n");
+    } 
+    // Handle string transcript
+    else if (typeof transcript === 'string') {
+      // Try to parse as JSON first
+      try {
+        const parsed = JSON.parse(transcript);
+        if (Array.isArray(parsed)) {
+          return this.formatTranscriptToPlainText(parsed);
+        }
+      } catch (e) {
+        // Not JSON, use as-is
+      }
+      formattedText = transcript;
+    }
+    // Handle object with transcript property
+    else if (typeof transcript === 'object' && transcript.messages) {
+      return this.formatTranscriptToPlainText(transcript.messages);
+    }
+    
+    return formattedText;
+  }
+
+  /**
    * Process a single conversation and create/update candidate record
    */
   async processConversation(conversationId: string): Promise<ProcessedConversationResult> {
@@ -177,6 +226,9 @@ export class ElevenLabsAgentService {
       // Get detailed conversation data from ElevenLabs API
       const conversationDetails = await elevenlabsIntegration.getConversationDetails(conversationId);
       
+      // Format transcript as human-readable text
+      const formattedTranscript = this.formatTranscriptToPlainText(conversationDetails.transcript);
+      
       // Prepare comprehensive interview data structure
       const interviewData = {
         agent_id: AUTHORIZED_AGENT_ID,
@@ -185,7 +237,7 @@ export class ElevenLabsAgentService {
         conversationId: conversationId,
         agent_name: "iFast Broker Interview Agent",
         agentName: "iFast Broker Interview Agent",
-        transcript: conversationDetails.transcript ? JSON.stringify(conversationDetails.transcript) : "",
+        transcript: formattedTranscript,
         duration: this.calculateDuration(conversationDetails),
         summary: this.generateSummary(conversationDetails),
         call_duration_secs: this.parseDurationSeconds(conversationDetails),
@@ -255,8 +307,9 @@ export class ElevenLabsAgentService {
       if (transcript) {
         const candidateIdentifier = extractedData.email || extractedData.name || conversationId;
         console.log(`[ElevenLabs Agent] Storing transcript for candidate: ${candidateIdentifier}`);
+        // Transcript is already formatted as plain text, pass it directly
         const transcriptResult = await fileStorageService.storeTranscript(
-          typeof transcript === 'string' ? transcript : JSON.stringify(transcript),
+          transcript,
           conversationId,
           conversationId
         );
@@ -330,9 +383,7 @@ export class ElevenLabsAgentService {
           interviewData: validationResult.data,
           interviewScore: extractedData.overallScore,
           interviewDuration: validationResult.data.duration,
-          interviewTranscript: typeof validationResult.data.transcript === 'string' 
-            ? validationResult.data.transcript 
-            : JSON.stringify(validationResult.data.transcript),
+          interviewTranscript: validationResult.data.transcript, // Already formatted as plain text
           interviewSummary: validationResult.data.summary,
           
           // ElevenLabs specific fields
@@ -414,9 +465,7 @@ export class ElevenLabsAgentService {
           interviewData: validationResult.data,
           interviewScore: extractedData.overallScore,
           interviewDuration: validationResult.data.duration,
-          interviewTranscript: typeof validationResult.data.transcript === 'string' 
-            ? validationResult.data.transcript 
-            : JSON.stringify(validationResult.data.transcript),
+          interviewTranscript: validationResult.data.transcript, // Already formatted as plain text
           interviewSummary: validationResult.data.summary,
           
           // ElevenLabs specific fields

@@ -91,20 +91,17 @@ export class FileStorageService {
       const filename = `transcript_${candidateId}_${conversationId}_${fileId}.txt`;
       const localPath = join(this.localStorageDir, "transcripts", filename);
 
-      // Parse transcript if it's JSON, otherwise use as-is
-      let transcriptText = transcript;
-      try {
-        const parsed = JSON.parse(transcript);
-        if (Array.isArray(parsed)) {
-          // Convert array of messages to readable text
-          transcriptText = parsed
-            .map((msg: any) => `${msg.role || 'Speaker'}: ${msg.content || msg.text || msg.message || ''}`)
-            .join('\n\n');
-        } else if (typeof parsed === 'object' && parsed.content) {
-          transcriptText = parsed.content;
-        }
-      } catch {
-        // Keep original transcript if parsing fails
+      // The transcript should already be formatted as plain text from the ElevenLabs agent
+      // Add a header for better readability
+      let transcriptText = `=== Interview Transcript ===\n`;
+      transcriptText += `Conversation ID: ${conversationId}\n`;
+      transcriptText += `Generated: ${new Date().toLocaleString()}\n`;
+      transcriptText += `${'='.repeat(30)}\n\n`;
+      transcriptText += transcript;
+
+      // Ensure the transcript ends with a newline
+      if (!transcriptText.endsWith('\n')) {
+        transcriptText += '\n';
       }
 
       await fs.writeFile(localPath, transcriptText, 'utf8');
