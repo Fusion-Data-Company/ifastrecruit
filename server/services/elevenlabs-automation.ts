@@ -175,7 +175,10 @@ export class ElevenLabsAutomationService {
           };
 
           // Use MCP tool to process and save the interview data
-          const result = await mcpServer.callTool("create_candidate_from_interview", interviewData);
+          // CRITICAL FIX: Pass interviewData as nested property, not directly
+          const result = await mcpServer.callTool("create_candidate_from_interview", {
+            interviewData: interviewData
+          });
           
           if (result && result.content && result.content[0] && result.content[0].text) {
             console.log(`[ElevenLabs Automation] Successfully processed conversation: ${conversation.conversation_id}`);
