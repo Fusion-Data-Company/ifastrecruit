@@ -640,18 +640,18 @@ export default function CandidatesTable({ candidates, isLoading }: CandidatesTab
           {/* Filters */}
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input
                 placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white/80 backdrop-blur-sm border-gray-200/50 focus:border-blue-400 transition-all duration-300"
+                className="pl-10 bg-white/80 backdrop-blur-sm border-gray-200/50 focus:border-blue-400 transition-all duration-300 text-gray-900 placeholder:text-gray-500"
                 data-testid="input-search"
               />
             </div>
             
             <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-[200px] bg-white/80 backdrop-blur-sm border-gray-200/50" data-testid="select-filter-stage">
+              <SelectTrigger className="w-[200px] bg-white/80 backdrop-blur-sm border-gray-200/50 text-gray-900" data-testid="select-filter-stage">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Filter by stage" />
               </SelectTrigger>

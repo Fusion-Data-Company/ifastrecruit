@@ -79,6 +79,15 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--border);
+    color: hsl(213, 31%, 91%);
+  }
+
+  .glass-input::placeholder {
+    color: hsl(213, 20%, 60%);
+  }
+
+  .glass-input:focus {
+    color: hsl(213, 31%, 91%);
   }
 
   .glow-hover {
