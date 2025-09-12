@@ -35,10 +35,8 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
-        {/* Temporarily disabled ElevenLabs widgets to resolve runtime error */}
-        {/* <MainUIAgent />
-        <SecondaryAgent />
-        <CenterAgent /> */}
+        {/* Platform Assistant - Fortune 500 Enterprise AI Assistant */}
+        <MainUIAgent />
       </TooltipProvider>
     </QueryClientProvider>
   );

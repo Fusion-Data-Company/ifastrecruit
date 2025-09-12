@@ -817,8 +817,8 @@ export class ElevenLabsAgentService {
     try {
       // Remove common prefixes
       let cleaned = aiResponse
-        .replace(/^.*?(?=\{)/s, '') // Remove everything before first {
-        .replace(/\}.*$/s, '}'); // Remove everything after last }
+        .replace(/^[\s\S]*?(?=\{)/, '') // Remove everything before first {
+        .replace(/\}[\s\S]*$/, '}'); // Remove everything after last }
       
       if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
         return JSON.parse(cleaned);
