@@ -327,6 +327,111 @@
     border-color: var(--primary) !important;
   }
 
+  /* ELITE CALENDAR ENHANCEMENTS */
+  .enterprise-calendar-wrapper {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .enterprise-calendar-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+      var(--primary) 0%, 
+      var(--accent) 50%, 
+      var(--chart-2) 100%);
+    z-index: 10;
+  }
+
+  .elite-calendar-event {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border-width: 2px !important;
+    border-style: solid !important;
+    font-weight: 600 !important;
+    transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .elite-day-header {
+    background: linear-gradient(135deg, 
+      hsla(217, 32%, 17%, 0.12) 0%, 
+      hsla(195, 92%, 50%, 0.08) 100%) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid hsla(195, 92%, 50%, 0.2) !important;
+    color: hsl(213, 31%, 91%) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    font-size: 0.75rem !important;
+  }
+
+  .elite-slot-label {
+    color: hsl(215, 20.2%, 65.1%) !important;
+    font-weight: 500 !important;
+    font-size: 0.75rem !important;
+  }
+
+  .elite-now-indicator {
+    background: var(--primary) !important;
+    box-shadow: 0 0 10px var(--primary) !important;
+  }
+
+  .elite-more-link {
+    background: var(--accent) !important;
+    color: var(--accent-foreground) !important;
+    border-radius: calc(var(--radius) - 6px) !important;
+    font-weight: 600 !important;
+  }
+
+  /* Category-specific styling */
+  .category-technical .elite-calendar-event {
+    border-left: 4px solid var(--accent) !important;
+  }
+
+  .category-followup .elite-calendar-event {
+    border-left: 4px solid hsl(270, 75%, 65%) !important;
+  }
+
+  .category-final .elite-calendar-event {
+    border-left: 4px solid hsl(320, 85%, 60%) !important;
+  }
+
+  .category-screening .elite-calendar-event {
+    border-left: 4px solid var(--chart-3) !important;
+  }
+
+  /* Status-specific styling */
+  .status-confirmed .elite-calendar-event {
+    box-shadow: 0 2px 8px hsla(195, 92%, 50%, 0.3) !important;
+  }
+
+  .status-pending .elite-calendar-event {
+    box-shadow: 0 2px 8px hsla(42, 92%, 56%, 0.3) !important;
+    animation: subtle-pulse 3s ease-in-out infinite;
+  }
+
+  .status-completed .elite-calendar-event {
+    box-shadow: 0 2px 8px hsla(159, 100%, 36%, 0.3) !important;
+    opacity: 0.85;
+  }
+
+  .status-cancelled .elite-calendar-event {
+    box-shadow: 0 2px 8px hsla(341, 75%, 51%, 0.3) !important;
+    opacity: 0.7;
+    text-decoration: line-through !important;
+  }
+
+  .status-rescheduled .elite-calendar-event {
+    box-shadow: 0 2px 8px hsla(232, 78%, 42%, 0.3) !important;
+    border-style: dashed !important;
+  }
+
   /* ULTIMATE FORCE OVERRIDE */
   .calendar-container .fc,
   .calendar-container .fc *,
@@ -334,7 +439,7 @@
   .force-platform-header {
     color: hsl(213, 31%, 91%) !important;
     background: transparent !important;
-    border-color: white !important;
+    border-color: hsla(195, 92%, 50%, 0.2) !important;
   }
 
   .calendar-container .fc-button-primary {

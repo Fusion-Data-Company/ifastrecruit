@@ -85,27 +85,144 @@ export default function Calendar({ className }: CalendarProps) {
     },
   });
 
-  // Transform bookings to FullCalendar events
-  const calendarEvents = (bookings || []).map(booking => ({
-    id: booking.id,
-    title: `Interview: ${(candidates || []).find(c => c.id === booking.candidateId)?.name || 'Unknown'}`,
-    start: booking.startTs,
-    end: booking.endTs,
-    backgroundColor: getEventColor(booking.status),
-    borderColor: getEventColor(booking.status),
-    extendedProps: {
-      booking,
-      candidate: (candidates || []).find(c => c.id === booking.candidateId),
-    },
-  }));
+  // Helper function to create a synthetic title from booking data
+  const getBookingTitle = (booking: Booking, candidate?: Candidate) => {
+    // Create a meaningful title from available booking data
+    const candidateName = candidate?.name || 'Unknown Candidate';
+    const location = booking.location || 'Video Call';
+    
+    // Generate category-based title
+    if (location.toLowerCase().includes('technical') || location.toLowerCase().includes('coding')) {
+      return 'Technical Interview';
+    } else if (location.toLowerCase().includes('final') || location.toLowerCase().includes('decision')) {
+      return 'Final Interview';
+    } else if (location.toLowerCase().includes('phone') || location.toLowerCase().includes('screening')) {
+      return 'Phone Screening';
+    } else if (location.toLowerCase().includes('follow') || location.toLowerCase().includes('callback')) {
+      return 'Follow-up Interview';
+    }
+    
+    return 'Interview'; // Default fallback
+  };
 
-  function getEventColor(status: string) {
+  // Transform bookings to FullCalendar events with enhanced color coding
+  const calendarEvents = (bookings || []).map(booking => {
+    const candidate = (candidates || []).find(c => c.id === booking.candidateId);
+    const syntheticTitle = getBookingTitle(booking, candidate);
+    const eventStyle = getEventStyle(booking.status, syntheticTitle);
+    const category = getEventCategory(syntheticTitle);
+    
+    return {
+      id: booking.id,
+      title: `${getEventIcon(booking.status)} ${syntheticTitle}: ${candidate?.name || 'Unknown'}`,
+      start: booking.startTs,
+      end: booking.endTs,
+      backgroundColor: eventStyle.background,
+      borderColor: eventStyle.border,
+      textColor: eventStyle.text,
+      classNames: [`status-${booking.status.toLowerCase()}`, `category-${category}`, 'elite-calendar-event'],
+      extendedProps: {
+        booking,
+        candidate,
+        priority: getEventPriority(booking.status),
+        category: category,
+        styleData: eventStyle,
+        syntheticTitle: syntheticTitle,
+      },
+    };
+  });
+
+  function getEventStyle(status: string, title: string) {
+    const category = getEventCategory(title);
+    
     switch (status) {
-      case 'CONFIRMED': return 'hsl(195, 92%, 50%)'; // primary color for confirmed
-      case 'PENDING': return 'hsl(183, 100%, 67%)'; // accent color for pending
-      case 'COMPLETED': return 'hsl(183, 100%, 67%)'; // accent cyan for completed
-      case 'CANCELLED': return 'hsl(215, 20.2%, 65.1%)'; // muted-foreground for cancelled
-      default: return 'hsl(203.8863, 88.2845%, 53.1373%)'; // chart-1 for default
+      case 'CONFIRMED':
+        return {
+          background: 'linear-gradient(135deg, hsla(195, 92%, 50%, 0.25) 0%, hsla(203, 88%, 53%, 0.35) 100%)',
+          border: 'hsl(195, 92%, 50%)',
+          text: 'hsl(213, 31%, 91%)',
+        };
+      case 'PENDING':
+        return {
+          background: 'linear-gradient(135deg, hsla(42, 92%, 56%, 0.25) 0%, hsla(45, 100%, 60%, 0.35) 100%)',
+          border: 'hsl(42, 92%, 56%)',
+          text: 'hsl(213, 31%, 91%)',
+        };
+      case 'COMPLETED':
+        return {
+          background: 'linear-gradient(135deg, hsla(159, 100%, 36%, 0.25) 0%, hsla(160, 84%, 39%, 0.35) 100%)',
+          border: 'hsl(159, 100%, 36%)',
+          text: 'hsl(213, 31%, 91%)',
+        };
+      case 'CANCELLED':
+        return {
+          background: 'linear-gradient(135deg, hsla(341, 75%, 51%, 0.25) 0%, hsla(348, 83%, 47%, 0.35) 100%)',
+          border: 'hsl(341, 75%, 51%)',
+          text: 'hsl(213, 31%, 91%)',
+        };
+      case 'RESCHEDULED':
+        return {
+          background: 'linear-gradient(135deg, hsla(232, 78%, 42%, 0.25) 0%, hsla(240, 100%, 60%, 0.35) 100%)',
+          border: 'hsl(232, 78%, 42%)',
+          text: 'hsl(213, 31%, 91%)',
+        };
+      default:
+        // Category-based coloring for new events
+        if (category === 'technical') {
+          return {
+            background: 'linear-gradient(135deg, hsla(183, 100%, 67%, 0.25) 0%, hsla(195, 92%, 50%, 0.35) 100%)',
+            border: 'hsl(183, 100%, 67%)',
+            text: 'hsl(213, 31%, 91%)',
+          };
+        } else if (category === 'followup') {
+          return {
+            background: 'linear-gradient(135deg, hsla(270, 75%, 65%, 0.25) 0%, hsla(280, 80%, 60%, 0.35) 100%)',
+            border: 'hsl(270, 75%, 65%)',
+            text: 'hsl(213, 31%, 91%)',
+          };
+        } else if (category === 'final') {
+          return {
+            background: 'linear-gradient(135deg, hsla(320, 85%, 60%, 0.25) 0%, hsla(330, 90%, 55%, 0.35) 100%)',
+            border: 'hsl(320, 85%, 60%)',
+            text: 'hsl(213, 31%, 91%)',
+          };
+        }
+        return {
+          background: 'linear-gradient(135deg, hsla(217, 32%, 17%, 0.25) 0%, hsla(215, 28%, 25%, 0.35) 100%)',
+          border: 'hsl(213, 20%, 75%)',
+          text: 'hsl(213, 31%, 91%)',
+        };
+    }
+  }
+
+  function getEventIcon(status: string) {
+    switch (status) {
+      case 'CONFIRMED': return '✓';
+      case 'PENDING': return '⏳';
+      case 'COMPLETED': return '✅';
+      case 'CANCELLED': return '❌';
+      case 'RESCHEDULED': return '📅';
+      default: return '📋';
+    }
+  }
+
+  function getEventCategory(title: string) {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes('technical') || lowerTitle.includes('coding')) return 'technical';
+    if (lowerTitle.includes('follow') || lowerTitle.includes('callback')) return 'followup';
+    if (lowerTitle.includes('final') || lowerTitle.includes('decision')) return 'final';
+    if (lowerTitle.includes('screening') || lowerTitle.includes('phone')) return 'screening';
+    return 'standard';
+  }
+
+  function getEventPriority(status: string) {
+    switch (status) {
+      case 'CONFIRMED': return 'high';
+      case 'PENDING': return 'medium';
+      case 'RESCHEDULED': return 'high';
+      case 'COMPLETED': return 'low';
+      case 'CANCELLED': return 'low';
+      default: return 'medium';
     }
   }
 
@@ -134,21 +251,43 @@ export default function Calendar({ className }: CalendarProps) {
   return (
     <Card className={`glass-panel p-6 ${className}`}>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="enterprise-heading text-lg font-semibold">Interview Calendar</h3>
-        <div className="flex items-center space-x-2">
-          <Badge variant="outline" className="glass-input">
-            <i className="fas fa-calendar-check mr-1"></i>
-            {(bookings || []).length} Scheduled
-          </Badge>
+        <div className="flex items-center space-x-4">
+          <h3 className="enterprise-heading text-xl font-bold bg-gradient-to-r from-primary via-accent to-chart-2 bg-clip-text text-transparent">
+            Elite Interview Calendar
+          </h3>
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="glass-input border-primary/30 text-primary">
+              <i className="fas fa-calendar-check mr-1"></i>
+              {(bookings || []).length} Scheduled
+            </Badge>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3">
+          {/* Color Legend */}
+          <div className="flex items-center space-x-1 text-xs">
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, hsla(195, 92%, 50%, 0.6) 0%, hsla(203, 88%, 53%, 0.8) 100%)' }}></div>
+              <span className="text-muted-foreground">Confirmed</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, hsla(42, 92%, 56%, 0.6) 0%, hsla(45, 100%, 60%, 0.8) 100%)' }}></div>
+              <span className="text-muted-foreground">Pending</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, hsla(159, 100%, 36%, 0.6) 0%, hsla(160, 84%, 39%, 0.8) 100%)' }}></div>
+              <span className="text-muted-foreground">Complete</span>
+            </div>
+          </div>
+          
           <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
             <DialogTrigger asChild>
               <Button 
-                className="glass-input glow-hover micro-animation"
+                className="glass-input glow-hover micro-animation bg-gradient-to-r from-primary/20 to-accent/20 border-primary/30 hover:from-primary/30 hover:to-accent/30"
                 data-testid="schedule-interview-btn"
                 onClick={() => setSelectedDate(new Date())}
               >
                 <i className="fas fa-plus mr-2"></i>
-                Schedule Interview
+                Schedule Elite Interview
               </Button>
             </DialogTrigger>
             <DialogContent className="glass-panel border-border">
@@ -296,31 +435,38 @@ export default function Calendar({ className }: CalendarProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="calendar-container"
+        className="calendar-container enterprise-calendar-wrapper"
         style={{
-          background: 'hsla(217, 32%, 17%, 0.08)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '18px',
-          border: '1px solid hsla(217, 32%, 17%, 0.15)',
-          boxShadow: '0 0 40px hsla(195, 92%, 50%, 0.3)',
-          overflow: 'hidden'
+          background: 'linear-gradient(135deg, hsla(217, 32%, 17%, 0.12) 0%, hsla(215, 28%, 10%, 0.15) 50%, hsla(217, 32%, 17%, 0.12) 100%)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid hsla(195, 92%, 50%, 0.15)',
+          boxShadow: '0 0 60px hsla(195, 92%, 50%, 0.2), inset 0 1px 0 hsla(255, 255, 255, 0.1)',
+          overflow: 'hidden',
+          position: 'relative'
         }}
       >
-        <div style={{
-          '--fc-bg-event-color': 'hsla(195, 92%, 50%, 0.2)',
-          '--fc-border-color': 'hsla(217, 32%, 17%, 0.15)',
-          '--fc-button-text-color': 'hsl(213, 31%, 91%)',
-          '--fc-button-bg-color': 'hsla(217, 32%, 17%, 0.1)',
-          '--fc-button-border-color': 'hsla(217, 32%, 17%, 0.15)',
-          '--fc-button-hover-bg-color': 'hsl(183, 100%, 67%)',
-          '--fc-button-hover-border-color': 'hsl(183, 100%, 67%)',
-          '--fc-button-active-bg-color': 'hsl(195, 92%, 50%)',
-          '--fc-button-active-border-color': 'hsl(195, 92%, 50%)',
-          '--fc-page-bg-color': 'transparent',
-          '--fc-neutral-bg-color': 'hsla(217, 32%, 17%, 0.06)',
-          '--fc-neutral-text-color': 'hsl(213, 31%, 91%)',
-          '--fc-list-event-hover-bg-color': 'hsla(195, 92%, 50%, 0.1)',
-        } as React.CSSProperties}>
+        {/* Elite gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+        
+        <div 
+          className="relative z-10"
+          style={{
+            '--fc-bg-event-color': 'hsla(195, 92%, 50%, 0.25)',
+            '--fc-border-color': 'hsla(195, 92%, 50%, 0.2)',
+            '--fc-button-text-color': 'hsl(213, 31%, 91%)',
+            '--fc-button-bg-color': 'hsla(217, 32%, 17%, 0.15)',
+            '--fc-button-border-color': 'hsla(195, 92%, 50%, 0.2)',
+            '--fc-button-hover-bg-color': 'hsla(183, 100%, 67%, 0.8)',
+            '--fc-button-hover-border-color': 'hsl(183, 100%, 67%)',
+            '--fc-button-active-bg-color': 'hsla(195, 92%, 50%, 0.9)',
+            '--fc-button-active-border-color': 'hsl(195, 92%, 50%)',
+            '--fc-page-bg-color': 'transparent',
+            '--fc-neutral-bg-color': 'hsla(217, 32%, 17%, 0.08)',
+            '--fc-neutral-text-color': 'hsl(213, 31%, 91%)',
+            '--fc-list-event-hover-bg-color': 'hsla(195, 92%, 50%, 0.15)',
+            '--fc-today-bg-color': 'hsla(195, 92%, 50%, 0.08)',
+          } as React.CSSProperties}>
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             headerToolbar={{
@@ -354,8 +500,21 @@ export default function Calendar({ className }: CalendarProps) {
               meridiem: 'short',
             }}
             themeSystem="standard"
-            eventClassNames="force-platform-event"
-            dayHeaderClassNames="force-platform-header"
+            eventClassNames="elite-calendar-event force-platform-event"
+            dayHeaderClassNames="elite-day-header force-platform-header"
+            slotLabelClassNames="elite-slot-label"
+            nowIndicatorClassNames="elite-now-indicator"
+            moreLinkClassNames="elite-more-link"
+            eventMouseEnter={(info) => {
+              info.el.style.transform = 'translateY(-1px)';
+              info.el.style.boxShadow = '0 8px 25px hsla(195, 92%, 50%, 0.4)';
+              info.el.style.zIndex = '100';
+            }}
+            eventMouseLeave={(info) => {
+              info.el.style.transform = 'translateY(0)';
+              info.el.style.boxShadow = 'none';
+              info.el.style.zIndex = '1';
+            }}
             data-testid="fullcalendar"
           />
         </div>
@@ -397,8 +556,29 @@ export default function Calendar({ className }: CalendarProps) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Status:</span>
-                    <Badge style={{ backgroundColor: selectedEvent.backgroundColor }}>
-                      {selectedEvent.extendedProps.booking?.status}
+                    <Badge 
+                      className="border-0 font-semibold"
+                      style={{ 
+                        background: selectedEvent.extendedProps.styleData?.background || selectedEvent.backgroundColor,
+                        color: selectedEvent.extendedProps.styleData?.text || 'hsl(213, 31%, 91%)'
+                      }}
+                    >
+                      {getEventIcon(selectedEvent.extendedProps.booking?.status)} {selectedEvent.extendedProps.booking?.status}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Category:</span>
+                    <Badge variant="outline" className="glass-input border-accent/30 text-accent">
+                      {selectedEvent.extendedProps.category?.toUpperCase() || 'STANDARD'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Priority:</span>
+                    <Badge 
+                      variant={selectedEvent.extendedProps.priority === 'high' ? 'destructive' : selectedEvent.extendedProps.priority === 'medium' ? 'default' : 'secondary'}
+                      className="capitalize"
+                    >
+                      {selectedEvent.extendedProps.priority || 'medium'}
                     </Badge>
                   </div>
                 </div>
