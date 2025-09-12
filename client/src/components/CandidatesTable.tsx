@@ -5,7 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage
+} from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import {
   User,
   Mail,
@@ -23,7 +36,14 @@ import {
   Building2,
   Briefcase,
   Shield,
-  TrendingUp
+  TrendingUp,
+  Edit3,
+  Save,
+  X,
+  Loader2,
+  Check,
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import CandidateModal from '@/components/CandidateModal';
 import type { Candidate } from '@shared/schema';
@@ -32,6 +52,19 @@ interface CandidatesTableProps {
   candidates: Candidate[];
   isLoading: boolean;
 }
+
+// Validation schema for inline editing
+const editCandidateSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().optional(),
+  pipelineStage: z.enum([
+    "NEW", "FIRST_INTERVIEW", "TECHNICAL_SCREEN", 
+    "FINAL_INTERVIEW", "OFFER", "HIRED", "REJECTED"
+  ])
+});
+
+type EditCandidateForm = z.infer<typeof editCandidateSchema>;
 
 function LoadingSkeleton() {
   return (
@@ -65,32 +98,58 @@ function EmptyState() {
   );
 }
 
-export default function CandidatesTable({ candidates, isLoading }: CandidatesTableProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [stageFilter, setStageFilter] = useState('all');
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+interface CandidateCardProps {
+  candidate: Candidate;
+  onViewDetails: (candidate: Candidate) => void;
+  index: number;
+}
 
-  const filteredCandidates = (candidates || []).filter(candidate => {
-    const matchesSearch = !searchTerm || 
-      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (candidate.name && candidate.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStage = stageFilter === 'all' || candidate.pipelineStage === stageFilter;
-    
-    return matchesSearch && matchesStage;
+function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<EditCandidateForm>({
+    resolver: zodResolver(editCandidateSchema),
+    defaultValues: {
+      name: candidate.name || '',
+      email: candidate.email,
+      phone: candidate.phone || '',
+      pipelineStage: candidate.pipelineStage
+    }
   });
 
-  const stages = ['NEW', 'FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'];
+  const updateMutation = useMutation({
+    mutationFn: async (data: EditCandidateForm) => {
+      const response = await apiRequest('PATCH', `/api/candidates/${candidate.id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+      toast({
+        title: "✨ Success",
+        description: "Candidate updated successfully",
+        duration: 3000,
+      });
+      setIsEditing(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "❌ Error",
+        description: "Failed to update candidate",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  });
 
-  const handleCandidateClick = (candidate: Candidate) => {
-    setSelectedCandidate(candidate);
-    setIsModalOpen(true);
+  const handleSave = (data: EditCandidateForm) => {
+    updateMutation.mutate(data);
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setSelectedCandidate(null);
+  const handleCancel = () => {
+    form.reset();
+    setIsEditing(false);
   };
 
   const formatDate = (date: Date | string | null) => {
@@ -136,14 +195,386 @@ export default function CandidatesTable({ candidates, isLoading }: CandidatesTab
   };
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      whileHover={{ scale: isEditing ? 1 : 1.01 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className="relative"
+    >
+      <div className={`
+        group relative border rounded-xl overflow-hidden
+        ${isEditing 
+          ? 'bg-gradient-to-br from-blue-50/50 to-teal-50/50 border-blue-300 shadow-2xl ring-2 ring-blue-400/20' 
+          : 'bg-white hover:shadow-xl border-gray-200/50 hover:border-blue-200 dark:bg-gray-900/50 dark:border-gray-700/50'
+        }
+        transition-all duration-300 backdrop-blur-sm
+      `}>
+        {/* Enterprise-grade gradient overlay on hover */}
+        <AnimatePresence>
+          {isHovered && !isEditing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-teal-600/5 pointer-events-none"
+            />
+          )}
+        </AnimatePresence>
+
+        <div className="p-5 relative">
+          {/* Edit Mode Toggle with Premium Animation */}
+          <div className="absolute top-4 right-4 z-10">
+            {!isEditing ? (
+              <motion.button
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}
+                className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-teal-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:from-blue-700 hover:to-teal-700"
+                data-testid={`button-edit-${candidate.id}`}
+              >
+                <Edit3 className="w-4 h-4" />
+              </motion.button>
+            ) : (
+              <div className="flex space-x-2">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={form.handleSubmit(handleSave)}
+                  disabled={updateMutation.isPending}
+                  className="p-2 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+                  data-testid={`button-save-${candidate.id}`}
+                >
+                  {updateMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleCancel}
+                  disabled={updateMutation.isPending}
+                  className="p-2 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+                  data-testid={`button-cancel-${candidate.id}`}
+                >
+                  <X className="w-4 h-4" />
+                </motion.button>
+              </div>
+            )}
+          </div>
+
+          {isEditing ? (
+            // Edit Mode with Premium Form Styling
+            <Form {...form}>
+              <div className="space-y-4">
+                {/* Name Field */}
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+                          <Input
+                            {...field}
+                            placeholder="Candidate Name"
+                            className="pl-10 bg-white/90 border-blue-200 focus:border-teal-500 shadow-sm focus:shadow-md transition-all duration-300 focus:ring-2 focus:ring-teal-500/20"
+                            data-testid={`input-name-${candidate.id}`}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Email and Phone Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="Email"
+                              className="pl-10 bg-white/90 border-blue-200 focus:border-teal-500 shadow-sm focus:shadow-md transition-all duration-300 focus:ring-2 focus:ring-teal-500/20"
+                              data-testid={`input-email-${candidate.id}`}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+                            <Input
+                              {...field}
+                              placeholder="Phone (optional)"
+                              className="pl-10 bg-white/90 border-blue-200 focus:border-teal-500 shadow-sm focus:shadow-md transition-all duration-300 focus:ring-2 focus:ring-teal-500/20"
+                              data-testid={`input-phone-${candidate.id}`}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Pipeline Stage */}
+                <FormField
+                  control={form.control}
+                  name="pipelineStage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="bg-white/90 border-blue-200 focus:border-teal-500 shadow-sm focus:shadow-md transition-all duration-300 focus:ring-2 focus:ring-teal-500/20" data-testid={`select-stage-${candidate.id}`}>
+                            <SelectValue placeholder="Select stage" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="NEW">🆕 New</SelectItem>
+                          <SelectItem value="FIRST_INTERVIEW">📞 First Interview</SelectItem>
+                          <SelectItem value="TECHNICAL_SCREEN">💻 Technical Screen</SelectItem>
+                          <SelectItem value="FINAL_INTERVIEW">🎯 Final Interview</SelectItem>
+                          <SelectItem value="OFFER">💼 Offer</SelectItem>
+                          <SelectItem value="HIRED">✅ Hired</SelectItem>
+                          <SelectItem value="REJECTED">❌ Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </Form>
+          ) : (
+            // View Mode with Premium Display
+            <div 
+              className="cursor-pointer space-y-3"
+              onClick={() => onViewDetails(candidate)}
+            >
+              {/* Header with Name and Score */}
+              <div className="flex items-start justify-between pr-12">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 flex items-center justify-center shadow-lg">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center">
+                      {candidate.name || 'Unknown'}
+                      {candidate.overallScore && candidate.overallScore >= 80 && (
+                        <Sparkles className="w-4 h-4 ml-2 text-amber-500 animate-pulse" />
+                      )}
+                    </h3>
+                    <div className="flex items-center space-x-3 mt-1">
+                      <Badge className={`${getStageColor(candidate.pipelineStage)} text-white border-0`}>
+                        {getStageIcon(candidate.pipelineStage)}
+                        <span className="ml-1">{candidate.pipelineStage?.replace('_', ' ')}</span>
+                      </Badge>
+                      {candidate.conversationId && (
+                        <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 border-purple-200">
+                          <MessageSquare className="w-3 h-3 mr-1" />
+                          Interviewed
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Score Display */}
+                {candidate.overallScore !== null && candidate.overallScore !== undefined && (
+                  <div className="flex flex-col items-center">
+                    <motion.div 
+                      className={`text-2xl font-bold ${getScoreColor(candidate.overallScore)}`}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    >
+                      {candidate.overallScore}
+                    </motion.div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wider">Score</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Contact Information with Hover Effects */}
+              <div className="space-y-2 pl-15">
+                <motion.a
+                  href={`mailto:${candidate.email}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
+                  whileHover={{ x: 2 }}
+                  data-testid={`link-email-${candidate.id}`}
+                >
+                  <Mail className="w-4 h-4 group-hover:text-blue-600" />
+                  <span className="group-hover:underline">{candidate.email}</span>
+                </motion.a>
+
+                {candidate.phone && (
+                  <motion.a
+                    href={`tel:${candidate.phone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group"
+                    whileHover={{ x: 2 }}
+                    data-testid={`link-phone-${candidate.id}`}
+                  >
+                    <Phone className="w-4 h-4 group-hover:text-blue-600" />
+                    <span className="group-hover:underline">{candidate.phone}</span>
+                  </motion.a>
+                )}
+
+                {candidate.interviewDate && (
+                  <div className="inline-flex items-center space-x-2 text-sm text-gray-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>Interviewed: {formatDate(candidate.interviewDate)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Metadata */}
+              <div className="flex items-center justify-between pl-15 pt-2 border-t border-gray-100">
+                <div className="flex items-center space-x-4">
+                  {candidate.callDuration && (
+                    <div className="flex items-center space-x-1 text-xs text-gray-500">
+                      <Clock className="w-3 h-3" />
+                      <span>{Math.floor(candidate.callDuration / 60)}m</span>
+                    </div>
+                  )}
+                  {candidate.score && candidate.score > 0 && (
+                    <div className="flex items-center space-x-1 text-xs text-gray-500">
+                      <Star className="w-3 h-3" />
+                      <span>Score: {candidate.score}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewDetails(candidate);
+                  }}
+                  data-testid={`button-view-${candidate.id}`}
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  View Details
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Loading Overlay */}
+        <AnimatePresence>
+          {updateMutation.isPending && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-20"
+            >
+              <div className="flex flex-col items-center space-y-2">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <span className="text-sm font-medium text-gray-600">Updating...</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Success Animation */}
+        <AnimatePresence>
+          {updateMutation.isSuccess && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              onAnimationComplete={() => {
+                setTimeout(() => {
+                  updateMutation.reset();
+                }, 500);
+              }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+            >
+              <div className="p-3 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 shadow-2xl">
+                <Check className="w-8 h-8 text-white" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function CandidatesTable({ candidates, isLoading }: CandidatesTableProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stageFilter, setStageFilter] = useState('all');
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const filteredCandidates = (candidates || []).filter(candidate => {
+    const matchesSearch = !searchTerm || 
+      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (candidate.name && candidate.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStage = stageFilter === 'all' || candidate.pipelineStage === stageFilter;
+    
+    return matchesSearch && matchesStage;
+  });
+
+  const stages = ['NEW', 'FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'];
+
+  const handleCandidateClick = (candidate: Candidate) => {
+    setSelectedCandidate(candidate);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedCandidate(null);
+  };
+
+  return (
     <>
       <Card className="enterprise-card-gradient border-0 shadow-2xl">
         <CardHeader className="border-b border-gray-200/20">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg">
+              <motion.div 
+                className="p-2 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg"
+                whileHover={{ scale: 1.05 }}
+              >
                 <Building2 className="w-6 h-6 text-white" />
-              </div>
+              </motion.div>
               <div>
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
                   Enterprise Talent Pipeline
@@ -164,151 +595,63 @@ export default function CandidatesTable({ candidates, isLoading }: CandidatesTab
           </CardTitle>
           
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="candidate-search"
+                className="pl-10 bg-white/80 backdrop-blur-sm border-gray-200/50 focus:border-blue-400 transition-all duration-300"
+                data-testid="input-search"
               />
             </div>
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Select value={stageFilter} onValueChange={setStageFilter}>
-                <SelectTrigger className="w-48" data-testid="stage-filter">
-                  <SelectValue placeholder="Filter by stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stages</SelectItem>
-                  {stages.map(stage => (
-                    <SelectItem key={stage} value={stage}>
-                      {stage.replace('_', ' ')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            
+            <Select value={stageFilter} onValueChange={setStageFilter}>
+              <SelectTrigger className="w-[200px] bg-white/80 backdrop-blur-sm border-gray-200/50" data-testid="select-filter-stage">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stages</SelectItem>
+                {stages.map(stage => (
+                  <SelectItem key={stage} value={stage}>
+                    {stage.replace('_', ' ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
-        
-        <CardContent>
+
+        <CardContent className="p-6">
           {isLoading ? (
             <LoadingSkeleton />
           ) : filteredCandidates.length === 0 ? (
             <EmptyState />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredCandidates.map((candidate, index) => (
-                <motion.div
+                <CandidateCard
                   key={candidate.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="p-5 enterprise-candidate-card cursor-pointer transition-all duration-300 hover:shadow-xl hover:border-blue-500/30 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/50 border border-gray-200/50 dark:border-gray-700/50 rounded-xl hover:scale-[1.01]"
-                  onClick={() => handleCandidateClick(candidate)}
-                  data-testid={`candidate-row-${candidate.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    {/* Left section - Candidate info */}
-                    <div className="flex items-center space-x-4 flex-1">
-                      {/* Avatar with Enterprise Style */}
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 flex items-center justify-center shadow-lg">
-                        <User className="w-6 h-6 text-white" />
-                      </div>
-                      
-                      {/* Basic info */}
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center space-x-3">
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
-                            {candidate.name || 'Unknown Candidate'}
-                          </h3>
-                          {candidate.score && (
-                            <div className="flex items-center space-x-1 px-2 py-1 bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30 rounded-full">
-                              <Star className="w-4 h-4 text-amber-500" />
-                              <span className={`text-sm ${getScoreColor(candidate.score)}`}>
-                                {candidate.score}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-4 text-sm">
-                          <a 
-                            href={`mailto:${candidate.email}`}
-                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 hover:underline transition-colors group"
-                            onClick={(e) => e.stopPropagation()}
-                            data-testid={`email-link-${candidate.id}`}
-                          >
-                            <Mail className="w-3 h-3 group-hover:scale-110 transition-transform" />
-                            <span className="truncate max-w-48 font-medium">{candidate.email}</span>
-                          </a>
-                          {candidate.phone && (
-                            <a 
-                              href={`tel:${candidate.phone}`}
-                              className="flex items-center space-x-1 text-emerald-600 hover:text-emerald-800 hover:underline transition-colors group"
-                              onClick={(e) => e.stopPropagation()}
-                              data-testid={`phone-link-${candidate.id}`}
-                            >
-                              <Phone className="w-3 h-3 group-hover:scale-110 transition-transform" />
-                              <span className="font-medium">{candidate.phone}</span>
-                            </a>
-                          )}
-                          {candidate.interviewDate && (
-                            <div className="flex items-center space-x-1">
-                              <Calendar className="w-3 h-3" />
-                              <span>{formatDate(candidate.interviewDate)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Right section - Stage and actions */}
-                    <div className="flex items-center space-x-3">
-                      <Badge 
-                        className={`${getStageColor(candidate.pipelineStage)} text-white border-0 text-xs font-semibold px-3 py-1`}
-                      >
-                        {getStageIcon(candidate.pipelineStage)}
-                        <span className="ml-1.5">{candidate.pipelineStage.replace('_', ' ')}</span>
-                      </Badge>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-9 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all rounded-lg group"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCandidateClick(candidate);
-                        }}
-                        data-testid={`view-candidate-${candidate.id}`}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Additional info on mobile */}
-                  <div className="mt-3 pt-3 border-t border-muted sm:hidden">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Source: {candidate.sourceRef || 'Unknown'}</span>
-                      <span>Updated: {formatDate(candidate.createdAt)}</span>
-                    </div>
-                  </div>
-                </motion.div>
+                  candidate={candidate}
+                  onViewDetails={handleCandidateClick}
+                  index={index}
+                />
               ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Candidate Modal */}
-      <CandidateModal
-        candidate={selectedCandidate}
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-      />
+      {/* Candidate Details Modal */}
+      {selectedCandidate && (
+        <CandidateModal
+          candidate={selectedCandidate}
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+        />
+      )}
     </>
   );
 }
