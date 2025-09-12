@@ -59,6 +59,7 @@ import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment
 import { apifyService } from "./services/apify-client";
 import { indeedService } from "./services/indeed-client";
 import { elevenlabsIntegration } from "./integrations/elevenlabs";
+import { elevenLabsAutomation } from "./services/elevenlabs-automation";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
 import cors from "cors";
@@ -102,9 +103,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup SSE for real-time updates
   setupSSE(app);
 
+  // Initialize ElevenLabs automation service with SSE broadcasting
+  if (app.locals.broadcastSSE) {
+    elevenLabsAutomation.setBroadcastFunction(app.locals.broadcastSSE);
+    console.log("[ElevenLabs Automation] SSE broadcasting configured");
+    
+    // Start automated polling after a delay to ensure system is ready
+    setTimeout(async () => {
+      try {
+        await elevenLabsAutomation.startPolling();
+        console.log("[ElevenLabs Automation] Automated polling started successfully");
+      } catch (error) {
+        console.error("[ElevenLabs Automation] Failed to start automated polling:", error);
+      }
+    }, 10000); // 10 second delay
+  }
+
   // Health check
   app.get("/api/health", async (req, res) => {
     res.json({ ok: true, timestamp: new Date().toISOString() });
+  });
+
+  // ElevenLabs automation API endpoints
+  app.get("/api/elevenlabs/automation/status", async (req, res) => {
+    try {
+      const status = await elevenLabsAutomation.getStatus();
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get automation status", details: String(error) });
+    }
+  });
+
+  app.post("/api/elevenlabs/automation/trigger", async (req, res) => {
+    try {
+      await elevenLabsAutomation.triggerManualPoll();
+      res.json({ success: true, message: "Manual poll triggered" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to trigger manual poll", details: String(error) });
+    }
+  });
+
+  app.post("/api/elevenlabs/automation/start", async (req, res) => {
+    try {
+      await elevenLabsAutomation.startPolling();
+      res.json({ success: true, message: "Automation started" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start automation", details: String(error) });
+    }
+  });
+
+  app.post("/api/elevenlabs/automation/stop", async (req, res) => {
+    try {
+      elevenLabsAutomation.stopPolling();
+      res.json({ success: true, message: "Automation stopped" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to stop automation", details: String(error) });
+    }
   });
 
   // MCP Server endpoints

@@ -10,6 +10,7 @@ import {
   auditLogs,
   users,
   workflowRules,
+  elevenLabsTracking,
   type Campaign,
   type Candidate, 
   type Interview,
@@ -21,6 +22,7 @@ import {
   type AuditLog,
   type User,
   type WorkflowRule,
+  type ElevenLabsTracking,
   type InsertCampaign,
   type InsertCandidate,
   type InsertInterview,
@@ -31,7 +33,8 @@ import {
   type InsertIndeedApplication,
   type InsertAuditLog,
   type InsertUser,
-  type InsertWorkflowRule
+  type InsertWorkflowRule,
+  type InsertElevenLabsTracking
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql } from "drizzle-orm";
@@ -110,6 +113,11 @@ export interface IStorage {
   // KPI methods
   getKPIs(): Promise<any>;
   getAdminStats(): Promise<any>;
+
+  // ElevenLabs Tracking methods
+  getElevenLabsTracking(agentId: string): Promise<ElevenLabsTracking | undefined>;
+  createElevenLabsTracking(tracking: InsertElevenLabsTracking): Promise<ElevenLabsTracking>;
+  updateElevenLabsTracking(agentId: string, updates: Partial<ElevenLabsTracking>): Promise<ElevenLabsTracking>;
 
   // Utility methods
   saveICSFile(content: string): Promise<string>;
@@ -459,6 +467,26 @@ export class DatabaseStorage implements IStorage {
 
   async updateIndeedApplication(id: string, updates: Partial<IndeedApplication>): Promise<IndeedApplication> {
     const [updated] = await db.update(indeedApplications).set(updates).where(eq(indeedApplications.id, id)).returning();
+    return updated;
+  }
+
+  // ElevenLabs Tracking methods implementation
+  async getElevenLabsTracking(agentId: string): Promise<ElevenLabsTracking | undefined> {
+    const [tracking] = await db.select().from(elevenLabsTracking).where(eq(elevenLabsTracking.agentId, agentId));
+    return tracking || undefined;
+  }
+
+  async createElevenLabsTracking(tracking: InsertElevenLabsTracking): Promise<ElevenLabsTracking> {
+    const [created] = await db.insert(elevenLabsTracking).values(tracking).returning();
+    return created;
+  }
+
+  async updateElevenLabsTracking(agentId: string, updates: Partial<ElevenLabsTracking>): Promise<ElevenLabsTracking> {
+    const [updated] = await db
+      .update(elevenLabsTracking)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(elevenLabsTracking.agentId, agentId))
+      .returning();
     return updated;
   }
 }

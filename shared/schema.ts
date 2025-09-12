@@ -218,6 +218,20 @@ export const workflowRules = pgTable("workflow_rules", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ElevenLabs automation tracking
+export const elevenLabsTracking = pgTable("elevenlabs_tracking", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: text("agent_id").notNull().unique(),
+  lastProcessedAt: timestamp("last_processed_at").defaultNow().notNull(),
+  lastConversationId: text("last_conversation_id"),
+  totalProcessed: integer("total_processed").default(0),
+  lastErrorAt: timestamp("last_error_at"),
+  lastError: text("last_error"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
   candidates: many(candidates),
@@ -285,6 +299,7 @@ export const insertWorkflowRuleSchema = createInsertSchema(workflowRules).omit({
 export const insertIndeedJobSchema = createInsertSchema(indeedJobs).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertIndeedApplicationSchema = createInsertSchema(indeedApplications).omit({ id: true, createdAt: true });
 export const insertApifyRunSchema = createInsertSchema(apifyRuns).omit({ id: true, createdAt: true });
+export const insertElevenLabsTrackingSchema = createInsertSchema(elevenLabsTracking).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type Campaign = typeof campaigns.$inferSelect;
@@ -298,6 +313,7 @@ export type WorkflowRule = typeof workflowRules.$inferSelect;
 export type IndeedJob = typeof indeedJobs.$inferSelect;
 export type IndeedApplication = typeof indeedApplications.$inferSelect;
 export type ApifyRun = typeof apifyRuns.$inferSelect;
+export type ElevenLabsTracking = typeof elevenLabsTracking.$inferSelect;
 
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
@@ -310,3 +326,4 @@ export type InsertWorkflowRule = z.infer<typeof insertWorkflowRuleSchema>;
 export type InsertIndeedJob = z.infer<typeof insertIndeedJobSchema>;
 export type InsertIndeedApplication = z.infer<typeof insertIndeedApplicationSchema>;
 export type InsertApifyRun = z.infer<typeof insertApifyRunSchema>;
+export type InsertElevenLabsTracking = z.infer<typeof insertElevenLabsTrackingSchema>;

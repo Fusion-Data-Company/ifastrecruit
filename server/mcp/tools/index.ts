@@ -632,8 +632,8 @@ export async function createCandidateFromInterview(args: any) {
 
     console.log(`[MCP] ✅ SECURITY CHECKPOINT PASSED: createCandidateFromInterview called with validated data from authorized agent ${agentId}`);
 
-    // Extract detailed interview data from validated interviewData object
-    const extractedData: any = {};
+    // Extract detailed interview data from validated interviewData object (already done above)
+    // Additional data extraction from raw interviewData object
       // === BASIC ELEVENLABS DATA ===
       extractedData.interviewData = interviewData;
       extractedData.interviewTranscript = interviewData.transcript || '';
