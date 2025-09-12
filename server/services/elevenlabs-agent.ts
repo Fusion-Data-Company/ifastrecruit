@@ -402,7 +402,7 @@ export class ElevenLabsAgentService {
         // Create new candidate
         action = 'created';
         candidate = await storage.createCandidate({
-          name: extractedData.name || `Candidate ${conversationId.slice(-8)}`,
+          name: extractedData.name || 'Unknown Candidate',
           email: candidateEmail, // Use final candidate email (may be synthetic)
           phone: extractedData.phone,
           sourceRef: `elevenlabs_${conversationId}`,

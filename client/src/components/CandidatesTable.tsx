@@ -19,7 +19,11 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Award
+  Award,
+  Building2,
+  Briefcase,
+  Shield,
+  TrendingUp
 } from 'lucide-react';
 import CandidateModal from '@/components/CandidateModal';
 import type { Candidate } from '@shared/schema';
@@ -101,14 +105,14 @@ export default function CandidatesTable({ candidates, isLoading }: CandidatesTab
 
   const getStageColor = (stage: string) => {
     switch (stage) {
-      case 'NEW': return 'bg-blue-500 hover:bg-blue-600';
-      case 'FIRST_INTERVIEW': return 'bg-yellow-500 hover:bg-yellow-600';
-      case 'TECHNICAL_SCREEN': return 'bg-orange-500 hover:bg-orange-600';
-      case 'FINAL_INTERVIEW': return 'bg-purple-500 hover:bg-purple-600';
-      case 'OFFER': return 'bg-green-500 hover:bg-green-600';
-      case 'HIRED': return 'bg-emerald-500 hover:bg-emerald-600';
-      case 'REJECTED': return 'bg-red-500 hover:bg-red-600';
-      default: return 'bg-gray-500 hover:bg-gray-600';
+      case 'NEW': return 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg';
+      case 'FIRST_INTERVIEW': return 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-lg';
+      case 'TECHNICAL_SCREEN': return 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg';
+      case 'FINAL_INTERVIEW': return 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg';
+      case 'OFFER': return 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-lg';
+      case 'HIRED': return 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-lg';
+      case 'REJECTED': return 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg';
+      default: return 'bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 shadow-lg';
     }
   };
 
@@ -126,18 +130,37 @@ export default function CandidatesTable({ candidates, isLoading }: CandidatesTab
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 80) return 'text-emerald-600 font-bold';
+    if (score >= 60) return 'text-amber-600 font-semibold';
+    return 'text-red-600 font-medium';
   };
 
   return (
     <>
-      <Card className="glass-panel">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Users className="w-5 h-5" />
-            <span>Candidates ({filteredCandidates.length})</span>
+      <Card className="enterprise-card-gradient border-0 shadow-2xl">
+        <CardHeader className="border-b border-gray-200/20">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
+                  Enterprise Talent Pipeline
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">Managing {filteredCandidates.length} candidates</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                <Briefcase className="w-3 h-3 mr-1" />
+                Active Recruiting
+              </Badge>
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                <Shield className="w-3 h-3 mr-1" />
+                Verified Data
+              </Badge>
+            </div>
           </CardTitle>
           
           {/* Filters */}
@@ -184,43 +207,53 @@ export default function CandidatesTable({ candidates, isLoading }: CandidatesTab
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30 bg-card hover:bg-muted/50"
+                  className="p-5 enterprise-candidate-card cursor-pointer transition-all duration-300 hover:shadow-xl hover:border-blue-500/30 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/50 border border-gray-200/50 dark:border-gray-700/50 rounded-xl hover:scale-[1.01]"
                   onClick={() => handleCandidateClick(candidate)}
                   data-testid={`candidate-row-${candidate.id}`}
                 >
                   <div className="flex items-center justify-between">
                     {/* Left section - Candidate info */}
                     <div className="flex items-center space-x-4 flex-1">
-                      {/* Avatar */}
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
+                      {/* Avatar with Enterprise Style */}
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-teal-500 flex items-center justify-center shadow-lg">
+                        <User className="w-6 h-6 text-white" />
                       </div>
                       
                       {/* Basic info */}
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex items-center space-x-3">
-                          <h3 className="font-medium text-foreground truncate">
-                            {candidate.name || 'Unknown Name'}
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
+                            {candidate.name || 'Unknown Candidate'}
                           </h3>
                           {candidate.score && (
-                            <div className="flex items-center space-x-1">
-                              <Star className="w-3 h-3 text-yellow-500" />
-                              <span className={`text-sm font-medium ${getScoreColor(candidate.score)}`}>
+                            <div className="flex items-center space-x-1 px-2 py-1 bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30 rounded-full">
+                              <Star className="w-4 h-4 text-amber-500" />
+                              <span className={`text-sm ${getScoreColor(candidate.score)}`}>
                                 {candidate.score}
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <div className="flex items-center space-x-1">
-                            <Mail className="w-3 h-3" />
-                            <span className="truncate max-w-48">{candidate.email}</span>
-                          </div>
+                        <div className="flex items-center space-x-4 text-sm">
+                          <a 
+                            href={`mailto:${candidate.email}`}
+                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800 hover:underline transition-colors group"
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`email-link-${candidate.id}`}
+                          >
+                            <Mail className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                            <span className="truncate max-w-48 font-medium">{candidate.email}</span>
+                          </a>
                           {candidate.phone && (
-                            <div className="flex items-center space-x-1">
-                              <Phone className="w-3 h-3" />
-                              <span>{candidate.phone}</span>
-                            </div>
+                            <a 
+                              href={`tel:${candidate.phone}`}
+                              className="flex items-center space-x-1 text-emerald-600 hover:text-emerald-800 hover:underline transition-colors group"
+                              onClick={(e) => e.stopPropagation()}
+                              data-testid={`phone-link-${candidate.id}`}
+                            >
+                              <Phone className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                              <span className="font-medium">{candidate.phone}</span>
+                            </a>
                           )}
                           {candidate.interviewDate && (
                             <div className="flex items-center space-x-1">
@@ -235,16 +268,16 @@ export default function CandidatesTable({ candidates, isLoading }: CandidatesTab
                     {/* Right section - Stage and actions */}
                     <div className="flex items-center space-x-3">
                       <Badge 
-                        className={`${getStageColor(candidate.pipelineStage)} text-white border-0 text-xs`}
+                        className={`${getStageColor(candidate.pipelineStage)} text-white border-0 text-xs font-semibold px-3 py-1`}
                       >
                         {getStageIcon(candidate.pipelineStage)}
-                        <span className="ml-1">{candidate.pipelineStage.replace('_', ' ')}</span>
+                        <span className="ml-1.5">{candidate.pipelineStage.replace('_', ' ')}</span>
                       </Badge>
                       
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 hover:bg-primary/20"
+                        className="h-9 w-9 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all rounded-lg group"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCandidateClick(candidate);
