@@ -577,42 +577,42 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                   >
                     {/* Tool Calls */}
                     <InfoSection title="Tool Calls" icon={Terminal}>
-                      <JsonDataDisplay data={candidate.toolCalls} title="Tool Calls" />
+                      {candidate.toolCalls ? <JsonDataDisplay data={candidate.toolCalls} title="Tool Calls" /> : <p className="text-cyan-200/50">No tool calls data</p>}
                     </InfoSection>
 
                     {/* Tool Results */}
                     <InfoSection title="Tool Results" icon={Package}>
-                      <JsonDataDisplay data={candidate.toolResults} title="Tool Results" />
+                      {candidate.toolResults ? <JsonDataDisplay data={candidate.toolResults} title="Tool Results" /> : <p className="text-cyan-200/50">No tool results data</p>}
                     </InfoSection>
 
                     {/* Dynamic Variables */}
                     <InfoSection title="Dynamic Variables" icon={Code}>
-                      <JsonDataDisplay data={candidate.dynamicVariables} title="Dynamic Variables" />
+                      {candidate.dynamicVariables ? <JsonDataDisplay data={candidate.dynamicVariables} title="Dynamic Variables" /> : <p className="text-cyan-200/50">No dynamic variables data</p>}
                     </InfoSection>
 
                     {/* Conversation Metrics */}
                     <InfoSection title="Turn Metrics" icon={Gauge}>
-                      <JsonDataDisplay data={candidate.conversationTurnMetrics} title="Turn Metrics" />
+                      {candidate.conversationTurnMetrics ? <JsonDataDisplay data={candidate.conversationTurnMetrics} title="Turn Metrics" /> : <p className="text-cyan-200/50">No turn metrics data</p>}
                     </InfoSection>
 
                     {/* Message Timings */}
                     <InfoSection title="Message Timings" icon={Timer}>
-                      <JsonDataDisplay data={candidate.messageTimings} title="Message Timings" />
+                      {candidate.messageTimings ? <JsonDataDisplay data={candidate.messageTimings} title="Message Timings" /> : <p className="text-cyan-200/50">No message timings data</p>}
                     </InfoSection>
 
                     {/* Custom LLM Data */}
                     <InfoSection title="Custom LLM Data" icon={Brain}>
-                      <JsonDataDisplay data={candidate.customLlmData} title="LLM Data" />
+                      {candidate.customLlmData ? <JsonDataDisplay data={candidate.customLlmData} title="LLM Data" /> : <p className="text-cyan-200/50">No LLM data</p>}
                     </InfoSection>
 
                     {/* Custom Analysis */}
                     <InfoSection title="Custom Analysis" icon={Cpu}>
-                      <JsonDataDisplay data={candidate.customAnalysisData} title="Analysis Data" />
+                      {candidate.customAnalysisData ? <JsonDataDisplay data={candidate.customAnalysisData} title="Analysis Data" /> : <p className="text-cyan-200/50">No analysis data</p>}
                     </InfoSection>
 
                     {/* Charging Information */}
                     <InfoSection title="Billing Information" icon={CreditCard}>
-                      <JsonDataDisplay data={candidate.charging} title="Charging" />
+                      {candidate.charging ? <JsonDataDisplay data={candidate.charging} title="Charging" /> : <p className="text-cyan-200/50">No charging data</p>}
                       <DataPoint label="Charging Timer" value={candidate.hasChargingTimerTriggered ? 'Triggered' : 'Not triggered'} icon={Timer} />
                       <DataPoint label="Billing Timer" value={candidate.hasBillingTimerTriggered ? 'Triggered' : 'Not triggered'} icon={Timer} />
                     </InfoSection>
@@ -620,14 +620,14 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                     {/* Deletion Settings */}
                     {candidate.deletionSettings && (
                       <InfoSection title="Data Retention" icon={Trash2}>
-                        <JsonDataDisplay data={candidate.deletionSettings} title="Deletion Settings" />
+                        {candidate.deletionSettings ? <JsonDataDisplay data={candidate.deletionSettings} title="Deletion Settings" /> : <p className="text-cyan-200/50">No deletion settings</p>}
                       </InfoSection>
                     )}
 
                     {/* Client Initiation Data */}
                     {candidate.conversationInitiationClientData && (
                       <InfoSection title="Client Initiation" icon={Navigation} className="md:col-span-2">
-                        <JsonDataDisplay data={candidate.conversationInitiationClientData} title="Initiation Data" />
+                        {candidate.conversationInitiationClientData ? <JsonDataDisplay data={candidate.conversationInitiationClientData} title="Initiation Data" /> : <p className="text-cyan-200/50">No initiation data</p>}
                       </InfoSection>
                     )}
                   </motion.div>
@@ -672,7 +672,7 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="mt-4">
-                          <JsonDataDisplay data={candidate.wordLevelTranscript} title="Word-Level Data" />
+                          {candidate.wordLevelTranscript ? <JsonDataDisplay data={candidate.wordLevelTranscript} title="Word-Level Data" /> : <p className="text-cyan-200/50">No word-level data</p>}
                         </CardContent>
                       </Card>
                     )}
