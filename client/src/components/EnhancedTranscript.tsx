@@ -15,6 +15,13 @@ interface TranscriptMessage {
   duration?: number;
 }
 
+interface MessageGroup {
+  speaker: 'agent' | 'candidate';
+  messages: TranscriptMessage[];
+  startTimestamp?: string;
+  endTimestamp?: string;
+}
+
 interface EnhancedTranscriptProps {
   transcript: string;
   candidateName?: string;
@@ -39,24 +46,53 @@ export function EnhancedTranscript({
   const [showOnlyAgent, setShowOnlyAgent] = useState(false);
   const { toast } = useToast();
 
-  // Parse transcript into structured messages
+  // Parse transcript into structured messages with improved whitespace handling
   const parseTranscript = (rawTranscript: string): TranscriptMessage[] => {
     if (!rawTranscript) return [];
 
     try {
       // Try to parse as JSON first (structured format)
       const parsed = JSON.parse(rawTranscript);
+      
+      // Handle direct array format
       if (Array.isArray(parsed)) {
         return parsed.map((item: any) => ({
           speaker: item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate',
-          message: item.message || item.text || String(item),
+          message: (item.message || item.text || String(item)).replace(/\s+/g, ' ').trim(),
           timestamp: item.timestamp,
           duration: item.duration
-        }));
+        })).filter(msg => msg.message.length > 0);
+      }
+      
+      // Handle object with messages array (common ElevenLabs format)
+      if (parsed && typeof parsed === 'object') {
+        const messagesArray = parsed.messages || parsed.transcript || parsed.data || [];
+        if (Array.isArray(messagesArray) && messagesArray.length > 0) {
+          return messagesArray.map((item: any) => ({
+            speaker: item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate',
+            message: (item.message || item.text || String(item)).replace(/\s+/g, ' ').trim(),
+            timestamp: item.timestamp,
+            duration: item.duration
+          })).filter(msg => msg.message.length > 0);
+        }
+        
+        // Handle single object with text content
+        if (parsed.message || parsed.text) {
+          return [{
+            speaker: parsed.speaker === 'agent' || parsed.speaker === 'ai' ? 'agent' : 'candidate',
+            message: (parsed.message || parsed.text).replace(/\s+/g, ' ').trim(),
+            timestamp: parsed.timestamp,
+            duration: parsed.duration
+          }].filter(msg => msg.message.length > 0);
+        }
       }
     } catch {
-      // If not JSON, parse as plain text
-      const lines = rawTranscript.split('\n').filter(line => line.trim());
+      // If not JSON, parse as plain text with enhanced cleanup
+      const lines = rawTranscript
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && !line.match(/^\s*$/)); // Filter empty and whitespace-only lines
+      
       const messages: TranscriptMessage[] = [];
       
       for (const line of lines) {
@@ -87,7 +123,10 @@ export function EnhancedTranscript({
           message = message.replace(timestampMatch[0], '').trim();
         }
         
-        if (message) {
+        // Clean up excessive whitespace and ensure message has content
+        message = message.replace(/\s+/g, ' ').trim();
+        
+        if (message && message.length > 0) {
           messages.push({ speaker, message, timestamp });
         }
       }
@@ -98,25 +137,81 @@ export function EnhancedTranscript({
     return [];
   };
 
-  const messages = parseTranscript(transcript);
-
-  // Filter messages based on search and speaker filters
-  const filteredMessages = messages.filter(msg => {
-    const matchesSearch = !searchTerm || 
-      msg.message.toLowerCase().includes(searchTerm.toLowerCase());
+  // Group consecutive messages by the same speaker
+  const groupMessages = (messages: TranscriptMessage[]): MessageGroup[] => {
+    if (messages.length === 0) return [];
     
+    const groups: MessageGroup[] = [];
+    let currentGroup: MessageGroup = {
+      speaker: messages[0].speaker,
+      messages: [messages[0]],
+      startTimestamp: messages[0].timestamp,
+      endTimestamp: messages[0].timestamp
+    };
+    
+    for (let i = 1; i < messages.length; i++) {
+      const message = messages[i];
+      
+      if (message.speaker === currentGroup.speaker) {
+        // Same speaker, add to current group
+        currentGroup.messages.push(message);
+        if (message.timestamp) {
+          currentGroup.endTimestamp = message.timestamp;
+        }
+      } else {
+        // Different speaker, start new group
+        groups.push(currentGroup);
+        currentGroup = {
+          speaker: message.speaker,
+          messages: [message],
+          startTimestamp: message.timestamp,
+          endTimestamp: message.timestamp
+        };
+      }
+    }
+    
+    // Don't forget the last group
+    groups.push(currentGroup);
+    
+    return groups;
+  };
+
+  const messages = parseTranscript(transcript);
+  const messageGroups = groupMessages(messages);
+
+  // Filter message groups based on search and speaker filters
+  const filteredGroups = messageGroups.map(group => {
+    // Filter messages within the group based on search
+    const filteredMessages = group.messages.filter(msg => {
+      const matchesSearch = !searchTerm || 
+        msg.message.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    });
+    
+    // Check if group should be included based on speaker filter
     const matchesSpeakerFilter = 
       (!showOnlyCandidate && !showOnlyAgent) ||
-      (showOnlyCandidate && msg.speaker === 'candidate') ||
-      (showOnlyAgent && msg.speaker === 'agent');
+      (showOnlyCandidate && group.speaker === 'candidate') ||
+      (showOnlyAgent && group.speaker === 'agent');
     
-    return matchesSearch && matchesSpeakerFilter;
-  });
+    // Return group only if it has filtered messages and matches speaker filter
+    if (filteredMessages.length > 0 && matchesSpeakerFilter) {
+      return { ...group, messages: filteredMessages };
+    }
+    return null;
+  }).filter(group => group !== null) as MessageGroup[];
 
   const copyTranscript = () => {
-    const formattedTranscript = messages.map(msg => 
-      `${msg.speaker === 'agent' ? agentName : candidateName || 'Candidate'}: ${msg.message}`
-    ).join('\n\n');
+    const formattedTranscript = messageGroups.map(group => {
+      const speakerName = group.speaker === 'agent' ? agentName : candidateName || 'Candidate';
+      const timeRange = group.startTimestamp ? 
+        (group.startTimestamp === group.endTimestamp ? 
+          `[${group.startTimestamp}] ` : 
+          `[${group.startTimestamp} - ${group.endTimestamp}] `) : '';
+      
+      const groupMessages = group.messages.map(msg => msg.message).join(' ');
+      return `${timeRange}${speakerName}: ${groupMessages}`;
+    }).join('\n\n');
     
     navigator.clipboard.writeText(formattedTranscript);
     toast({
@@ -126,9 +221,16 @@ export function EnhancedTranscript({
   };
 
   const downloadTranscript = () => {
-    const formattedTranscript = messages.map(msg => 
-      `${msg.timestamp ? `[${msg.timestamp}] ` : ''}${msg.speaker === 'agent' ? agentName : candidateName || 'Candidate'}: ${msg.message}`
-    ).join('\n\n');
+    const formattedTranscript = messageGroups.map(group => {
+      const speakerName = group.speaker === 'agent' ? agentName : candidateName || 'Candidate';
+      const timeRange = group.startTimestamp ? 
+        (group.startTimestamp === group.endTimestamp ? 
+          `[${group.startTimestamp}] ` : 
+          `[${group.startTimestamp} - ${group.endTimestamp}] `) : '';
+      
+      const groupMessages = group.messages.map(msg => msg.message).join(' ');
+      return `${timeRange}${speakerName}: ${groupMessages}`;
+    }).join('\n\n');
     
     const blob = new Blob([formattedTranscript], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -236,7 +338,7 @@ export function EnhancedTranscript({
             </Badge>
           )}
           <Badge variant="outline">
-            {messages.length} messages
+            {messages.length} messages ({messageGroups.length} groups)
           </Badge>
           <Badge variant="outline">
             Agent: {getAgentMessageCount()} • Candidate: {getCandidateMessageCount()}
@@ -282,68 +384,105 @@ export function EnhancedTranscript({
         </div>
       </div>
 
-      {/* Transcript Messages */}
-      <ScrollArea className="h-[500px] p-6">
-        {filteredMessages.length === 0 ? (
+      {/* Transcript Messages - Responsive Layout */}
+      <ScrollArea className="h-[400px] md:h-[500px] lg:h-[600px] p-3">
+        {filteredGroups.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Filter className="h-8 w-8 mx-auto mb-2" />
             No messages match your search criteria.
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredMessages.map((message, index) => (
-              <div key={index} className="group">
-                <div className={`flex items-start space-x-3 ${
-                  message.speaker === 'agent' 
+          <div className="space-y-2">
+            {filteredGroups.map((group, groupIndex) => (
+              <div key={groupIndex} className="group">
+                <div className={`flex items-start space-x-2 ${
+                  group.speaker === 'agent' 
                     ? 'justify-start' 
                     : 'justify-end'
                 }`}>
-                  {message.speaker === 'agent' && (
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-primary" />
+                  {group.speaker === 'agent' && (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                        <Bot className="h-3 w-3 text-primary" />
                       </div>
                     </div>
                   )}
                   
-                  <div className={`max-w-[80%] ${
-                    message.speaker === 'agent' 
+                  <div className={`max-w-[85%] ${
+                    group.speaker === 'agent' 
                       ? 'bg-primary/5 border-primary/20' 
                       : 'bg-secondary/10 border-secondary/20'
-                  } border rounded-lg p-4`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold">
-                        {message.speaker === 'agent' ? agentName : candidateName || 'Candidate'}
+                  } border rounded-lg p-2`}>
+                    {/* Speaker header with timestamp range */}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {group.speaker === 'agent' ? agentName : candidateName || 'Candidate'}
                       </span>
-                      {message.timestamp && (
+                      {(group.startTimestamp || group.endTimestamp) && (
                         <span className="text-xs text-muted-foreground">
-                          {message.timestamp}
+                          {group.startTimestamp}
+                          {group.startTimestamp !== group.endTimestamp && group.endTimestamp && 
+                            ` - ${group.endTimestamp}`
+                          }
                         </span>
                       )}
                     </div>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {searchTerm && message.message.toLowerCase().includes(searchTerm.toLowerCase()) ? (
-                        message.message.split(new RegExp(`(${searchTerm})`, 'gi')).map((part, i) => 
-                          part.toLowerCase() === searchTerm.toLowerCase() ? 
-                            <mark key={i} className="bg-yellow-200 dark:bg-yellow-800">{part}</mark> : part
-                        )
-                      ) : (
-                        message.message
-                      )}
-                    </p>
+                    
+                    {/* Messages in the group */}
+                    <div className="space-y-1">
+                      {group.messages.map((message, messageIndex) => (
+                        <p key={messageIndex} className="text-sm leading-tight">
+                          {searchTerm && message.message.toLowerCase().includes(searchTerm.toLowerCase()) ? (
+                            // Safe search highlighting without regex crashes
+                            (() => {
+                              const lowerMessage = message.message.toLowerCase();
+                              const lowerSearchTerm = searchTerm.toLowerCase();
+                              const parts = [];
+                              let lastIndex = 0;
+                              let index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
+                              
+                              while (index !== -1) {
+                                // Add text before match
+                                if (index > lastIndex) {
+                                  parts.push(message.message.slice(lastIndex, index));
+                                }
+                                // Add highlighted match
+                                parts.push(
+                                  <mark key={`match-${index}`} className="bg-yellow-200 dark:bg-yellow-800">
+                                    {message.message.slice(index, index + searchTerm.length)}
+                                  </mark>
+                                );
+                                lastIndex = index + searchTerm.length;
+                                index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
+                              }
+                              
+                              // Add remaining text
+                              if (lastIndex < message.message.length) {
+                                parts.push(message.message.slice(lastIndex));
+                              }
+                              
+                              return parts;
+                            })()
+                          ) : (
+                            message.message
+                          )}
+                        </p>
+                      ))}
+                    </div>
                   </div>
                   
-                  {message.speaker === 'candidate' && (
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-secondary/10 rounded-full flex items-center justify-center">
-                        <User className="h-4 w-4 text-secondary" />
+                  {group.speaker === 'candidate' && (
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="w-6 h-6 bg-secondary/10 rounded-full flex items-center justify-center">
+                        <User className="h-3 w-3 text-secondary" />
                       </div>
                     </div>
                   )}
                 </div>
                 
-                {index < filteredMessages.length - 1 && (
-                  <Separator className="my-4 opacity-50" />
+                {/* Minimal separation between groups */}
+                {groupIndex < filteredGroups.length - 1 && (
+                  <div className="h-2" />
                 )}
               </div>
             ))}
