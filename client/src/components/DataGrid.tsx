@@ -56,6 +56,8 @@ import BulkOperations from "@/components/BulkOperations";
 import DataExportImport from "@/components/DataExportImport";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { FileViewer } from "@/components/FileViewer";
+import { AudioPlayer } from "@/components/AudioPlayer";
+import { EnhancedTranscript } from "@/components/EnhancedTranscript";
 import type { Candidate } from "@shared/schema";
 import type { UploadResult } from "@uppy/core";
 
@@ -1904,12 +1906,10 @@ export default function DataGrid() {
                 </div>
                 <div className="flex items-center space-x-2">
                   {detailsCandidate.audioRecordingUrl && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={detailsCandidate.audioRecordingUrl} target="_blank" rel="noopener noreferrer">
-                        <span className="mr-2">🎵</span>
-                        Audio Recording
-                      </a>
-                    </Button>
+                    <Badge variant="secondary" className="flex items-center space-x-1">
+                      <span>🎵</span>
+                      <span>Audio Available</span>
+                    </Badge>
                   )}
                   <Button
                     variant="outline"
@@ -2718,140 +2718,53 @@ export default function DataGrid() {
 
                   {/* Transcript Tab */}
                   <TabsContent value="transcript" className="h-full mt-4" data-testid="content-transcript">
-                    <ScrollArea className="h-full w-full">
-                      <div className="space-y-6">
-                        {/* Full Interview Transcript */}
-                        {detailsCandidate.interviewTranscript ? (
-                          <Card className="p-6 border-2 border-muted">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold flex items-center">
-                                <FileText className="h-5 w-5 mr-2" />
-                                Full Interview Transcript
-                              </h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(detailsCandidate.interviewTranscript || '')}
-                                data-testid="copy-transcript"
-                              >
-                                <Copy className="h-4 w-4 mr-2" />Copy
-                              </Button>
-                            </div>
-                            <div className="bg-muted/30 rounded-lg p-4 max-h-[600px] overflow-y-auto border">
-                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
-                                {detailsCandidate.interviewTranscript}
-                              </pre>
-                            </div>
-                          </Card>
-                        ) : (
-                          <div className="text-center py-12 text-muted-foreground">
-                            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p className="text-lg font-medium">No interview transcript available</p>
-                            <p className="text-sm">The interview transcript will appear here once the interview is completed and processed.</p>
+                    <div className="space-y-6 h-full">
+                      {/* Audio Player */}
+                      {detailsCandidate.audioRecordingUrl && (
+                        <AudioPlayer
+                          audioUrl={detailsCandidate.audioRecordingUrl}
+                          candidateName={detailsCandidate.name}
+                          title="Interview Recording"
+                          className="mb-6"
+                        />
+                      )}
+
+                      {/* Enhanced Transcript Display */}
+                      <EnhancedTranscript
+                        transcript={detailsCandidate.interviewTranscript || ''}
+                        candidateName={detailsCandidate.name}
+                        agentName={detailsCandidate.agentName || 'AI Agent'}
+                        interviewDate={detailsCandidate.interviewDate}
+                        duration={detailsCandidate.interviewDuration || (detailsCandidate.callDuration ? formatCallDuration(detailsCandidate.callDuration) : undefined)}
+                        messageCount={detailsCandidate.messageCount}
+                        className="flex-1"
+                      />
+
+                      {/* Transcript Summary */}
+                      {detailsCandidate.transcriptSummary && detailsCandidate.transcriptSummary !== '-' && (
+                        <Card className="p-6 border-2 border-blue-200">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-blue-700 flex items-center">
+                              <StickyNote className="h-5 w-5 mr-2" />
+                              Transcript Summary
+                            </h3>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigator.clipboard.writeText(detailsCandidate.transcriptSummary || '')}
+                              data-testid="copy-transcript-summary"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />Copy
+                            </Button>
                           </div>
-                        )}
-
-                        {/* Transcript Summary */}
-                        {detailsCandidate.transcriptSummary && (
-                          <Card className="p-6 border-2 border-blue-200">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-blue-700 flex items-center">
-                                <StickyNote className="h-5 w-5 mr-2" />
-                                Transcript Summary
-                              </h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(detailsCandidate.transcriptSummary || '')}
-                                data-testid="copy-transcript-summary"
-                              >
-                                <Copy className="h-4 w-4 mr-2" />Copy
-                              </Button>
-                            </div>
-                            <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-blue-800 dark:text-blue-200">
-                                {detailsCandidate.transcriptSummary}
-                              </p>
-                            </div>
-                          </Card>
-                        )}
-
-                        {/* Interview Summary */}
-                        {detailsCandidate.interviewSummary && (
-                          <Card className="p-6 border-2 border-green-200">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-green-700 flex items-center">
-                                <ClipboardList className="h-5 w-5 mr-2" />
-                                Interview Summary
-                              </h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(detailsCandidate.interviewSummary || '')}
-                                data-testid="copy-interview-summary"
-                              >
-                                <Copy className="h-4 w-4 mr-2" />Copy
-                              </Button>
-                            </div>
-                            <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 border">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-green-800 dark:text-green-200">
-                                {detailsCandidate.interviewSummary}
-                              </p>
-                            </div>
-                          </Card>
-                        )}
-
-                        {/* Call Summary Title */}
-                        {detailsCandidate.callSummaryTitle && (
-                          <Card className="p-6 border-2 border-purple-200">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-purple-700 flex items-center">
-                                <Phone className="h-5 w-5 mr-2" />
-                                Call Summary Title
-                              </h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(detailsCandidate.callSummaryTitle || '')}
-                                data-testid="copy-call-summary-title"
-                              >
-                                <Copy className="h-4 w-4 mr-2" />Copy
-                              </Button>
-                            </div>
-                            <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-purple-800 dark:text-purple-200">
-                                {detailsCandidate.callSummaryTitle}
-                              </p>
-                            </div>
-                          </Card>
-                        )}
-
-                        {/* Interview Notes */}
-                        {detailsCandidate.notes && (
-                          <Card className="p-6 border-2 border-orange-200">
-                            <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-orange-700 flex items-center">
-                                <StickyNote className="h-5 w-5 mr-2" />
-                                Interview Notes
-                              </h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(detailsCandidate.notes || '')}
-                                data-testid="copy-notes"
-                              >
-                                <Copy className="h-4 w-4 mr-2" />Copy
-                              </Button>
-                            </div>
-                            <div className="bg-orange-50 dark:bg-orange-950 rounded-lg p-4 border">
-                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-orange-800 dark:text-orange-200">
-                                {detailsCandidate.notes}
-                              </p>
-                            </div>
-                          </Card>
-                        )}
-                      </div>
-                    </ScrollArea>
+                          <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border">
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap text-blue-800 dark:text-blue-200">
+                              {detailsCandidate.transcriptSummary}
+                            </p>
+                          </div>
+                        </Card>
+                      )}
+                    </div>
                   </TabsContent>
 
                   {/* Structured Data Tab */}

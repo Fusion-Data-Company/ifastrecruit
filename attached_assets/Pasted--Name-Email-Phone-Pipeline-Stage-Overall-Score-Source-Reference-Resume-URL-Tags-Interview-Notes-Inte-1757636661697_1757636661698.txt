@@ -1,0 +1,260 @@
+
+Name
+Email
+Phone
+Pipeline Stage
+Overall Score
+Source Reference
+Resume URL
+Tags
+Interview Notes
+Interview Summary
+Interview Transcript
+Interview Date
+Call Duration
+Message Count
+Call Status
+Call Summary Title
+Evaluation Criteria
+Data Collection Results
+Interview Data
+Created At
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_7701k4tgykzxf06as3eha0bb6z75@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_7701k4tgykzxf06as3eha0bb6z75 on 2025-09-12T00:21:29.735Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_2201k4thw2eje28vsn0c1ndv74xp@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_2201k4thw2eje28vsn0c1ndv74xp on 2025-09-12T00:21:28.667Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_7101k4tnbr4qfwattxt2hncexha4@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_7101k4tnbr4qfwattxt2hncexha4 on 2025-09-12T00:21:28.143Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_4001k4tnh418epvrje1p8e5ag2jk@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_4001k4tnh418epvrje1p8e5ag2jk on 2025-09-12T00:21:27.656Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_9201k4w78p3hf3n857tjj3ykwvzz@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_9201k4w78p3hf3n857tjj3ykwvzz on 2025-09-12T00:21:26.851Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_4101k4w7j3jcek99vkgv2v5e0w30@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_4101k4w7j3jcek99vkgv2v5e0w30 on 2025-09-12T00:21:26.122Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_5501k4wfqne8f9h9nbtwa80jk62f@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_5501k4wfqne8f9h9nbtwa80jk62f on 2025-09-12T00:21:25.807Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_1401k4whd265es9vq3s3qgdj6yqd@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_1401k4whd265es9vq3s3qgdj6yqd on 2025-09-12T00:21:25.365Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_3001k4whpjbke96bx7j5m3z4bd5v@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_3001k4whpjbke96bx7j5m3z4bd5v on 2025-09-12T00:21:24.201Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available
+9/11/2025
+
+
+ElevenLabs Interview Candidate
+
+conversation-conv_8901k4wqxj5rf38sv8x0sj5x9qs5@temp.elevenlabs.com
+—
+
+First Interview
+0%
+elevenlabs_interview
+-
+-
+Auto-imported from ElevenLabs conversation conv_8901k4wqxj5rf38sv8x0sj5x9qs5 on 2025-09-12T00:21:23.557Z
+-
+[{"role":"agent","message":"Good to see you, Futur...
+-
+-
+—
+—
+—
+No Criteria
+No Results
+Interview Available

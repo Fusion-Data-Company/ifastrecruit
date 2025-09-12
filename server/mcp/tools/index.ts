@@ -117,8 +117,8 @@ const ElevenLabsInterviewDataSchema = z.object({
 }).passthrough(); // Allow additional fields
 
 const CreateCandidateFromInterviewSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Valid email is required"),
+  name: z.string().optional(), // Allow extraction from payload
+  email: z.string().optional(), // Allow extraction from payload
   phone: z.string().optional(),
   interviewData: ElevenLabsInterviewDataSchema, // REQUIRED - no optional allowed
   score: z.number().optional(),
@@ -357,6 +357,110 @@ export async function upsertCandidate(args: any) {
   }
 }
 
+// CRITICAL: Data extraction utilities for ElevenLabs conversations
+function extractCandidateDataFromPayload(interviewData: any): {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  overallScore: number | null;
+} {
+  let name = null;
+  let email = null;
+  let phone = null;
+  let overallScore = null;
+
+  // === 1. EXTRACT FROM STRUCTURED DATA FIELDS ===
+  const dataCollectionResults = interviewData.data_collection_results || interviewData.dataCollectionResults || {};
+  const evaluationDetails = interviewData.evaluation_details || interviewData.evaluationDetails || {};
+  const conversationMetadata = interviewData.conversation_metadata || interviewData.conversationMetadata || {};
+  const agentData = interviewData.agent_data || interviewData.agentData || {};
+
+  // Try structured data sources first
+  name = name || dataCollectionResults.name || evaluationDetails.candidate_name || conversationMetadata.candidate_name || agentData.user?.name;
+  email = email || dataCollectionResults.email || evaluationDetails.email || conversationMetadata.email || agentData.user?.email;  
+  phone = phone || dataCollectionResults.phone || evaluationDetails.phone || conversationMetadata.phone || agentData.user?.phone;
+
+  // === 2. EXTRACT FROM TRANSCRIPT USING REGEX ===
+  const transcript = interviewData.transcript || '';
+  let fullTranscriptText = '';
+  
+  if (Array.isArray(transcript)) {
+    // Join all user messages from conversation
+    fullTranscriptText = transcript
+      .filter(msg => msg.role === 'user' || msg.role === 'human')
+      .map(msg => msg.message || msg.text || '')
+      .join(' ');
+  } else if (typeof transcript === 'string') {
+    fullTranscriptText = transcript;
+  }
+
+  if (fullTranscriptText) {
+    // Extract email with regex (prioritize common patterns)
+    if (!email) {
+      const emailMatch = fullTranscriptText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) {
+        const extractedEmail = emailMatch[0].toLowerCase();
+        // CRITICAL: Reject conversation IDs and temp emails
+        if (!extractedEmail.includes('conversation-') && 
+            !extractedEmail.includes('@temp.elevenlabs.com') && 
+            !extractedEmail.includes('conv_')) {
+          email = extractedEmail;
+        }
+      }
+    }
+    
+    // Extract phone number with regex (US formats)
+    if (!phone) {
+      const phoneMatch = fullTranscriptText.match(/(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\d{10})/);
+      if (phoneMatch) {
+        phone = phoneMatch[0].replace(/\D/g, ''); // Clean to digits only
+        if (phone.length === 10) {
+          phone = '+1' + phone; // Add US country code
+        }
+      }
+    }
+    
+    // Extract name - look for first substantial response after greeting
+    if (!name) {
+      // Look for name after "tell me your name" type requests
+      const nameMatches = fullTranscriptText.match(/(?:name|I'm|I am|My name is)\s+([A-Z][a-z]+(?: [A-Z][a-z]+)*)/i);
+      if (nameMatches && nameMatches[1]) {
+        const extractedName = nameMatches[1].trim();
+        // Validate it's a real name, not a conversation ID
+        if (extractedName.length > 2 && 
+            !extractedName.includes('conv_') && 
+            !extractedName.includes('conversation') &&
+            !extractedName.toLowerCase().includes('elevenlabs')) {
+          name = extractedName;
+        }
+      }
+    }
+  }
+
+  // === 3. CALCULATE OVERALL SCORE ===
+  // Try direct score fields first
+  overallScore = interviewData.overall_score || interviewData.overallScore || interviewData.interview_score || interviewData.interviewScore;
+  
+  // If no direct score, calculate from subscores
+  if (!overallScore) {
+    const scores = [
+      interviewData.communication_score || interviewData.communicationScore,
+      interviewData.sales_aptitude_score || interviewData.salesAptitudeScore,
+      interviewData.motivation_score || interviewData.motivationScore,
+      interviewData.coachability_score || interviewData.coachabilityScore,
+      interviewData.professional_presence_score || interviewData.professionalPresenceScore
+    ].filter(score => typeof score === 'number' && score > 0);
+    
+    if (scores.length > 0) {
+      overallScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+    }
+  }
+
+  console.log(`[MCP] 🔍 EXTRACTION RESULTS: name="${name}", email="${email}", phone="${phone}", score=${overallScore}`);
+  
+  return { name, email, phone, overallScore };
+}
+
 // Specialized tool for ElevenLabs interview agents to create candidates
 export async function createCandidateFromInterview(args: any) {
   try {
@@ -386,14 +490,90 @@ export async function createCandidateFromInterview(args: any) {
     }
 
     const {
-      name,
-      email,
-      phone,
+      name: inputName,
+      email: inputEmail,
+      phone: inputPhone,
       interviewData,
-      score,
+      score: inputScore,
       notes,
       pipelineStage = "FIRST_INTERVIEW"
     } = validationResult.data;
+
+    // CRITICAL: Extract REAL candidate data from ElevenLabs payload
+    console.log(`[MCP] 🔍 Starting data extraction from ElevenLabs payload...`);
+    const extractedData = extractCandidateDataFromPayload(interviewData);
+    
+    // Use extracted data, fallback to input data
+    const name = extractedData.name || inputName;
+    const email = extractedData.email || inputEmail;
+    const phone = extractedData.phone || inputPhone;
+    const score = extractedData.overallScore || inputScore || 0;
+
+    // CRITICAL VALIDATION: NEVER create candidates with fake emails
+    if (!email || 
+        email.includes('conversation-') || 
+        email.includes('@temp.elevenlabs.com') || 
+        email.includes('conv_') ||
+        !email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
+      
+      console.error(`[MCP] 🚫 CRITICAL VALIDATION FAILURE: Invalid or fake email detected: "${email}"`);
+      
+      await storage.createAuditLog({
+        actor: "mcp",
+        action: "create_candidate_from_interview_fake_email_rejected", 
+        payloadJson: { 
+          rejectedEmail: email,
+          extractedName: name,
+          reason: "FAKE EMAIL REJECTION: Will not create candidate with invalid/fake email",
+          securityLevel: "CRITICAL",
+          timestamp: new Date().toISOString(),
+          extractionResults: extractedData
+        },
+        pathUsed: "elevenlabs_data_integrity_enforcement",
+      });
+
+      return {
+        success: false,
+        error: "DATA INTEGRITY VIOLATION: Invalid email address",
+        message: `REJECTED: Will not create candidate with fake/invalid email: "${email}". Real candidate data must be extracted.`,
+        extractedData,
+        code: 422
+      };
+    }
+
+    // CRITICAL VALIDATION: NEVER create candidates with fake names
+    if (!name || 
+        name.includes('ElevenLabs') || 
+        name.includes('Interview Candidate') || 
+        name.includes('conv_') ||
+        name.length < 3) {
+      
+      console.error(`[MCP] 🚫 CRITICAL VALIDATION FAILURE: Invalid or fake name detected: "${name}"`);
+      
+      await storage.createAuditLog({
+        actor: "mcp",
+        action: "create_candidate_from_interview_fake_name_rejected",
+        payloadJson: { 
+          rejectedName: name,
+          extractedEmail: email,
+          reason: "FAKE NAME REJECTION: Will not create candidate with invalid/fake name",
+          securityLevel: "CRITICAL", 
+          timestamp: new Date().toISOString(),
+          extractionResults: extractedData
+        },
+        pathUsed: "elevenlabs_data_integrity_enforcement",
+      });
+
+      return {
+        success: false,
+        error: "DATA INTEGRITY VIOLATION: Invalid name", 
+        message: `REJECTED: Will not create candidate with fake/invalid name: "${name}". Real candidate data must be extracted.`,
+        extractedData,
+        code: 422
+      };
+    }
+
+    console.log(`[MCP] ✅ VALIDATION PASSED: Real candidate data extracted - name="${name}", email="${email}"`);
 
     // CRITICAL: STRICT Agent ID validation - ALWAYS REQUIRED, NO EXCEPTIONS
     const agentId = interviewData.agent_id || interviewData.agentId;
