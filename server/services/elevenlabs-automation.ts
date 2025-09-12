@@ -1,6 +1,6 @@
 import { elevenlabsIntegration } from "../integrations/elevenlabs";
 import { storage } from "../storage";
-import { mcpServer } from "../mcp/server";
+import { elevenLabsAgent } from "./elevenlabs-agent";
 
 // The specific authorized ElevenLabs agent ID that we monitor
 const AUTHORIZED_AGENT_ID = "agent_0601k4t9d82qe5ybsgkngct0zzkm";
@@ -141,78 +141,41 @@ export class ElevenLabsAutomationService {
       let lastConversationId = tracking.lastConversationId;
       let latestProcessedAt = tracking.lastProcessedAt;
 
-      // Process each new conversation
+      // Process each new conversation using the new agent service
       for (const conversation of newConversations) {
         try {
           console.log(`[ElevenLabs Automation] Processing conversation: ${conversation.conversation_id}`);
 
-          // Get detailed conversation data
-          const details = await elevenlabsIntegration.getConversationDetails(conversation.conversation_id);
+          // Use the new ElevenLabs agent to process the conversation directly
+          const result = await elevenLabsAgent.processConversation(conversation.conversation_id);
           
-          // Prepare the comprehensive interview data
-          const interviewData = {
-            agent_id: AUTHORIZED_AGENT_ID,
-            agentId: AUTHORIZED_AGENT_ID,
-            conversation_id: conversation.conversation_id,
-            conversationId: conversation.conversation_id,
-            agent_name: "iFast Broker Interview Agent",
-            agentName: "iFast Broker Interview Agent",
-            transcript: details.transcript ? JSON.stringify(details.transcript) : "",
-            duration: this.calculateDuration(details),
-            summary: this.generateSummary(details),
-            call_duration_secs: this.parseDurationSeconds(details),
-            callDuration: this.parseDurationSeconds(details),
-            message_count: details.transcript ? details.transcript.length : 0,
-            messageCount: details.transcript ? details.transcript.length : 0,
-            status: "completed",
-            callStatus: "completed",
-            call_successful: true,
-            callSuccessful: true,
-            transcript_summary: this.generateTranscriptSummary(details),
-            transcriptSummary: this.generateTranscriptSummary(details),
-            // Additional fields will be extracted by MCP tool
-            ...details.metadata
-          };
-
-          // Use MCP tool to process and save the interview data
-          // CRITICAL FIX: Pass interviewData as nested property, not directly
-          const result = await mcpServer.callTool("create_candidate_from_interview", {
-            interviewData: interviewData
-          });
-          
-          if (result && result.content && result.content[0] && result.content[0].text) {
+          if (result.success) {
             console.log(`[ElevenLabs Automation] Successfully processed conversation: ${conversation.conversation_id}`);
             processedCount++;
             lastConversationId = conversation.conversation_id;
             
             // Update latest processed time
-            const conversationTime = new Date(details.created_at || details.ended_at || Date.now());
+            const conversationTime = new Date(conversation.created_at || conversation.ended_at || Date.now());
             if (conversationTime > latestProcessedAt) {
               latestProcessedAt = conversationTime;
             }
 
             // Broadcast new candidate created
-            if (this.broadcastSSE) {
-              try {
-                const resultData = JSON.parse(result.content[0].text);
-                if (resultData.candidate) {
-                  this.broadcastSSE("candidate-created", {
-                    id: resultData.candidate.id,
-                    name: resultData.candidate.name,
-                    email: resultData.candidate.email,
-                    pipelineStage: resultData.candidate.pipelineStage,
-                    source: 'ElevenLabs',
-                    conversationId: conversation.conversation_id,
-                    timestamp: new Date().toISOString()
-                  });
-                }
-              } catch (parseError) {
-                console.warn(`[ElevenLabs Automation] Could not parse result for broadcasting:`, parseError);
-              }
+            if (this.broadcastSSE && result.candidate) {
+              this.broadcastSSE("candidate-created", {
+                id: result.candidate.id,
+                name: result.candidate.name,
+                email: result.candidate.email,
+                pipelineStage: result.candidate.pipelineStage,
+                source: 'ElevenLabs',
+                conversationId: conversation.conversation_id,
+                action: result.action,
+                timestamp: new Date().toISOString()
+              });
             }
 
           } else {
-            console.warn(`[ElevenLabs Automation] Failed to process conversation: ${conversation.conversation_id}`);
+            console.warn(`[ElevenLabs Automation] Failed to process conversation: ${conversation.conversation_id} - ${result.error}`);
           }
 
         } catch (conversationError) {

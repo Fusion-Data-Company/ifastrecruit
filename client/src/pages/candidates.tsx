@@ -2,38 +2,19 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import DataGrid from '@/components/DataGrid';
+import CandidatesTable from '@/components/CandidatesTable';
 import AddCandidateDialog from '@/components/AddCandidateDialog';
 import { motion } from 'framer-motion';
 import type { Candidate } from '@shared/schema';
 
 export default function CandidatesPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [stageFilter, setStageFilter] = useState('all');
-  const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const { data: candidates = [], isLoading } = useQuery<Candidate[]>({
     queryKey: ['/api/candidates'],
   });
-
-
-  const filteredCandidates = (candidates || []).filter(candidate => {
-    const matchesSearch = !searchTerm || 
-      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (candidate.name && candidate.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStage = stageFilter === 'all' || candidate.pipelineStage === stageFilter;
-    
-    return matchesSearch && matchesStage;
-  });
-
-  const stages = ['NEW', 'FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -131,67 +112,13 @@ export default function CandidatesPage() {
           </Card>
         </motion.div>
 
-        {/* Search and Filters */}
+        {/* Candidates Table with Modal System */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="glass-panel p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Search Candidates</label>
-                <Input
-                  placeholder="Search by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="glass-input"
-                  data-testid="search-candidates"
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium mb-2 block">Filter by Stage</label>
-                <Select value={stageFilter} onValueChange={setStageFilter}>
-                  <SelectTrigger className="glass-input">
-                    <SelectValue placeholder="All stages" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Stages</SelectItem>
-                    {stages.map(stage => (
-                      <SelectItem key={stage} value={stage}>
-                        {stage.replace(/_/g, ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setStageFilter('all');
-                  }}
-                  className="glass-input w-full"
-                  data-testid="clear-filters"
-                >
-                  <i className="fas fa-times mr-2"></i>
-                  Clear Filters
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Candidates Data Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <DataGrid />
+          <CandidatesTable candidates={candidates} isLoading={isLoading} />
         </motion.div>
       </div>
       </main>
