@@ -7,6 +7,124 @@ import { airtopIntegration } from "../../integrations/airtop";
 import { openrouterIntegration } from "../../integrations/openrouter";
 import { elevenlabsIntegration } from "../../integrations/elevenlabs";
 import ical from "ical-generator";
+import { z } from "zod";
+
+// CRITICAL: Only accept data from this specific ElevenLabs agent
+const AUTHORIZED_AGENT_ID = "agent_0601k4t9d82qe5ybsgkngct0zzkm";
+
+// Comprehensive ElevenLabs interview data validation schema
+const ElevenLabsInterviewDataSchema = z.object({
+  // REQUIRED agent validation - MUST be from authorized agent
+  agent_id: z.string().refine(
+    (id) => id === AUTHORIZED_AGENT_ID,
+    { message: `UNAUTHORIZED ACCESS: Only agent ${AUTHORIZED_AGENT_ID} is authorized to submit interview data` }
+  ),
+  agentId: z.string().refine(
+    (id) => id === AUTHORIZED_AGENT_ID,
+    { message: `UNAUTHORIZED ACCESS: Only agent ${AUTHORIZED_AGENT_ID} is authorized to submit interview data` }
+  ).optional(),
+  
+  // Basic conversation data
+  conversation_id: z.string().optional(),
+  conversationId: z.string().optional(),
+  agent_name: z.string().optional(),
+  agentName: z.string().optional(),
+  transcript: z.string().optional(),
+  duration: z.string().optional(),
+  summary: z.string().optional(),
+  call_duration_secs: z.number().optional(),
+  callDuration: z.number().optional(),
+  message_count: z.number().optional(),
+  messageCount: z.number().optional(),
+  status: z.string().optional(),
+  callStatus: z.string().optional(),
+  call_successful: z.boolean().optional(),
+  callSuccessful: z.boolean().optional(),
+  transcript_summary: z.string().optional(),
+  transcriptSummary: z.string().optional(),
+  call_summary_title: z.string().optional(),
+  callSummaryTitle: z.string().optional(),
+  
+  // Core interview responses
+  why_insurance: z.string().nullable().optional(),
+  whyInsurance: z.string().nullable().optional(),
+  why_now: z.string().nullable().optional(),
+  whyNow: z.string().nullable().optional(),
+  sales_experience: z.string().nullable().optional(),
+  salesExperience: z.string().nullable().optional(),
+  difficult_customer_story: z.string().nullable().optional(),
+  difficultCustomerStory: z.string().nullable().optional(),
+  consultative_selling: z.string().nullable().optional(),
+  consultativeSelling: z.string().nullable().optional(),
+  
+  // Market preferences and timeline
+  preferred_markets: z.union([z.array(z.string()), z.string()]).nullable().optional(),
+  preferredMarkets: z.union([z.array(z.string()), z.string()]).nullable().optional(),
+  timeline: z.string().nullable().optional(),
+  recommended_next_steps: z.string().nullable().optional(),
+  recommendedNextSteps: z.string().nullable().optional(),
+  
+  // Performance indicators
+  demo_call_performed: z.boolean().optional(),
+  demoCallPerformed: z.boolean().optional(),
+  kevin_persona_used: z.boolean().optional(),
+  kevinPersonaUsed: z.boolean().optional(),
+  coaching_given: z.boolean().optional(),
+  coachingGiven: z.boolean().optional(),
+  pitch_delivered: z.boolean().optional(),
+  pitchDelivered: z.boolean().optional(),
+  
+  // Evaluation scores
+  overall_score: z.number().nullable().optional(),
+  overallScore: z.number().nullable().optional(),
+  communication_score: z.number().nullable().optional(),
+  communicationScore: z.number().nullable().optional(),
+  sales_aptitude_score: z.number().nullable().optional(),
+  salesAptitudeScore: z.number().nullable().optional(),
+  motivation_score: z.number().nullable().optional(),
+  motivationScore: z.number().nullable().optional(),
+  coachability_score: z.number().nullable().optional(),
+  coachabilityScore: z.number().nullable().optional(),
+  professional_presence_score: z.number().nullable().optional(),
+  professionalPresenceScore: z.number().nullable().optional(),
+  
+  // Development assessment
+  strengths: z.array(z.string()).nullable().optional(),
+  development_areas: z.array(z.string()).nullable().optional(),
+  developmentAreas: z.array(z.string()).nullable().optional(),
+  
+  // Additional data structures
+  evaluation_criteria_results: z.record(z.any()).nullable().optional(),
+  evaluationCriteria: z.record(z.any()).nullable().optional(),
+  data_collection_results: z.record(z.any()).nullable().optional(),
+  dataCollectionResults: z.record(z.any()).nullable().optional(),
+  evaluation_details: z.record(z.any()).nullable().optional(),
+  evaluationDetails: z.record(z.any()).nullable().optional(),
+  interview_metrics: z.record(z.any()).nullable().optional(),
+  interviewMetrics: z.record(z.any()).nullable().optional(),
+  
+  // Audio and metadata
+  audio_recording_url: z.string().nullable().optional(),
+  audioRecordingUrl: z.string().nullable().optional(),
+  agent_data: z.record(z.any()).nullable().optional(),
+  agentData: z.record(z.any()).nullable().optional(),
+  conversation_metadata: z.record(z.any()).nullable().optional(),
+  conversationMetadata: z.record(z.any()).nullable().optional(),
+  
+  // Timestamps
+  interview_date: z.union([z.string(), z.number()]).optional(),
+  start_time_unix_secs: z.number().optional(),
+}).passthrough(); // Allow additional fields
+
+const CreateCandidateFromInterviewSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().optional(),
+  interviewData: ElevenLabsInterviewDataSchema, // REQUIRED - no optional allowed
+  score: z.number().optional(),
+  notes: z.string().optional(),
+  pipelineStage: z.string().optional().default("FIRST_INTERVIEW"),
+});
 
 export async function launchIndeedCampaign(args: any) {
   try {
@@ -242,6 +360,31 @@ export async function upsertCandidate(args: any) {
 // Specialized tool for ElevenLabs interview agents to create candidates
 export async function createCandidateFromInterview(args: any) {
   try {
+    // CRITICAL: Validate entire payload structure first
+    const validationResult = CreateCandidateFromInterviewSchema.safeParse(args);
+    if (!validationResult.success) {
+      const errors = validationResult.error.format();
+      console.error('[MCP] Validation failed for createCandidateFromInterview:', errors);
+      
+      await storage.createAuditLog({
+        actor: "mcp",
+        action: "create_candidate_from_interview_validation_failed",
+        payloadJson: { 
+          errors: errors,
+          rejectedPayload: args,
+          reason: "Failed Zod schema validation"
+        },
+        pathUsed: "elevenlabs_validation",
+      });
+
+      return {
+        success: false,
+        error: "Validation failed",
+        details: errors,
+        message: "Payload validation failed - data rejected"
+      };
+    }
+
     const {
       name,
       email,
@@ -250,13 +393,68 @@ export async function createCandidateFromInterview(args: any) {
       score,
       notes,
       pipelineStage = "FIRST_INTERVIEW"
-    } = args;
+    } = validationResult.data;
 
-    console.log('[MCP] createCandidateFromInterview called with:', JSON.stringify(args, null, 2));
+    // CRITICAL: STRICT Agent ID validation - ALWAYS REQUIRED, NO EXCEPTIONS
+    const agentId = interviewData.agent_id || interviewData.agentId;
+    
+    // HARD REJECTION: Missing agent ID
+    if (!agentId) {
+      console.error('[MCP] SECURITY VIOLATION: No agent ID found in interview data - REJECTING');
+      
+      await storage.createAuditLog({
+        actor: "mcp", 
+        action: "create_candidate_from_interview_security_violation_no_agent_id",
+        payloadJson: { 
+          rejectedPayload: args,
+          reason: "SECURITY VIOLATION: Missing required agent ID",
+          securityLevel: "CRITICAL",
+          timestamp: new Date().toISOString()
+        },
+        pathUsed: "elevenlabs_security_enforcement",
+      });
 
-    // Extract detailed interview data from interviewData object
+      return {
+        success: false,
+        error: "SECURITY VIOLATION: Missing agent ID",
+        message: `UNAUTHORIZED ACCESS: Agent ID is mandatory. Only agent ${AUTHORIZED_AGENT_ID} is authorized.`,
+        code: 401
+      };
+    }
+
+    // HARD REJECTION: Wrong agent ID
+    if (agentId !== AUTHORIZED_AGENT_ID) {
+      console.error(`[MCP] SECURITY VIOLATION: Unauthorized agent ID: ${agentId}. Only ${AUTHORIZED_AGENT_ID} is authorized - REJECTING`);
+      
+      await storage.createAuditLog({
+        actor: "mcp",
+        action: "create_candidate_from_interview_security_violation_unauthorized_agent",
+        payloadJson: { 
+          unauthorizedAgentId: agentId,
+          authorizedAgentId: AUTHORIZED_AGENT_ID,
+          rejectedPayload: args,
+          reason: "SECURITY VIOLATION: Unauthorized agent attempting data submission",
+          securityLevel: "CRITICAL",
+          timestamp: new Date().toISOString()
+        },
+        pathUsed: "elevenlabs_security_enforcement",
+      });
+
+      return {
+        success: false,
+        error: "SECURITY VIOLATION: Unauthorized agent",
+        message: `UNAUTHORIZED ACCESS: Agent ${agentId} is not authorized. Only agent ${AUTHORIZED_AGENT_ID} can submit interview data.`,
+        code: 401
+      };
+    }
+
+    console.log(`[MCP] ✅ STRICT Security validation passed for authorized agent: ${agentId}`);
+
+    console.log(`[MCP] ✅ SECURITY CHECKPOINT PASSED: createCandidateFromInterview called with validated data from authorized agent ${agentId}`);
+
+    // Extract detailed interview data from validated interviewData object
     const extractedData: any = {};
-    if (interviewData) {
+      // === BASIC ELEVENLABS DATA ===
       extractedData.interviewData = interviewData;
       extractedData.interviewTranscript = interviewData.transcript || '';
       extractedData.interviewDuration = interviewData.duration || '';
@@ -273,12 +471,51 @@ export async function createCandidateFromInterview(args: any) {
       extractedData.transcriptSummary = interviewData.transcript_summary || interviewData.transcriptSummary || '';
       extractedData.callSummaryTitle = interviewData.call_summary_title || interviewData.callSummaryTitle || '';
       
+      // === COMPREHENSIVE ELEVENLABS INTERVIEW FIELDS ===
+      // Core interview responses
+      extractedData.whyInsurance = interviewData.why_insurance || interviewData.whyInsurance || null;
+      extractedData.whyNow = interviewData.why_now || interviewData.whyNow || null;
+      extractedData.salesExperience = interviewData.sales_experience || interviewData.salesExperience || null;
+      extractedData.difficultCustomerStory = interviewData.difficult_customer_story || interviewData.difficultCustomerStory || null;
+      extractedData.consultativeSelling = interviewData.consultative_selling || interviewData.consultativeSelling || null;
+      
+      // Market preferences and timeline
+      extractedData.preferredMarkets = interviewData.preferred_markets || interviewData.preferredMarkets || null;
+      extractedData.timeline = interviewData.timeline || null;
+      extractedData.recommendedNextSteps = interviewData.recommended_next_steps || interviewData.recommendedNextSteps || null;
+      
+      // Performance indicators (booleans)
+      extractedData.demoCallPerformed = interviewData.demo_call_performed || interviewData.demoCallPerformed || false;
+      extractedData.kevinPersonaUsed = interviewData.kevin_persona_used || interviewData.kevinPersonaUsed || false;
+      extractedData.coachingGiven = interviewData.coaching_given || interviewData.coachingGiven || false;
+      extractedData.pitchDelivered = interviewData.pitch_delivered || interviewData.pitchDelivered || false;
+      
+      // Evaluation scores
+      extractedData.overallScore = interviewData.overall_score || interviewData.overallScore || null;
+      extractedData.communicationScore = interviewData.communication_score || interviewData.communicationScore || null;
+      extractedData.salesAptitudeScore = interviewData.sales_aptitude_score || interviewData.salesAptitudeScore || null;
+      extractedData.motivationScore = interviewData.motivation_score || interviewData.motivationScore || null;
+      extractedData.coachabilityScore = interviewData.coachability_score || interviewData.coachabilityScore || null;
+      extractedData.professionalPresenceScore = interviewData.professional_presence_score || interviewData.professionalPresenceScore || null;
+      
+      // Development assessment (arrays)
+      extractedData.strengths = interviewData.strengths || null;
+      extractedData.developmentAreas = interviewData.development_areas || interviewData.developmentAreas || null;
+      
+      // Additional structured evaluation data (JSONB)
+      extractedData.evaluationDetails = interviewData.evaluation_details || interviewData.evaluationDetails || null;
+      extractedData.interviewMetrics = interviewData.interview_metrics || interviewData.interviewMetrics || null;
+      
+      // Audio and agent data
+      extractedData.audioRecordingUrl = interviewData.audio_recording_url || interviewData.audioRecordingUrl || null;
+      extractedData.agentData = interviewData.agent_data || interviewData.agentData || null;
+      extractedData.conversationMetadata = interviewData.conversation_metadata || interviewData.conversationMetadata || null;
+      
       // Parse dates
       if (interviewData.interview_date || interviewData.start_time_unix_secs) {
-        const timestamp = interviewData.interview_date || (interviewData.start_time_unix_secs * 1000);
+        const timestamp = interviewData.interview_date || ((interviewData.start_time_unix_secs || 0) * 1000);
         extractedData.interviewDate = new Date(timestamp);
       }
-    }
 
     // Check if candidate already exists
     let existingCandidate;
@@ -306,13 +543,33 @@ export async function createCandidateFromInterview(args: any) {
       try {
         interview = await storage.createInterview({
           candidateId: existingCandidate.id,
+          candidateEmail: existingCandidate.email,
+          scheduledAt: extractedData.interviewDate || new Date(),
+          status: "completed",
           summary: notes || extractedData.interviewSummary || "Interview completed via ElevenLabs agent",
           scorecardJson: interviewData || {},
           transcriptUrl: extractedData.interviewTranscript || "",
+          completedAt: extractedData.interviewDate || new Date(),
         });
       } catch (interviewError) {
         console.log("Failed to create interview record (non-critical):", interviewError);
       }
+
+      // Log successful update
+      await storage.createAuditLog({
+        actor: "mcp",
+        action: "create_candidate_from_interview_update_success",
+        payloadJson: { 
+          candidateId: existingCandidate.id,
+          email: existingCandidate.email,
+          agentId: extractedData.agentId,
+          fieldsUpdated: Object.keys(updateData),
+          fieldCount: Object.keys(updateData).length,
+          securityLevel: "SUCCESS",
+          timestamp: new Date().toISOString()
+        },
+        pathUsed: "elevenlabs_update_success",
+      });
 
       return {
         success: true,
@@ -344,13 +601,33 @@ export async function createCandidateFromInterview(args: any) {
       try {
         interview = await storage.createInterview({
           candidateId: candidate.id,
+          candidateEmail: candidate.email,
+          scheduledAt: extractedData.interviewDate || new Date(),
+          status: "completed",
           summary: notes || extractedData.interviewSummary || "Interview completed via ElevenLabs agent",
           scorecardJson: interviewData || {},
           transcriptUrl: extractedData.interviewTranscript || "",
+          completedAt: extractedData.interviewDate || new Date(),
         });
       } catch (interviewError) {
         console.log("Failed to create interview record (non-critical):", interviewError);
       }
+
+      // Log successful creation
+      await storage.createAuditLog({
+        actor: "mcp",
+        action: "create_candidate_from_interview_create_success",
+        payloadJson: { 
+          candidateId: candidate.id,
+          email: candidate.email,
+          agentId: extractedData.agentId,
+          fieldsCreated: Object.keys(candidateData),
+          fieldCount: Object.keys(candidateData).length,
+          securityLevel: "SUCCESS",
+          timestamp: new Date().toISOString()
+        },
+        pathUsed: "elevenlabs_create_success",
+      });
 
       return {
         success: true,

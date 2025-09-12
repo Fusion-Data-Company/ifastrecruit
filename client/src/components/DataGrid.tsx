@@ -103,11 +103,11 @@ function EnhancedTooltip({
   );
 }
 
-// JSON Tooltip for structured data
-function JsonTooltip({ 
+// Specialized Tooltips for ElevenLabs structured data - NO MORE JSON DUMPS
+function EvaluationCriteriaTooltip({ 
   children, 
   data, 
-  title 
+  title = "Evaluation Criteria" 
 }: {
   children: React.ReactNode;
   data: any;
@@ -117,19 +117,119 @@ function JsonTooltip({
     return <>{children}</>;
   }
 
-  const jsonString = JSON.stringify(data, null, 2);
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
+          <div className="space-y-2 text-sm">
+            {data.communication_score && <div><strong>Communication:</strong> {data.communication_score}/100</div>}
+            {data.sales_aptitude_score && <div><strong>Sales Aptitude:</strong> {data.sales_aptitude_score}/100</div>}
+            {data.motivation_score && <div><strong>Motivation:</strong> {data.motivation_score}/100</div>}
+            {data.coachability_score && <div><strong>Coachability:</strong> {data.coachability_score}/100</div>}
+            {data.professional_presence_score && <div><strong>Professional Presence:</strong> {data.professional_presence_score}/100</div>}
+            {data.overall_score && <div><strong>Overall Score:</strong> {data.overall_score}/100</div>}
+            {Object.entries(data).filter(([key]) => !key.includes('score')).map(([key, value]) => (
+              <div key={key}><strong>{key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}:</strong> {String(value || '-')}</div>
+            ))}
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function DataCollectionResultsTooltip({ 
+  children, 
+  data, 
+  title = "Data Collection Results" 
+}: {
+  children: React.ReactNode;
+  data: any;
+  title?: string;
+}) {
+  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+    return <>{children}</>;
+  }
 
   return (
     <Tooltip delayDuration={300}>
       <TooltipTrigger asChild>
         {children}
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-2xl max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
-        <div className="space-y-2">
-          {title && <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>}
-          <pre className="text-xs font-mono whitespace-pre-wrap break-words leading-relaxed">
-            {jsonString}
-          </pre>
+      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
+          <div className="space-y-2 text-sm">
+            {data.why_insurance && <div><strong>Why Insurance:</strong> {data.why_insurance}</div>}
+            {data.why_now && <div><strong>Why Now:</strong> {data.why_now}</div>}
+            {data.sales_experience && <div><strong>Sales Experience:</strong> {data.sales_experience}</div>}
+            {data.difficult_customer_story && <div><strong>Difficult Customer Story:</strong> {data.difficult_customer_story}</div>}
+            {data.consultative_selling && <div><strong>Consultative Selling:</strong> {data.consultative_selling}</div>}
+            {data.preferred_markets && <div><strong>Preferred Markets:</strong> {Array.isArray(data.preferred_markets) ? data.preferred_markets.join(', ') : data.preferred_markets}</div>}
+            {data.timeline && <div><strong>Timeline:</strong> {data.timeline}</div>}
+            {data.recommended_next_steps && <div><strong>Recommended Next Steps:</strong> {data.recommended_next_steps}</div>}
+            {data.demo_call_performed !== undefined && <div><strong>Demo Call Performed:</strong> {data.demo_call_performed ? 'Yes' : 'No'}</div>}
+            {data.kevin_persona_used !== undefined && <div><strong>Kevin Persona Used:</strong> {data.kevin_persona_used ? 'Yes' : 'No'}</div>}
+            {data.coaching_given !== undefined && <div><strong>Coaching Given:</strong> {data.coaching_given ? 'Yes' : 'No'}</div>}
+            {data.pitch_delivered !== undefined && <div><strong>Pitch Delivered:</strong> {data.pitch_delivered ? 'Yes' : 'No'}</div>}
+            {data.strengths && Array.isArray(data.strengths) && <div><strong>Strengths:</strong> {data.strengths.join(', ')}</div>}
+            {data.development_areas && Array.isArray(data.development_areas) && <div><strong>Development Areas:</strong> {data.development_areas.join(', ')}</div>}
+            {Object.entries(data).filter(([key]) => ![
+              'why_insurance', 'why_now', 'sales_experience', 'difficult_customer_story', 'consultative_selling',
+              'preferred_markets', 'timeline', 'recommended_next_steps', 'demo_call_performed', 'kevin_persona_used',
+              'coaching_given', 'pitch_delivered', 'strengths', 'development_areas'
+            ].includes(key)).map(([key, value]) => (
+              <div key={key}><strong>{key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}:</strong> {String(value || '-')}</div>
+            ))}
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function InterviewDataTooltip({ 
+  children, 
+  data, 
+  title = "Interview Data" 
+}: {
+  children: React.ReactNode;
+  data: any;
+  title?: string;
+}) {
+  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+    return <>{children}</>;
+  }
+
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-lg max-h-80 overflow-y-auto border-2 border-primary/20 bg-background/95 backdrop-blur-sm shadow-lg">
+        <div className="space-y-3">
+          <div className="text-sm font-semibold text-primary border-b border-primary/20 pb-1">{title}</div>
+          <div className="space-y-2 text-sm">
+            {data.agent_id && <div><strong>Agent ID:</strong> {data.agent_id}</div>}
+            {data.agent_name && <div><strong>Agent Name:</strong> {data.agent_name}</div>}
+            {data.conversation_id && <div><strong>Conversation ID:</strong> {data.conversation_id}</div>}
+            {data.transcript && <div><strong>Transcript Preview:</strong> {data.transcript.substring(0, 200)}...</div>}
+            {data.duration && <div><strong>Duration:</strong> {data.duration}</div>}
+            {data.call_duration_secs && <div><strong>Call Duration:</strong> {formatCallDuration(data.call_duration_secs)}</div>}
+            {data.summary && <div><strong>Summary:</strong> {data.summary}</div>}
+            {data.status && <div><strong>Status:</strong> {data.status}</div>}
+            {data.call_successful !== undefined && <div><strong>Call Successful:</strong> {data.call_successful ? 'Yes' : 'No'}</div>}
+            {data.message_count && <div><strong>Message Count:</strong> {data.message_count}</div>}
+            {data.transcript_summary && <div><strong>Transcript Summary:</strong> {data.transcript_summary}</div>}
+            {data.call_summary_title && <div><strong>Call Summary Title:</strong> {data.call_summary_title}</div>}
+            {data.audio_recording_url && <div><strong>Audio Recording:</strong> Available</div>}
+            {data.interview_date && <div><strong>Interview Date:</strong> {new Date(data.interview_date).toLocaleString()}</div>}
+            {data.start_time_unix_secs && <div><strong>Start Time:</strong> {new Date(data.start_time_unix_secs * 1000).toLocaleString()}</div>}
+          </div>
         </div>
       </TooltipContent>
     </Tooltip>
@@ -263,6 +363,15 @@ function EditableCell({ getValue, row, column, table }: any) {
       </div>
     </EnhancedTooltip>
   );
+}
+
+// Utility function to create score category badge
+function getScoreCategoryBadge(score: number | null | undefined): { variant: 'default' | 'secondary' | 'destructive', label: string } {
+  if (!score && score !== 0) return { variant: 'secondary', label: 'Not Scored' };
+  if (score >= 80) return { variant: 'default', label: 'Excellent' };
+  if (score >= 60) return { variant: 'secondary', label: 'Good' };
+  if (score >= 40) return { variant: 'secondary', label: 'Fair' };
+  return { variant: 'destructive', label: 'Needs Improvement' };
 }
 
 // Utility function to format call duration from seconds
@@ -478,16 +587,57 @@ function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-xs"
-                  onClick={() => navigator.clipboard.writeText(JSON.stringify(candidate.evaluationCriteria, null, 2))}
+                  onClick={() => navigator.clipboard.writeText(`Evaluation Criteria:\n${candidate.evaluationCriteria ? Object.entries(candidate.evaluationCriteria).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${value}`).join('\n') : 'No data available'}`)}
                   data-testid={`copy-evaluation-${candidate.id}`}
                 >
-                  <Copy className="h-3 w-3 mr-1" />Copy JSON
+                  <Copy className="h-3 w-3 mr-1" />Copy Data
                 </Button>
               </div>
               <div className="bg-muted/50 rounded p-3 max-h-32 overflow-y-auto">
-                <pre className="text-xs font-mono whitespace-pre-wrap">
-                  {JSON.stringify(candidate.evaluationCriteria, null, 2)}
-                </pre>
+                {candidate.evaluationCriteria && Object.keys(candidate.evaluationCriteria).length > 0 ? (
+                  <div className="space-y-2">
+                    {candidate.evaluationCriteria.communication_score && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium">Communication:</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.communication_score}/100</span>
+                      </div>
+                    )}
+                    {candidate.evaluationCriteria.sales_aptitude_score && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium">Sales Aptitude:</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.sales_aptitude_score}/100</span>
+                      </div>
+                    )}
+                    {candidate.evaluationCriteria.motivation_score && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium">Motivation:</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.motivation_score}/100</span>
+                      </div>
+                    )}
+                    {candidate.evaluationCriteria.coachability_score && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium">Coachability:</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.coachability_score}/100</span>
+                      </div>
+                    )}
+                    {candidate.evaluationCriteria.professional_presence_score && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium">Professional Presence:</span>
+                        <span className="text-xs bg-primary/10 px-2 py-1 rounded">{candidate.evaluationCriteria.professional_presence_score}/100</span>
+                      </div>
+                    )}
+                    {candidate.evaluationCriteria.overall_score && (
+                      <div className="flex justify-between items-center font-semibold">
+                        <span className="text-xs">Overall Score:</span>
+                        <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">{candidate.evaluationCriteria.overall_score}/100</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground text-center py-2">
+                    No evaluation criteria available
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -504,16 +654,60 @@ function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 text-xs"
-                  onClick={() => navigator.clipboard.writeText(JSON.stringify(candidate.dataCollectionResults, null, 2))}
+                  onClick={() => navigator.clipboard.writeText(`Data Collection Results:\n${candidate.dataCollectionResults ? Object.entries(candidate.dataCollectionResults).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n') : 'No data available'}`)}
                   data-testid={`copy-data-collection-${candidate.id}`}
                 >
-                  <Copy className="h-3 w-3 mr-1" />Copy JSON
+                  <Copy className="h-3 w-3 mr-1" />Copy Data
                 </Button>
               </div>
               <div className="bg-muted/50 rounded p-3 max-h-32 overflow-y-auto">
-                <pre className="text-xs font-mono whitespace-pre-wrap">
-                  {JSON.stringify(candidate.dataCollectionResults, null, 2)}
-                </pre>
+                {candidate.dataCollectionResults && Object.keys(candidate.dataCollectionResults).length > 0 ? (
+                  <div className="space-y-2">
+                    {candidate.dataCollectionResults.why_insurance && (
+                      <div>
+                        <div className="text-xs font-medium text-primary">Why Insurance:</div>
+                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{candidate.dataCollectionResults.why_insurance.substring(0, 100)}...</div>
+                      </div>
+                    )}
+                    {candidate.dataCollectionResults.sales_experience && (
+                      <div>
+                        <div className="text-xs font-medium text-primary">Sales Experience:</div>
+                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{candidate.dataCollectionResults.sales_experience.substring(0, 100)}...</div>
+                      </div>
+                    )}
+                    {candidate.dataCollectionResults.preferred_markets && (
+                      <div>
+                        <div className="text-xs font-medium text-primary">Preferred Markets:</div>
+                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">
+                          {Array.isArray(candidate.dataCollectionResults.preferred_markets) 
+                            ? candidate.dataCollectionResults.preferred_markets.join(', ') 
+                            : candidate.dataCollectionResults.preferred_markets}
+                        </div>
+                      </div>
+                    )}
+                    {candidate.dataCollectionResults.timeline && (
+                      <div>
+                        <div className="text-xs font-medium text-primary">Timeline:</div>
+                        <div className="text-xs mt-1 pl-2 border-l-2 border-primary/20">{candidate.dataCollectionResults.timeline}</div>
+                      </div>
+                    )}
+                    <div className="flex gap-2 flex-wrap mt-2">
+                      {candidate.dataCollectionResults.demo_call_performed && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Demo Call Done</span>
+                      )}
+                      {candidate.dataCollectionResults.coaching_given && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Coaching Given</span>
+                      )}
+                      {candidate.dataCollectionResults.pitch_delivered && (
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Pitch Delivered</span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground text-center py-2">
+                    No data collection results available
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1279,57 +1473,116 @@ export default function DataGrid() {
         header: "Evaluation Criteria",
         cell: ({ getValue }) => {
           const criteria = getValue() as any;
-          const displayText = criteria ? getJsonDataPreview(criteria, 80) : '-';
+          if (!criteria || (typeof criteria === 'object' && Object.keys(criteria).length === 0)) {
+            return (
+              <div className="max-w-xs min-w-0 px-2 py-1 rounded">
+                <div className="text-base text-sm truncate min-w-0 flex items-center text-muted-foreground">
+                  <Database className="h-3 w-3 mr-2 flex-shrink-0" />
+                  <span>No Criteria</span>
+                </div>
+              </div>
+            );
+          }
+          
+          // Extract key metrics for display
+          const scores = [
+            criteria.communication_score && `Communication: ${criteria.communication_score}`,
+            criteria.sales_aptitude_score && `Sales: ${criteria.sales_aptitude_score}`,
+            criteria.overall_score && `Overall: ${criteria.overall_score}`
+          ].filter(Boolean);
+          
+          const displayText = scores.length > 0 ? scores.join(' • ') : 'Multiple Criteria';
+          
           return (
-            <JsonTooltip data={criteria} title="Evaluation Criteria">
+            <EvaluationCriteriaTooltip data={criteria} title="Evaluation Criteria">
               <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
-                <div className="text-base font-mono text-sm truncate min-w-0 flex items-center">
+                <div className="text-base text-sm truncate min-w-0 flex items-center">
                   <Database className="h-3 w-3 text-muted-foreground/50 mr-2 flex-shrink-0" />
                   <span className="group-hover:text-primary transition-colors">{displayText}</span>
                 </div>
               </div>
-            </JsonTooltip>
+            </EvaluationCriteriaTooltip>
           );
         },
-        size: 280,
+        size: 320,
       },
       {
         accessorKey: "dataCollectionResults",
         header: "Data Collection Results",
         cell: ({ getValue }) => {
           const results = getValue() as any;
-          const displayText = results ? getJsonDataPreview(results, 80) : '-';
+          if (!results || (typeof results === 'object' && Object.keys(results).length === 0)) {
+            return (
+              <div className="max-w-xs min-w-0 px-2 py-1 rounded">
+                <div className="text-base text-sm truncate min-w-0 flex items-center text-muted-foreground">
+                  <BarChart3 className="h-3 w-3 mr-2 flex-shrink-0" />
+                  <span>No Results</span>
+                </div>
+              </div>
+            );
+          }
+          
+          // Extract key data points for display
+          const keyData = [
+            results.why_insurance && 'Insurance Interest',
+            results.sales_experience && 'Sales Experience',
+            results.preferred_markets && 'Market Preferences',
+            results.timeline && 'Timeline'
+          ].filter(Boolean);
+          
+          const displayText = keyData.length > 0 ? keyData.join(' • ') : 'Interview Results';
+          
           return (
-            <JsonTooltip data={results} title="Data Collection Results">
+            <DataCollectionResultsTooltip data={results} title="Data Collection Results">
               <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
-                <div className="text-base font-mono text-sm truncate min-w-0 flex items-center">
+                <div className="text-base text-sm truncate min-w-0 flex items-center">
                   <BarChart3 className="h-3 w-3 text-muted-foreground/50 mr-2 flex-shrink-0" />
                   <span className="group-hover:text-primary transition-colors">{displayText}</span>
                 </div>
               </div>
-            </JsonTooltip>
+            </DataCollectionResultsTooltip>
           );
         },
-        size: 280,
+        size: 320,
       },
       {
         accessorKey: "interviewData",
         header: "Interview Data",
         cell: ({ getValue }) => {
           const data = getValue() as any;
-          const displayText = data ? getJsonDataPreview(data, 80) : '-';
+          if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+            return (
+              <div className="max-w-xs min-w-0 px-2 py-1 rounded">
+                <div className="text-base text-sm truncate min-w-0 flex items-center text-muted-foreground">
+                  <ClipboardList className="h-3 w-3 mr-2 flex-shrink-0" />
+                  <span>No Interview Data</span>
+                </div>
+              </div>
+            );
+          }
+          
+          // Extract key interview info for display
+          const keyInfo = [
+            data.agent_name && `Agent: ${data.agent_name}`,
+            data.duration && `Duration: ${data.duration}`,
+            data.call_successful !== undefined && (data.call_successful ? 'Successful' : 'Failed'),
+            data.message_count && `${data.message_count} msgs`
+          ].filter(Boolean);
+          
+          const displayText = keyInfo.length > 0 ? keyInfo.join(' • ') : 'Interview Available';
+          
           return (
-            <JsonTooltip data={data} title="Interview Data">
+            <InterviewDataTooltip data={data} title="Interview Data">
               <div className="max-w-xs cursor-help min-w-0 px-2 py-1 hover:bg-accent/10 rounded transition-colors group">
-                <div className="text-base font-mono text-sm truncate min-w-0 flex items-center">
+                <div className="text-base text-sm truncate min-w-0 flex items-center">
                   <ClipboardList className="h-3 w-3 text-muted-foreground/50 mr-2 flex-shrink-0" />
                   <span className="group-hover:text-primary transition-colors">{displayText}</span>
                 </div>
               </div>
-            </JsonTooltip>
+            </InterviewDataTooltip>
           );
         },
-        size: 280,
+        size: 320,
       },
       // === TIMESTAMPS ===
       {
@@ -1627,333 +1880,1527 @@ export default function DataGrid() {
         </div>
       )}
 
-      {/* Details Modal */}
+      {/* Comprehensive ElevenLabs Details Modal */}
       {detailsCandidate && (
         <Dialog open={!!detailsCandidate} onOpenChange={() => setDetailsCandidate(null)}>
-          <DialogContent className="max-w-6xl max-h-[90vh] w-[95vw] h-[90vh] overflow-hidden p-0">
-            <DialogHeader className="p-6 border-b border-border">
-              <DialogTitle className="text-xl font-semibold">
-                Interview Details - {detailsCandidate.name}
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
-                Complete interview data and evaluation results
-              </DialogDescription>
+          <DialogContent className="max-w-7xl max-h-[95vh] w-[98vw] h-[95vh] overflow-hidden p-0">
+            <DialogHeader className="p-6 border-b border-border bg-gradient-to-r from-primary/5 to-secondary/5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    Comprehensive Candidate Analysis - {detailsCandidate.name}
+                  </DialogTitle>
+                  <DialogDescription className="text-base text-muted-foreground flex items-center space-x-4">
+                    <span>Complete ElevenLabs interview evaluation and metrics dashboard</span>
+                    <Badge variant="outline" className="ml-2">
+                      {detailsCandidate.pipelineStage}
+                    </Badge>
+                    {detailsCandidate.overallScore !== null && detailsCandidate.overallScore !== undefined && (
+                      <Badge variant={((detailsCandidate.overallScore ?? 0) >= 80) ? "default" : ((detailsCandidate.overallScore ?? 0) >= 60) ? "secondary" : "destructive"} className="ml-2">
+                        {detailsCandidate.overallScore}% Overall
+                      </Badge>
+                    )}
+                  </DialogDescription>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {detailsCandidate.audioRecordingUrl && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={detailsCandidate.audioRecordingUrl} target="_blank" rel="noopener noreferrer">
+                        <span className="mr-2">🎵</span>
+                        Audio Recording
+                      </a>
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(`${detailsCandidate.name} - ${detailsCandidate.email} - Overall Score: ${detailsCandidate.overallScore || 'N/A'}%`)}
+                    data-testid="copy-candidate-summary"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Summary
+                  </Button>
+                </div>
+              </div>
             </DialogHeader>
             
             <div className="flex-1 overflow-hidden">
-              <Tabs defaultValue="overview" className="h-full flex flex-col">
-                <TabsList className="grid w-full grid-cols-5 mx-6 mt-4">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="transcript">Transcript</TabsTrigger>
-                  <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
-                  <TabsTrigger value="data">Data Results</TabsTrigger>
-                  <TabsTrigger value="technical">Technical</TabsTrigger>
+              <Tabs defaultValue="interview-analysis" className="h-full flex flex-col">
+                <TabsList className="grid w-full grid-cols-8 mx-6 mt-4 bg-muted/50">
+                  <TabsTrigger value="interview-analysis" className="text-xs" data-testid="tab-interview-analysis">
+                    <ClipboardList className="h-3 w-3 mr-1" />
+                    Interview
+                  </TabsTrigger>
+                  <TabsTrigger value="performance-scores" className="text-xs" data-testid="tab-performance-scores">
+                    <BarChart3 className="h-3 w-3 mr-1" />
+                    Scores
+                  </TabsTrigger>
+                  <TabsTrigger value="market-preferences" className="text-xs" data-testid="tab-market-preferences">
+                    <Settings className="h-3 w-3 mr-1" />
+                    Markets
+                  </TabsTrigger>
+                  <TabsTrigger value="demo-coaching" className="text-xs" data-testid="tab-demo-coaching">
+                    <User className="h-3 w-3 mr-1" />
+                    Demo/Coach
+                  </TabsTrigger>
+                  <TabsTrigger value="development" className="text-xs" data-testid="tab-development">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    Development
+                  </TabsTrigger>
+                  <TabsTrigger value="transcript" className="text-xs" data-testid="tab-transcript">
+                    <FileText className="h-3 w-3 mr-1" />
+                    Transcript
+                  </TabsTrigger>
+                  <TabsTrigger value="structured-data" className="text-xs" data-testid="tab-structured-data">
+                    <Database className="h-3 w-3 mr-1" />
+                    Data
+                  </TabsTrigger>
+                  <TabsTrigger value="technical" className="text-xs" data-testid="tab-technical">
+                    <Settings className="h-3 w-3 mr-1" />
+                    Technical
+                  </TabsTrigger>
                 </TabsList>
 
                 <div className="flex-1 overflow-hidden px-6 pb-6">
-                  {/* Overview Tab */}
-                  <TabsContent value="overview" className="h-full mt-4">
+                  {/* Interview Analysis Tab */}
+                  <TabsContent value="interview-analysis" className="h-full mt-4" data-testid="content-interview-analysis">
                     <ScrollArea className="h-full w-full">
                       <div className="space-y-6">
-                        {/* Basic Info */}
-                        <div className="bg-muted/30 rounded-lg p-4">
-                          <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Name</label>
-                              <p className="text-sm mt-1">{detailsCandidate.name}</p>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Why Insurance */}
+                          <Card className="p-6 border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-primary flex items-center">
+                                <StickyNote className="h-5 w-5 mr-2" />
+                                Why Insurance?
+                              </h3>
+                              {detailsCandidate.whyInsurance && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText(detailsCandidate.whyInsurance || '')}
+                                  data-testid="copy-why-insurance"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Email</label>
-                              <p className="text-sm mt-1">{detailsCandidate.email}</p>
+                            <div className="bg-muted/30 rounded-lg p-4 min-h-[120px] flex items-center">
+                              {detailsCandidate.whyInsurance ? (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                  {detailsCandidate.whyInsurance}
+                                </p>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <StickyNote className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">Not Available</p>
+                                </div>
+                              )}
                             </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Phone</label>
-                              <p className="text-sm mt-1">{detailsCandidate.phone || '-'}</p>
+                          </Card>
+
+                          {/* Why Now */}
+                          <Card className="p-6 border-2 border-secondary/10 hover:border-secondary/20 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-secondary flex items-center">
+                                <Clock className="h-5 w-5 mr-2" />
+                                Why Now?
+                              </h3>
+                              {detailsCandidate.whyNow && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText(detailsCandidate.whyNow || '')}
+                                  data-testid="copy-why-now"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Pipeline Stage</label>
-                              <p className="text-sm mt-1">{detailsCandidate.pipelineStage}</p>
+                            <div className="bg-muted/30 rounded-lg p-4 min-h-[120px] flex items-center">
+                              {detailsCandidate.whyNow ? (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                  {detailsCandidate.whyNow}
+                                </p>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">Not Available</p>
+                                </div>
+                              )}
                             </div>
-                          </div>
+                          </Card>
+
+                          {/* Sales Experience */}
+                          <Card className="p-6 border-2 border-accent/10 hover:border-accent/20 transition-colors lg:col-span-2">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-accent-foreground flex items-center">
+                                <User className="h-5 w-5 mr-2" />
+                                Sales Experience
+                              </h3>
+                              {detailsCandidate.salesExperience && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText(detailsCandidate.salesExperience || '')}
+                                  data-testid="copy-sales-experience"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-4 min-h-[120px] flex items-center">
+                              {detailsCandidate.salesExperience ? (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                  {detailsCandidate.salesExperience}
+                                </p>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">Not Available</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+
+                          {/* Difficult Customer Story */}
+                          <Card className="p-6 border-2 border-destructive/10 hover:border-destructive/20 transition-colors lg:col-span-2">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-destructive flex items-center">
+                                <XCircle className="h-5 w-5 mr-2" />
+                                Difficult Customer Story
+                              </h3>
+                              {detailsCandidate.difficultCustomerStory && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText(detailsCandidate.difficultCustomerStory || '')}
+                                  data-testid="copy-difficult-customer"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-4 min-h-[120px] flex items-center">
+                              {detailsCandidate.difficultCustomerStory ? (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                  {detailsCandidate.difficultCustomerStory}
+                                </p>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <XCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">Not Available</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+
+                          {/* Consultative Selling */}
+                          <Card className="p-6 border-2 border-green-200 hover:border-green-300 transition-colors lg:col-span-2">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-green-700 flex items-center">
+                                <CheckCircle className="h-5 w-5 mr-2" />
+                                Consultative Selling Approach
+                              </h3>
+                              {detailsCandidate.consultativeSelling && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText(detailsCandidate.consultativeSelling || '')}
+                                  data-testid="copy-consultative-selling"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-4 min-h-[120px] flex items-center">
+                              {detailsCandidate.consultativeSelling ? (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                  {detailsCandidate.consultativeSelling}
+                                </p>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">Not Available</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
                         </div>
 
-                        {/* Interview Summary */}
-                        {detailsCandidate.interviewSummary && (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold">Interview Summary</h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(detailsCandidate.interviewSummary || '')}
-                                data-testid="copy-interview-summary"
-                              >
-                                <i className="fas fa-copy mr-2"></i>Copy
-                              </Button>
-                            </div>
-                            <div className="bg-background rounded-md p-3 border">
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                                {detailsCandidate.interviewSummary}
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+                          <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200">
+                            <div className="text-center">
+                              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Interview Summary</h4>
+                              <p className="text-sm text-blue-600 dark:text-blue-300">
+                                {detailsCandidate.interviewSummary ? 'Available' : 'Not Available'}
                               </p>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Call Summary Title */}
-                        {detailsCandidate.callSummaryTitle && (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <h3 className="text-lg font-semibold mb-3">Call Summary Title</h3>
-                            <div className="bg-background rounded-md p-3 border">
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                                {detailsCandidate.callSummaryTitle}
+                          </Card>
+                          <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 border-green-200">
+                            <div className="text-center">
+                              <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">Call Summary</h4>
+                              <p className="text-sm text-green-600 dark:text-green-300">
+                                {detailsCandidate.callSummaryTitle ? 'Available' : 'Not Available'}
                               </p>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Notes */}
-                        {detailsCandidate.notes && (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold">Interview Notes</h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(detailsCandidate.notes || '')}
-                                data-testid="copy-notes"
-                              >
-                                <i className="fas fa-copy mr-2"></i>Copy
-                              </Button>
-                            </div>
-                            <div className="bg-background rounded-md p-3 border">
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                                {detailsCandidate.notes}
+                          </Card>
+                          <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 border-purple-200">
+                            <div className="text-center">
+                              <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-2">Interview Notes</h4>
+                              <p className="text-sm text-purple-600 dark:text-purple-300">
+                                {detailsCandidate.notes ? 'Available' : 'Not Available'}
                               </p>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Metrics */}
-                        <div className="bg-muted/30 rounded-lg p-4">
-                          <h3 className="text-lg font-semibold mb-3">Interview Metrics</h3>
-                          <div className="grid grid-cols-3 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Score</label>
-                              <p className="text-sm mt-1">{detailsCandidate.score || 0}%</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Interview Score</label>
-                              <p className="text-sm mt-1">{detailsCandidate.interviewScore || 0}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Duration</label>
-                              <p className="text-sm mt-1">{detailsCandidate.interviewDuration || '-'}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Call Duration</label>
-                              <p className="text-sm mt-1">{formatCallDuration(detailsCandidate.callDuration)}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Message Count</label>
-                              <p className="text-sm mt-1">{detailsCandidate.messageCount || 0}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Call Status</label>
-                              <p className="text-sm mt-1">{detailsCandidate.callStatus || '-'}</p>
-                            </div>
-                          </div>
+                          </Card>
                         </div>
                       </div>
                     </ScrollArea>
                   </TabsContent>
 
+                  {/* Performance Scores Tab */}
+                  <TabsContent value="performance-scores" className="h-full mt-4" data-testid="content-performance-scores">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Overall Score */}
+                          <Card className="p-6 border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+                            <div className="text-center space-y-4">
+                              <h3 className="text-2xl font-bold text-primary">Overall Score</h3>
+                              <div className="relative w-32 h-32 mx-auto">
+                                <div className="absolute inset-0 rounded-full border-8 border-muted"></div>
+                                <div 
+                                  className="absolute inset-0 rounded-full border-8 border-primary transform -rotate-90 origin-center"
+                                  style={{
+                                    clipPath: `polygon(50% 50%, 50% 0%, ${50 + 50 * Math.cos(2 * Math.PI * ((detailsCandidate.overallScore ?? 0) as number) / 100 - Math.PI/2)}% ${50 + 50 * Math.sin(2 * Math.PI * ((detailsCandidate.overallScore ?? 0) as number) / 100 - Math.PI/2)}%, 50% 0%)`
+                                  }}
+                                ></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="text-3xl font-bold text-primary">{detailsCandidate.overallScore ?? 0}%</span>
+                                </div>
+                              </div>
+                              <Badge variant={((detailsCandidate.overallScore ?? 0) >= 80) ? "default" : ((detailsCandidate.overallScore ?? 0) >= 60) ? "secondary" : "destructive"} className="text-base px-4 py-1">
+                                {((detailsCandidate.overallScore ?? 0) >= 80) ? 'Excellent' : ((detailsCandidate.overallScore ?? 0) >= 60) ? 'Good' : ((detailsCandidate.overallScore ?? 0) >= 40) ? 'Fair' : 'Needs Improvement'}
+                              </Badge>
+                            </div>
+                          </Card>
+
+                          {/* Score Breakdown */}
+                          <div className="space-y-4">
+                            {/* Communication Score */}
+                            <Card className="p-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-blue-800 dark:text-blue-200 flex items-center">
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Communication
+                                </h4>
+                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{detailsCandidate.communicationScore || 0}%</span>
+                              </div>
+                              <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3 overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${detailsCandidate.communicationScore || 0}%` }}
+                                ></div>
+                              </div>
+                            </Card>
+
+                            {/* Sales Aptitude Score */}
+                            <Card className="p-4 border border-green-200 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-green-800 dark:text-green-200 flex items-center">
+                                  <BarChart3 className="h-4 w-4 mr-2" />
+                                  Sales Aptitude
+                                </h4>
+                                <span className="text-lg font-bold text-green-600 dark:text-green-400">{detailsCandidate.salesAptitudeScore || 0}%</span>
+                              </div>
+                              <div className="w-full bg-green-200 dark:bg-green-800 rounded-full h-3 overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${detailsCandidate.salesAptitudeScore || 0}%` }}
+                                ></div>
+                              </div>
+                            </Card>
+
+                            {/* Motivation Score */}
+                            <Card className="p-4 border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-950 dark:to-yellow-900">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 flex items-center">
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Motivation
+                                </h4>
+                                <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{detailsCandidate.motivationScore || 0}%</span>
+                              </div>
+                              <div className="w-full bg-yellow-200 dark:bg-yellow-800 rounded-full h-3 overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${detailsCandidate.motivationScore || 0}%` }}
+                                ></div>
+                              </div>
+                            </Card>
+
+                            {/* Coachability Score */}
+                            <Card className="p-4 border border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-purple-800 dark:text-purple-200 flex items-center">
+                                  <User className="h-4 w-4 mr-2" />
+                                  Coachability
+                                </h4>
+                                <span className="text-lg font-bold text-purple-600 dark:text-purple-400">{detailsCandidate.coachabilityScore || 0}%</span>
+                              </div>
+                              <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-3 overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${detailsCandidate.coachabilityScore || 0}%` }}
+                                ></div>
+                              </div>
+                            </Card>
+
+                            {/* Professional Presence Score */}
+                            <Card className="p-4 border border-indigo-200 bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-indigo-800 dark:text-indigo-200 flex items-center">
+                                  <Settings className="h-4 w-4 mr-2" />
+                                  Professional Presence
+                                </h4>
+                                <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{detailsCandidate.professionalPresenceScore || 0}%</span>
+                              </div>
+                              <div className="w-full bg-indigo-200 dark:bg-indigo-800 rounded-full h-3 overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-indigo-400 to-indigo-600 rounded-full transition-all duration-500"
+                                  style={{ width: `${detailsCandidate.professionalPresenceScore || 0}%` }}
+                                ></div>
+                              </div>
+                            </Card>
+                          </div>
+                        </div>
+
+                        {/* Score Summary */}
+                        <Card className="p-6 border-2 border-muted bg-gradient-to-r from-muted/20 to-muted/30">
+                          <h3 className="text-lg font-semibold mb-4 text-center">Performance Analysis Summary</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Highest Score</p>
+                              <p className="text-lg font-bold text-primary">
+                                {Math.max(
+                                  detailsCandidate.communicationScore || 0,
+                                  detailsCandidate.salesAptitudeScore || 0,
+                                  detailsCandidate.motivationScore || 0,
+                                  detailsCandidate.coachabilityScore || 0,
+                                  detailsCandidate.professionalPresenceScore || 0
+                                )}%
+                              </p>
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Average Score</p>
+                              <p className="text-lg font-bold text-secondary">
+                                {Math.round([
+                                  detailsCandidate.communicationScore || 0,
+                                  detailsCandidate.salesAptitudeScore || 0,
+                                  detailsCandidate.motivationScore || 0,
+                                  detailsCandidate.coachabilityScore || 0,
+                                  detailsCandidate.professionalPresenceScore || 0
+                                ].reduce((a, b) => a + b, 0) / 5)}%
+                              </p>
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Score Count</p>
+                              <p className="text-lg font-bold text-accent-foreground">
+                                {[
+                                  detailsCandidate.communicationScore,
+                                  detailsCandidate.salesAptitudeScore,
+                                  detailsCandidate.motivationScore,
+                                  detailsCandidate.coachabilityScore,
+                                  detailsCandidate.professionalPresenceScore
+                                ].filter(score => score !== null && score !== undefined).length}/5
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Market Preferences Tab */}
+                  <TabsContent value="market-preferences" className="h-full mt-4" data-testid="content-market-preferences">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Preferred Markets */}
+                          <Card className="p-6 border-2 border-green-200 hover:border-green-300 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-green-700 flex items-center">
+                                <Settings className="h-5 w-5 mr-2" />
+                                Preferred Markets
+                              </h3>
+                              {detailsCandidate.preferredMarkets && detailsCandidate.preferredMarkets.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText((detailsCandidate.preferredMarkets || []).join(', '))}
+                                  data-testid="copy-preferred-markets"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="min-h-[120px] flex items-center">
+                              {detailsCandidate.preferredMarkets && detailsCandidate.preferredMarkets.length > 0 ? (
+                                <div className="flex flex-wrap gap-2 w-full">
+                                  {detailsCandidate.preferredMarkets.map((market, index) => (
+                                    <Badge key={index} variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-200 transition-colors text-sm px-3 py-1">
+                                      {market}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">No preferred markets specified</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+
+                          {/* Timeline */}
+                          <Card className="p-6 border-2 border-blue-200 hover:border-blue-300 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-blue-700 flex items-center">
+                                <Calendar className="h-5 w-5 mr-2" />
+                                Timeline
+                              </h3>
+                              {detailsCandidate.timeline && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText(detailsCandidate.timeline || '')}
+                                  data-testid="copy-timeline"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 min-h-[120px] flex items-center">
+                              {detailsCandidate.timeline ? (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap text-blue-800 dark:text-blue-200">
+                                  {detailsCandidate.timeline}
+                                </p>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">No timeline specified</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        </div>
+
+                        {/* Recommended Next Steps */}
+                        <Card className="p-6 border-2 border-purple-200 hover:border-purple-300 transition-colors">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-purple-700 flex items-center">
+                              <ClipboardList className="h-5 w-5 mr-2" />
+                              Recommended Next Steps
+                            </h3>
+                            {detailsCandidate.recommendedNextSteps && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.recommendedNextSteps || '')}
+                                data-testid="copy-next-steps"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 min-h-[120px] flex items-center">
+                            {detailsCandidate.recommendedNextSteps ? (
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-purple-800 dark:text-purple-200">
+                                {detailsCandidate.recommendedNextSteps}
+                              </p>
+                            ) : (
+                              <div className="text-center w-full text-muted-foreground">
+                                <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No next steps recommended</p>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+
+                        {/* Market Analysis Summary */}
+                        <Card className="p-6 border-2 border-muted bg-gradient-to-r from-muted/20 to-muted/30">
+                          <h3 className="text-lg font-semibold mb-4 text-center">Market Preferences Summary</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Preferred Markets</p>
+                              <p className="text-lg font-bold text-primary">
+                                {detailsCandidate.preferredMarkets?.length || 0}
+                              </p>
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Timeline Status</p>
+                              <p className="text-lg font-bold text-secondary">
+                                {detailsCandidate.timeline ? 'Defined' : 'Not Set'}
+                              </p>
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Next Steps</p>
+                              <p className="text-lg font-bold text-accent-foreground">
+                                {detailsCandidate.recommendedNextSteps ? 'Planned' : 'Pending'}
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Demo & Coaching Tab */}
+                  <TabsContent value="demo-coaching" className="h-full mt-4" data-testid="content-demo-coaching">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Demo Call Performed */}
+                          <Card className="p-6 border-2 hover:shadow-lg transition-all">
+                            <div className="text-center space-y-4">
+                              <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${
+                                detailsCandidate.demoCallPerformed 
+                                  ? 'bg-green-100 text-green-600 border-2 border-green-300' 
+                                  : 'bg-red-100 text-red-600 border-2 border-red-300'
+                              }`}>
+                                {detailsCandidate.demoCallPerformed ? (
+                                  <CheckCircle className="h-8 w-8" />
+                                ) : (
+                                  <XCircle className="h-8 w-8" />
+                                )}
+                              </div>
+                              <h3 className="text-lg font-semibold">Demo Call</h3>
+                              <Badge variant={detailsCandidate.demoCallPerformed ? "default" : "destructive"} className="text-base px-4 py-1">
+                                {detailsCandidate.demoCallPerformed ? 'Performed' : 'Not Performed'}
+                              </Badge>
+                            </div>
+                          </Card>
+
+                          {/* Kevin Persona Used */}
+                          <Card className="p-6 border-2 hover:shadow-lg transition-all">
+                            <div className="text-center space-y-4">
+                              <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${
+                                detailsCandidate.kevinPersonaUsed 
+                                  ? 'bg-blue-100 text-blue-600 border-2 border-blue-300' 
+                                  : 'bg-gray-100 text-gray-600 border-2 border-gray-300'
+                              }`}>
+                                <User className="h-8 w-8" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Kevin Persona</h3>
+                              <Badge variant={detailsCandidate.kevinPersonaUsed ? "default" : "secondary"} className="text-base px-4 py-1">
+                                {detailsCandidate.kevinPersonaUsed ? 'Used' : 'Not Used'}
+                              </Badge>
+                            </div>
+                          </Card>
+
+                          {/* Coaching Given */}
+                          <Card className="p-6 border-2 hover:shadow-lg transition-all">
+                            <div className="text-center space-y-4">
+                              <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${
+                                detailsCandidate.coachingGiven 
+                                  ? 'bg-purple-100 text-purple-600 border-2 border-purple-300' 
+                                  : 'bg-gray-100 text-gray-600 border-2 border-gray-300'
+                              }`}>
+                                <ClipboardList className="h-8 w-8" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Coaching</h3>
+                              <Badge variant={detailsCandidate.coachingGiven ? "default" : "secondary"} className="text-base px-4 py-1">
+                                {detailsCandidate.coachingGiven ? 'Provided' : 'Not Provided'}
+                              </Badge>
+                            </div>
+                          </Card>
+
+                          {/* Pitch Delivered */}
+                          <Card className="p-6 border-2 hover:shadow-lg transition-all">
+                            <div className="text-center space-y-4">
+                              <div className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center ${
+                                detailsCandidate.pitchDelivered 
+                                  ? 'bg-orange-100 text-orange-600 border-2 border-orange-300' 
+                                  : 'bg-gray-100 text-gray-600 border-2 border-gray-300'
+                              }`}>
+                                <StickyNote className="h-8 w-8" />
+                              </div>
+                              <h3 className="text-lg font-semibold">Pitch</h3>
+                              <Badge variant={detailsCandidate.pitchDelivered ? "default" : "secondary"} className="text-base px-4 py-1">
+                                {detailsCandidate.pitchDelivered ? 'Delivered' : 'Not Delivered'}
+                              </Badge>
+                            </div>
+                          </Card>
+                        </div>
+
+                        {/* Performance Indicators Summary */}
+                        <Card className="p-6 border-2 border-muted bg-gradient-to-r from-muted/20 to-muted/30">
+                          <h3 className="text-lg font-semibold mb-4 text-center">Performance Indicators Summary</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Demo Call</p>
+                              <p className={`text-lg font-bold ${
+                                detailsCandidate.demoCallPerformed ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {detailsCandidate.demoCallPerformed ? '✓' : '✗'}
+                              </p>
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Kevin Persona</p>
+                              <p className={`text-lg font-bold ${
+                                detailsCandidate.kevinPersonaUsed ? 'text-blue-600' : 'text-gray-600'
+                              }`}>
+                                {detailsCandidate.kevinPersonaUsed ? '✓' : '✗'}
+                              </p>
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Coaching</p>
+                              <p className={`text-lg font-bold ${
+                                detailsCandidate.coachingGiven ? 'text-purple-600' : 'text-gray-600'
+                              }`}>
+                                {detailsCandidate.coachingGiven ? '✓' : '✗'}
+                              </p>
+                            </div>
+                            <div className="text-center p-3 rounded-lg bg-background/50">
+                              <p className="text-sm text-muted-foreground">Pitch</p>
+                              <p className={`text-lg font-bold ${
+                                detailsCandidate.pitchDelivered ? 'text-orange-600' : 'text-gray-600'
+                              }`}>
+                                {detailsCandidate.pitchDelivered ? '✓' : '✗'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-4 text-center">
+                            <p className="text-sm text-muted-foreground">Completion Rate</p>
+                            <p className="text-2xl font-bold text-primary">
+                              {Math.round([
+                                detailsCandidate.demoCallPerformed,
+                                detailsCandidate.kevinPersonaUsed,
+                                detailsCandidate.coachingGiven,
+                                detailsCandidate.pitchDelivered
+                              ].filter(Boolean).length / 4 * 100)}%
+                            </p>
+                          </div>
+                        </Card>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Development Tab */}
+                  <TabsContent value="development" className="h-full mt-4" data-testid="content-development">
+                    <ScrollArea className="h-full w-full">
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Strengths */}
+                          <Card className="p-6 border-2 border-green-200 hover:border-green-300 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-green-700 flex items-center">
+                                <CheckCircle className="h-5 w-5 mr-2" />
+                                Strengths
+                              </h3>
+                              {detailsCandidate.strengths && detailsCandidate.strengths.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText((detailsCandidate.strengths || []).join('\n• '))}
+                                  data-testid="copy-strengths"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="min-h-[200px] flex items-start">
+                              {detailsCandidate.strengths && detailsCandidate.strengths.length > 0 ? (
+                                <ul className="space-y-3 w-full">
+                                  {detailsCandidate.strengths.map((strength, index) => (
+                                    <li key={index} className="flex items-start space-x-3 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
+                                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                                      <span className="text-sm text-green-800 dark:text-green-200 leading-relaxed">{strength}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">No strengths identified</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+
+                          {/* Development Areas */}
+                          <Card className="p-6 border-2 border-orange-200 hover:border-orange-300 transition-colors">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-orange-700 flex items-center">
+                                <ClipboardList className="h-5 w-5 mr-2" />
+                                Development Areas
+                              </h3>
+                              {detailsCandidate.developmentAreas && detailsCandidate.developmentAreas.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigator.clipboard.writeText((detailsCandidate.developmentAreas || []).join('\n• '))}
+                                  data-testid="copy-development-areas"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="min-h-[200px] flex items-start">
+                              {detailsCandidate.developmentAreas && detailsCandidate.developmentAreas.length > 0 ? (
+                                <ul className="space-y-3 w-full">
+                                  {detailsCandidate.developmentAreas.map((area, index) => (
+                                    <li key={index} className="flex items-start space-x-3 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                                      <ClipboardList className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                                      <span className="text-sm text-orange-800 dark:text-orange-200 leading-relaxed">{area}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <div className="text-center w-full text-muted-foreground">
+                                  <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">No development areas identified</p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        </div>
+
+                        {/* Development Plan Summary */}
+                        <Card className="p-6 border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
+                          <h3 className="text-lg font-semibold mb-4 text-blue-800 dark:text-blue-200 text-center">Development Plan Overview</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="text-center p-4 rounded-lg bg-white/50 dark:bg-blue-900/50">
+                              <div className="text-2xl font-bold text-green-600 mb-1">
+                                {detailsCandidate.strengths?.length || 0}
+                              </div>
+                              <p className="text-sm text-muted-foreground">Identified Strengths</p>
+                            </div>
+                            <div className="text-center p-4 rounded-lg bg-white/50 dark:bg-blue-900/50">
+                              <div className="text-2xl font-bold text-orange-600 mb-1">
+                                {detailsCandidate.developmentAreas?.length || 0}
+                              </div>
+                              <p className="text-sm text-muted-foreground">Development Areas</p>
+                            </div>
+                            <div className="text-center p-4 rounded-lg bg-white/50 dark:bg-blue-900/50">
+                              <div className="text-2xl font-bold text-blue-600 mb-1">
+                                {(detailsCandidate.strengths?.length || 0) + (detailsCandidate.developmentAreas?.length || 0)}
+                              </div>
+                              <p className="text-sm text-muted-foreground">Total Items</p>
+                            </div>
+                          </div>
+                        </Card>
+
+                        {/* Action Items */}
+                        <Card className="p-6 border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+                          <h3 className="text-lg font-semibold mb-4 text-purple-800 dark:text-purple-200 flex items-center">
+                            <Calendar className="h-5 w-5 mr-2" />
+                            Recommended Action Items
+                          </h3>
+                          <div className="space-y-3">
+                            <div className="flex items-center space-x-3 p-3 bg-white/50 dark:bg-purple-900/50 rounded-lg">
+                              <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold">1</div>
+                              <span className="text-sm">Leverage identified strengths in role assignment and training</span>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-white/50 dark:bg-purple-900/50 rounded-lg">
+                              <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold">2</div>
+                              <span className="text-sm">Create targeted development plan for identified areas</span>
+                            </div>
+                            <div className="flex items-center space-x-3 p-3 bg-white/50 dark:bg-purple-900/50 rounded-lg">
+                              <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold">3</div>
+                              <span className="text-sm">Schedule regular check-ins to monitor progress</span>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
                   {/* Transcript Tab */}
-                  <TabsContent value="transcript" className="h-full mt-4">
+                  <TabsContent value="transcript" className="h-full mt-4" data-testid="content-transcript">
                     <ScrollArea className="h-full w-full">
                       <div className="space-y-6">
                         {/* Full Interview Transcript */}
                         {detailsCandidate.interviewTranscript ? (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold">Full Interview Transcript</h3>
+                          <Card className="p-6 border-2 border-muted">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold flex items-center">
+                                <FileText className="h-5 w-5 mr-2" />
+                                Full Interview Transcript
+                              </h3>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => navigator.clipboard.writeText(detailsCandidate.interviewTranscript || '')}
                                 data-testid="copy-transcript"
                               >
-                                <i className="fas fa-copy mr-2"></i>Copy
+                                <Copy className="h-4 w-4 mr-2" />Copy
                               </Button>
                             </div>
-                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
+                            <div className="bg-muted/30 rounded-lg p-4 max-h-[600px] overflow-y-auto border">
                               <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
                                 {detailsCandidate.interviewTranscript}
                               </pre>
                             </div>
-                          </div>
+                          </Card>
                         ) : (
                           <div className="text-center py-12 text-muted-foreground">
-                            <i className="fas fa-file-text text-3xl mb-4"></i>
-                            <p>No interview transcript available</p>
+                            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg font-medium">No interview transcript available</p>
+                            <p className="text-sm">The interview transcript will appear here once the interview is completed and processed.</p>
                           </div>
                         )}
 
                         {/* Transcript Summary */}
                         {detailsCandidate.transcriptSummary && (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold">Transcript Summary</h3>
+                          <Card className="p-6 border-2 border-blue-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-blue-700 flex items-center">
+                                <StickyNote className="h-5 w-5 mr-2" />
+                                Transcript Summary
+                              </h3>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => navigator.clipboard.writeText(detailsCandidate.transcriptSummary || '')}
                                 data-testid="copy-transcript-summary"
                               >
-                                <i className="fas fa-copy mr-2"></i>Copy
+                                <Copy className="h-4 w-4 mr-2" />Copy
                               </Button>
                             </div>
-                            <div className="bg-background rounded-md p-3 border">
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                            <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-blue-800 dark:text-blue-200">
                                 {detailsCandidate.transcriptSummary}
                               </p>
                             </div>
-                          </div>
+                          </Card>
+                        )}
+
+                        {/* Interview Summary */}
+                        {detailsCandidate.interviewSummary && (
+                          <Card className="p-6 border-2 border-green-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-green-700 flex items-center">
+                                <ClipboardList className="h-5 w-5 mr-2" />
+                                Interview Summary
+                              </h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.interviewSummary || '')}
+                                data-testid="copy-interview-summary"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />Copy
+                              </Button>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 border">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-green-800 dark:text-green-200">
+                                {detailsCandidate.interviewSummary}
+                              </p>
+                            </div>
+                          </Card>
+                        )}
+
+                        {/* Call Summary Title */}
+                        {detailsCandidate.callSummaryTitle && (
+                          <Card className="p-6 border-2 border-purple-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-purple-700 flex items-center">
+                                <Phone className="h-5 w-5 mr-2" />
+                                Call Summary Title
+                              </h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.callSummaryTitle || '')}
+                                data-testid="copy-call-summary-title"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />Copy
+                              </Button>
+                            </div>
+                            <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-purple-800 dark:text-purple-200">
+                                {detailsCandidate.callSummaryTitle}
+                              </p>
+                            </div>
+                          </Card>
+                        )}
+
+                        {/* Interview Notes */}
+                        {detailsCandidate.notes && (
+                          <Card className="p-6 border-2 border-orange-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-orange-700 flex items-center">
+                                <StickyNote className="h-5 w-5 mr-2" />
+                                Interview Notes
+                              </h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(detailsCandidate.notes || '')}
+                                data-testid="copy-notes"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />Copy
+                              </Button>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-950 rounded-lg p-4 border">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap text-orange-800 dark:text-orange-200">
+                                {detailsCandidate.notes}
+                              </p>
+                            </div>
+                          </Card>
                         )}
                       </div>
                     </ScrollArea>
                   </TabsContent>
 
-                  {/* Evaluation Tab */}
-                  <TabsContent value="evaluation" className="h-full mt-4">
+                  {/* Structured Data Tab */}
+                  <TabsContent value="structured-data" className="h-full mt-4" data-testid="content-structured-data">
                     <ScrollArea className="h-full w-full">
                       <div className="space-y-6">
-                        {detailsCandidate.evaluationCriteria ? (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold">Evaluation Criteria</h3>
+                        {/* Evaluation Details */}
+                        {detailsCandidate.evaluationDetails ? (
+                          <Card className="p-6 border-2 border-blue-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-blue-700 flex items-center">
+                                <BarChart3 className="h-5 w-5 mr-2" />
+                                Evaluation Details
+                              </h3>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.evaluationCriteria as any, null, 2))}
-                                data-testid="copy-evaluation-criteria"
+                                onClick={() => navigator.clipboard.writeText(`Evaluation Details:\n${Object.entries(detailsCandidate.evaluationDetails as Record<string, any>).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? (Array.isArray(value) ? value.join(', ') : 'Complex data') : value}`).join('\n')}`)}
+                                data-testid="copy-evaluation-details"
                               >
-                                <i className="fas fa-copy mr-2"></i>Copy JSON
+                                <Copy className="h-4 w-4 mr-2" />Copy Data
                               </Button>
                             </div>
-                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
-                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
-                                {JSON.stringify(detailsCandidate.evaluationCriteria as any, null, 2)}
-                              </pre>
+                            <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 max-h-[400px] overflow-y-auto border">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(detailsCandidate.evaluationDetails as Record<string, any>).map(([key, value]) => (
+                                  <div key={key} className="space-y-2">
+                                    <label className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">
+                                      {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                                    </label>
+                                    <div className="bg-white dark:bg-blue-900 rounded p-3 border">
+                                      <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap break-words">
+                                        {typeof value === 'object' ? (
+                                          Array.isArray(value) ? value.join(', ') : 
+                                          (value && typeof value === 'object' ? 
+                                            Object.entries(value).map(([k, v]) => `${k}: ${v}`).slice(0, 3).join(' | ') + (Object.keys(value).length > 3 ? '...' : '') : 
+                                            String(value || '-')
+                                          )
+                                        ) : String(value || '-')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          </Card>
                         ) : (
-                          <div className="text-center py-12 text-muted-foreground">
-                            <i className="fas fa-chart-bar text-3xl mb-4"></i>
-                            <p>No evaluation criteria available</p>
-                          </div>
+                          <Card className="p-6 border-2 border-muted">
+                            <div className="text-center py-8 text-muted-foreground">
+                              <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No evaluation details available</p>
+                            </div>
+                          </Card>
                         )}
 
-                        {/* Interview Data */}
-                        {!!detailsCandidate.interviewData && (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold">Interview Data</h3>
+                        {/* Interview Metrics */}
+                        {detailsCandidate.interviewMetrics ? (
+                          <Card className="p-6 border-2 border-green-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-green-700 flex items-center">
+                                <Database className="h-5 w-5 mr-2" />
+                                Interview Metrics
+                              </h3>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.interviewData, null, 2))}
-                                data-testid="copy-interview-data"
+                                onClick={() => navigator.clipboard.writeText(`Interview Metrics:\n${Object.entries(detailsCandidate.interviewMetrics as Record<string, any>).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? (Array.isArray(value) ? value.join(', ') : 'Complex data') : value}`).join('\n')}`)}
+                                data-testid="copy-interview-metrics"
                               >
-                                <i className="fas fa-copy mr-2"></i>Copy JSON
+                                <Copy className="h-4 w-4 mr-2" />Copy Data
                               </Button>
                             </div>
-                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
-                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
-                                {JSON.stringify(detailsCandidate.interviewData as any, null, 2)}
-                              </pre>
+                            <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 max-h-[400px] overflow-y-auto border">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(detailsCandidate.interviewMetrics as Record<string, any>).map(([key, value]) => (
+                                  <div key={key} className="space-y-2">
+                                    <label className="text-xs font-semibold text-green-700 dark:text-green-300 uppercase tracking-wide">
+                                      {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                                    </label>
+                                    <div className="bg-white dark:bg-green-900 rounded p-3 border">
+                                      <p className="text-sm text-green-800 dark:text-green-200 whitespace-pre-wrap break-words">
+                                        {typeof value === 'object' ? (
+                                          Array.isArray(value) ? value.join(', ') : 
+                                          (value && typeof value === 'object' ? 
+                                            Object.entries(value).map(([k, v]) => `${k}: ${v}`).slice(0, 3).join(' | ') + (Object.keys(value).length > 3 ? '...' : '') : 
+                                            String(value || '-')
+                                          )
+                                        ) : String(value || '-')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-
-                  {/* Data Results Tab */}
-                  <TabsContent value="data" className="h-full mt-4">
-                    <ScrollArea className="h-full w-full">
-                      <div className="space-y-6">
-                        {detailsCandidate.dataCollectionResults ? (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-lg font-semibold">Data Collection Results</h3>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.dataCollectionResults as any, null, 2))}
-                                data-testid="copy-data-collection"
-                              >
-                                <i className="fas fa-copy mr-2"></i>Copy JSON
-                              </Button>
-                            </div>
-                            <div className="bg-background rounded-md p-4 border max-h-[600px] overflow-y-auto">
-                              <pre className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
-                                {JSON.stringify(detailsCandidate.dataCollectionResults as any, null, 2)}
-                              </pre>
-                            </div>
-                          </div>
+                          </Card>
                         ) : (
-                          <div className="text-center py-12 text-muted-foreground">
-                            <i className="fas fa-database text-3xl mb-4"></i>
-                            <p>No data collection results available</p>
-                          </div>
+                          <Card className="p-6 border-2 border-muted">
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Database className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No interview metrics available</p>
+                            </div>
+                          </Card>
                         )}
+
+                        {/* Agent Data */}
+                        {detailsCandidate.agentData ? (
+                          <Card className="p-6 border-2 border-purple-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-purple-700 flex items-center">
+                                <User className="h-5 w-5 mr-2" />
+                                Agent Data
+                              </h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(`Agent Data:\n${Object.entries(detailsCandidate.agentData as Record<string, any>).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? (Array.isArray(value) ? value.join(', ') : 'Complex data') : value}`).join('\n')}`)}
+                                data-testid="copy-agent-data"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />Copy Data
+                              </Button>
+                            </div>
+                            <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 max-h-[400px] overflow-y-auto border">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(detailsCandidate.agentData as Record<string, any>).map(([key, value]) => (
+                                  <div key={key} className="space-y-2">
+                                    <label className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">
+                                      {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                                    </label>
+                                    <div className="bg-white dark:bg-purple-900 rounded p-3 border">
+                                      <p className="text-sm text-purple-800 dark:text-purple-200 whitespace-pre-wrap break-words">
+                                        {typeof value === 'object' ? (
+                                          Array.isArray(value) ? value.join(', ') : 
+                                          (value && typeof value === 'object' ? 
+                                            Object.entries(value).map(([k, v]) => `${k}: ${v}`).slice(0, 3).join(' | ') + (Object.keys(value).length > 3 ? '...' : '') : 
+                                            String(value || '-')
+                                          )
+                                        ) : String(value || '-')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </Card>
+                        ) : (
+                          <Card className="p-6 border-2 border-muted">
+                            <div className="text-center py-8 text-muted-foreground">
+                              <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No agent data available</p>
+                            </div>
+                          </Card>
+                        )}
+
+                        {/* Conversation Metadata */}
+                        {detailsCandidate.conversationMetadata ? (
+                          <Card className="p-6 border-2 border-orange-200">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-lg font-semibold text-orange-700 flex items-center">
+                                <Settings className="h-5 w-5 mr-2" />
+                                Conversation Metadata
+                              </h3>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.conversationMetadata as any, null, 2))}
+                                data-testid="copy-conversation-metadata"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />Copy Data
+                              </Button>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-950 rounded-lg p-4 max-h-[400px] overflow-y-auto border">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(detailsCandidate.conversationMetadata as Record<string, any>).map(([key, value]) => (
+                                  <div key={key} className="space-y-2">
+                                    <label className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wide">
+                                      {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                                    </label>
+                                    <div className="bg-white dark:bg-orange-900 rounded p-3 border">
+                                      <p className="text-sm text-orange-800 dark:text-orange-200 whitespace-pre-wrap break-words">
+                                        {typeof value === 'object' ? (
+                                          Array.isArray(value) ? value.join(', ') : 
+                                          (value && typeof value === 'object' ? 
+                                            Object.entries(value).map(([k, v]) => `${k}: ${v}`).slice(0, 3).join(' | ') + (Object.keys(value).length > 3 ? '...' : '') : 
+                                            String(value || '-')
+                                          )
+                                        ) : String(value || '-')}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </Card>
+                        ) : (
+                          <Card className="p-6 border-2 border-muted">
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No conversation metadata available</p>
+                            </div>
+                          </Card>
+                        )}
+
+                        {/* All ElevenLabs Fields Coverage - Complete Data */}
+                        <Card className="p-6 border-2 border-muted">
+                          <h3 className="text-lg font-semibold mb-4 text-muted-foreground flex items-center">
+                            <Database className="h-5 w-5 mr-2" />
+                            Complete ElevenLabs Data Coverage
+                          </h3>
+                          <div className="space-y-6">
+                            {/* Core Interview Fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {/* Agent Information */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Agent ID</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.agentId || '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Agent Name</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.agentName || '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Conversation ID</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.conversationId || '-'}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Call Metrics */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">Call Status</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.callStatus || '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">Call Successful</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.callSuccessful !== undefined ? (detailsCandidate.callSuccessful ? 'Yes' : 'No') : '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-green-600 uppercase tracking-wide">Message Count</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.messageCount || '-'}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Performance Indicators */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Demo Call Performed</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.demoCallPerformed !== undefined ? (detailsCandidate.demoCallPerformed ? 'Yes' : 'No') : '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Kevin Persona Used</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.kevinPersonaUsed !== undefined ? (detailsCandidate.kevinPersonaUsed ? 'Yes' : 'No') : '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Coaching Given</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.coachingGiven !== undefined ? (detailsCandidate.coachingGiven ? 'Yes' : 'No') : '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Pitch Delivered</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.pitchDelivered !== undefined ? (detailsCandidate.pitchDelivered ? 'Yes' : 'No') : '-'}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Market Information */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Preferred Markets</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{Array.isArray(detailsCandidate.preferredMarkets) ? detailsCandidate.preferredMarkets.join(', ') : (detailsCandidate.preferredMarkets || '-')}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Timeline</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.timeline || '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Recommended Next Steps</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm whitespace-pre-wrap">{detailsCandidate.recommendedNextSteps || '-'}</p>
+                                </div>
+                              </div>
+                              
+                              {/* Additional Data */}
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-red-600 uppercase tracking-wide">Audio Recording URL</label>
+                                <div className="bg-background rounded p-3 border">
+                                  {detailsCandidate.audioRecordingUrl ? (
+                                    <a href={detailsCandidate.audioRecordingUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                                      View Recording
+                                    </a>
+                                  ) : (
+                                    <p className="text-sm">-</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-red-600 uppercase tracking-wide">Interview Date</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm">{detailsCandidate.interviewDate ? new Date(detailsCandidate.interviewDate).toLocaleString() : '-'}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-xs font-semibold text-red-600 uppercase tracking-wide">Transcript Summary</label>
+                                <div className="bg-background rounded p-3 border">
+                                  <p className="text-sm whitespace-pre-wrap">{detailsCandidate.transcriptSummary || '-'}</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Legacy Structured Data with Formatted Display */}
+                            {(detailsCandidate.evaluationCriteria || detailsCandidate.dataCollectionResults || detailsCandidate.interviewData) && (
+                              <div className="border-t pt-4">
+                                <h4 className="font-medium text-sm mb-4 text-muted-foreground">Legacy Structured Data</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  {/* Evaluation Criteria */}
+                                  {detailsCandidate.evaluationCriteria && (
+                                    <div className="bg-muted/30 rounded-lg p-4">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h5 className="font-medium text-sm">Evaluation Criteria</h5>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.evaluationCriteria as any, null, 2))}
+                                          data-testid="copy-evaluation-criteria"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="space-y-2">
+                                        {Object.entries(detailsCandidate.evaluationCriteria as Record<string, any>).map(([key, value]) => (
+                                          <div key={key} className="bg-background rounded p-2">
+                                            <div className="text-xs font-medium text-muted-foreground">{key.replace(/_/g, ' ')}</div>
+                                            <div className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value || '-')}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Data Collection Results */}
+                                  {detailsCandidate.dataCollectionResults && (
+                                    <div className="bg-muted/30 rounded-lg p-4">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h5 className="font-medium text-sm">Data Collection Results</h5>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.dataCollectionResults as any, null, 2))}
+                                          data-testid="copy-data-collection-results"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="space-y-2">
+                                        {Object.entries(detailsCandidate.dataCollectionResults as Record<string, any>).map(([key, value]) => (
+                                          <div key={key} className="bg-background rounded p-2">
+                                            <div className="text-xs font-medium text-muted-foreground">{key.replace(/_/g, ' ')}</div>
+                                            <div className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value || '-')}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Interview Data */}
+                                  {detailsCandidate.interviewData && (
+                                    <div className="bg-muted/30 rounded-lg p-4">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h5 className="font-medium text-sm">Raw Interview Data</h5>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => navigator.clipboard.writeText(JSON.stringify(detailsCandidate.interviewData, null, 2))}
+                                          data-testid="copy-interview-data"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      <div className="bg-background rounded p-2 max-h-32 overflow-y-auto">
+                                        <pre className="text-xs font-mono whitespace-pre-wrap">
+                                          {String(JSON.stringify(detailsCandidate.interviewData || {}, null, 2))}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
                       </div>
                     </ScrollArea>
                   </TabsContent>
 
                   {/* Technical Tab */}
-                  <TabsContent value="technical" className="h-full mt-4">
+                  <TabsContent value="technical" className="h-full mt-4" data-testid="content-technical">
                     <ScrollArea className="h-full w-full">
                       <div className="space-y-6">
+                        {/* Basic Information */}
+                        <Card className="p-6 border-2 border-muted">
+                          <h3 className="text-lg font-semibold mb-4 flex items-center">
+                            <User className="h-5 w-5 mr-2" />
+                            Basic Information
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Name</label>
+                                <p className="text-sm mt-1 font-medium">{detailsCandidate.name}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Email</label>
+                                <p className="text-sm mt-1">{detailsCandidate.email}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                                <p className="text-sm mt-1">{detailsCandidate.phone || '-'}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Pipeline Stage</label>
+                                <Badge variant="outline" className="mt-1">{detailsCandidate.pipelineStage}</Badge>
+                              </div>
+                            </div>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Source Reference</label>
+                                <p className="text-sm mt-1">{detailsCandidate.sourceRef || '-'}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Resume URL</label>
+                                {detailsCandidate.resumeUrl ? (
+                                  <a 
+                                    href={detailsCandidate.resumeUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:text-blue-800 underline block mt-1"
+                                  >
+                                    View Resume
+                                  </a>
+                                ) : (
+                                  <p className="text-sm mt-1 text-muted-foreground">-</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Audio Recording</label>
+                                {detailsCandidate.audioRecordingUrl ? (
+                                  <a 
+                                    href={detailsCandidate.audioRecordingUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:text-blue-800 underline block mt-1"
+                                  >
+                                    Listen to Recording
+                                  </a>
+                                ) : (
+                                  <p className="text-sm mt-1 text-muted-foreground">-</p>
+                                )}
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Tags</label>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {detailsCandidate.tags && detailsCandidate.tags.length > 0 ? (
+                                    detailsCandidate.tags.map((tag, index) => (
+                                      <Badge key={index} variant="secondary" className="text-xs">
+                                        {tag}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">-</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+
                         {/* Agent Information */}
-                        <div className="bg-muted/30 rounded-lg p-4">
-                          <h3 className="text-lg font-semibold mb-3">Agent Information</h3>
-                          <div className="grid grid-cols-2 gap-4">
+                        <Card className="p-6 border-2 border-blue-200">
+                          <h3 className="text-lg font-semibold mb-4 text-blue-700 flex items-center">
+                            <Settings className="h-5 w-5 mr-2" />
+                            Agent Information
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="text-sm font-medium text-muted-foreground">Agent Name</label>
                               <p className="text-sm mt-1 font-mono">{detailsCandidate.agentName || '-'}</p>
                             </div>
                             <div>
                               <label className="text-sm font-medium text-muted-foreground">Agent ID</label>
-                              <p className="text-sm mt-1 font-mono">{detailsCandidate.agentId || '-'}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm font-mono flex-1">{detailsCandidate.agentId || '-'}</p>
+                                {detailsCandidate.agentId && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => navigator.clipboard.writeText(detailsCandidate.agentId || '')}
+                                    data-testid="copy-agent-id"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div className="col-span-2">
+                            <div className="md:col-span-2">
                               <label className="text-sm font-medium text-muted-foreground">Conversation ID</label>
                               <div className="flex items-center space-x-2 mt-1">
                                 <p className="text-sm font-mono flex-1">{detailsCandidate.conversationId || '-'}</p>
                                 {detailsCandidate.conversationId && (
                                   <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => navigator.clipboard.writeText(detailsCandidate.conversationId || '')}
                                     data-testid="copy-conversation-id"
                                   >
-                                    <i className="fas fa-copy"></i>
+                                    <Copy className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
                             </div>
                           </div>
-                        </div>
+                        </Card>
 
                         {/* Call Information */}
-                        <div className="bg-muted/30 rounded-lg p-4">
-                          <h3 className="text-lg font-semibold mb-3">Call Information</h3>
-                          <div className="grid grid-cols-2 gap-4">
+                        <Card className="p-6 border-2 border-green-200">
+                          <h3 className="text-lg font-semibold mb-4 text-green-700 flex items-center">
+                            <Phone className="h-5 w-5 mr-2" />
+                            Call Information
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <label className="text-sm font-medium text-muted-foreground">Call Status</label>
-                              <p className="text-sm mt-1">{detailsCandidate.callStatus || '-'}</p>
+                              <Badge variant={detailsCandidate.callStatus === 'completed' ? 'default' : 'secondary'} className="mt-1">
+                                {detailsCandidate.callStatus || 'Unknown'}
+                              </Badge>
                             </div>
                             <div>
                               <label className="text-sm font-medium text-muted-foreground">Call Successful</label>
@@ -1969,25 +3416,41 @@ export default function DataGrid() {
                               </p>
                             </div>
                             <div>
-                              <label className="text-sm font-medium text-muted-foreground">Source Reference</label>
-                              <p className="text-sm mt-1">{detailsCandidate.sourceRef || '-'}</p>
+                              <label className="text-sm font-medium text-muted-foreground">Call Duration</label>
+                              <p className="text-sm mt-1">{formatCallDuration(detailsCandidate.callDuration)}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Message Count</label>
+                              <p className="text-sm mt-1">{detailsCandidate.messageCount || 0}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Interview Duration</label>
+                              <p className="text-sm mt-1">{detailsCandidate.interviewDuration || '-'}</p>
                             </div>
                           </div>
-                        </div>
+                        </Card>
 
-                        {/* Tags */}
-                        {detailsCandidate.tags && detailsCandidate.tags.length > 0 && (
-                          <div className="bg-muted/30 rounded-lg p-4">
-                            <h3 className="text-lg font-semibold mb-3">Tags</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {detailsCandidate.tags.map((tag, index) => (
-                                <Badge key={index} variant="secondary">
-                                  {tag}
-                                </Badge>
-                              ))}
+                        {/* Score Information */}
+                        <Card className="p-6 border-2 border-purple-200">
+                          <h3 className="text-lg font-semibold mb-4 text-purple-700 flex items-center">
+                            <BarChart3 className="h-5 w-5 mr-2" />
+                            Score Information
+                          </h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Overall Score</label>
+                              <p className="text-lg font-bold mt-1 text-primary">{detailsCandidate.score || 0}%</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Interview Score</label>
+                              <p className="text-lg font-bold mt-1 text-secondary">{detailsCandidate.interviewScore || 0}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">ElevenLabs Overall</label>
+                              <p className="text-lg font-bold mt-1 text-purple-600">{detailsCandidate.overallScore || 0}%</p>
                             </div>
                           </div>
-                        )}
+                        </Card>
                       </div>
                     </ScrollArea>
                   </TabsContent>

@@ -55,6 +55,43 @@ export const candidates = pgTable("candidates", {
   audioRecordingUrl: text("audio_recording_url"),
   agentData: jsonb("agent_data"), // Comprehensive agent interaction data
   conversationMetadata: jsonb("conversation_metadata"), // Conversation-specific metadata
+  
+  // === COMPREHENSIVE ELEVENLABS INTERVIEW FIELDS ===
+  // Core interview responses
+  whyInsurance: text("why_insurance"),
+  whyNow: text("why_now"),
+  salesExperience: text("sales_experience"),
+  difficultCustomerStory: text("difficult_customer_story"),
+  consultativeSelling: text("consultative_selling"),
+  
+  // Market preferences and timeline
+  preferredMarkets: text("preferred_markets").array(),
+  timeline: text("timeline"),
+  recommendedNextSteps: text("recommended_next_steps"),
+  
+  // Performance indicators
+  demoCallPerformed: boolean("demo_call_performed").default(false),
+  kevinPersonaUsed: boolean("kevin_persona_used").default(false),
+  coachingGiven: boolean("coaching_given").default(false),
+  pitchDelivered: boolean("pitch_delivered").default(false),
+  
+  // Evaluation scores
+  overallScore: integer("overall_score"),
+  communicationScore: integer("communication_score"),
+  salesAptitudeScore: integer("sales_aptitude_score"),
+  motivationScore: integer("motivation_score"),
+  coachabilityScore: integer("coachability_score"),
+  professionalPresenceScore: integer("professional_presence_score"),
+  
+  // Development assessment
+  strengths: text("strengths").array(),
+  developmentAreas: text("development_areas").array(),
+  
+  // Additional structured evaluation data
+  evaluationDetails: jsonb("evaluation_details"), // Detailed evaluation breakdown
+  interviewMetrics: jsonb("interview_metrics"), // Performance metrics and statistics
+  // === END ELEVENLABS INTERVIEW FIELDS ===
+  
   // === END INTERVIEW DATA FIELDS ===
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
