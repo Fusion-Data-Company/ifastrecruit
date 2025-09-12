@@ -1,6 +1,7 @@
 import { elevenlabsIntegration } from "../integrations/elevenlabs";
 import { storage } from "../storage";
 import { openrouterIntegration } from "../integrations/openrouter";
+import { fileStorageService } from "./file-storage";
 import { z } from "zod";
 
 // The specific authorized ElevenLabs agent ID that we monitor
@@ -232,6 +233,40 @@ export class ElevenLabsAgentService {
       // Extract candidate data from conversation
       const extractedData = await this.extractCandidateDataFromConversation(validationResult.data);
       
+      // Download and store files (audio and transcript) if available
+      let localAudioFileId: string | null = null;
+      let localTranscriptFileId: string | null = null;
+
+      // Download audio recording if available
+      const audioUrl = validationResult.data.audio_recording_url || validationResult.data.audioRecordingUrl;
+      if (audioUrl && extractedData.email) {
+        console.log(`[ElevenLabs Agent] Downloading audio recording for candidate: ${extractedData.email}`);
+        const audioResult = await fileStorageService.downloadAudioRecording(audioUrl, conversationId);
+        if (audioResult.success && audioResult.file) {
+          localAudioFileId = audioResult.file.id;
+          console.log(`[ElevenLabs Agent] Audio recording stored with ID: ${localAudioFileId}`);
+        } else {
+          console.error(`[ElevenLabs Agent] Failed to download audio recording: ${audioResult.error}`);
+        }
+      }
+
+      // Store transcript as file if available
+      const transcript = validationResult.data.transcript;
+      if (transcript && extractedData.email) {
+        console.log(`[ElevenLabs Agent] Storing transcript for candidate: ${extractedData.email}`);
+        const transcriptResult = await fileStorageService.storeTranscript(
+          typeof transcript === 'string' ? transcript : JSON.stringify(transcript),
+          conversationId,
+          conversationId
+        );
+        if (transcriptResult.success && transcriptResult.file) {
+          localTranscriptFileId = transcriptResult.file.id;
+          console.log(`[ElevenLabs Agent] Transcript stored with ID: ${localTranscriptFileId}`);
+        } else {
+          console.error(`[ElevenLabs Agent] Failed to store transcript: ${transcriptResult.error}`);
+        }
+      }
+      
       // Validate extracted email
       if (!extractedData.email || 
           extractedData.email.includes('conversation-') || 
@@ -339,6 +374,8 @@ export class ElevenLabsAgentService {
           
           // Audio and metadata
           audioRecordingUrl: validationResult.data.audio_recording_url || validationResult.data.audioRecordingUrl,
+          localAudioFileId: localAudioFileId,
+          localTranscriptFileId: localTranscriptFileId,
           agentData: validationResult.data.agent_data || validationResult.data.agentData,
           conversationMetadata: validationResult.data.conversation_metadata || validationResult.data.conversationMetadata,
           
@@ -421,6 +458,8 @@ export class ElevenLabsAgentService {
           
           // Audio and metadata
           audioRecordingUrl: validationResult.data.audio_recording_url || validationResult.data.audioRecordingUrl,
+          localAudioFileId: localAudioFileId,
+          localTranscriptFileId: localTranscriptFileId,
           agentData: validationResult.data.agent_data || validationResult.data.agentData,
           conversationMetadata: validationResult.data.conversation_metadata || validationResult.data.conversationMetadata,
         });

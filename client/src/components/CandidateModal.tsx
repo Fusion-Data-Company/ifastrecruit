@@ -326,6 +326,7 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
                 >
                   <Card>
                     <CardHeader>
@@ -347,6 +348,43 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* Transcript file actions */}
+                  {candidate.localTranscriptFileId && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2 text-base">
+                          <Download className="w-4 h-4" />
+                          <span>Transcript File</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.open(`/api/files/transcript/${candidate.localTranscriptFileId}`, '_blank')}
+                            data-testid="view-transcript-button"
+                          >
+                            <FileText className="w-4 h-4 mr-2" />
+                            View Transcript
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.open(`/api/files/transcript/${candidate.localTranscriptFileId}/download`, '_blank')}
+                            data-testid="download-transcript-button"
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download Transcript
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Stored transcript file available for download and external viewing
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </motion.div>
               </TabsContent>
 
@@ -422,11 +460,47 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {candidate.audioRecordingUrl ? (
-                        <AudioPlayer
-                          audioUrl={candidate.audioRecordingUrl}
-                          title={`Interview with ${candidate.name || 'Candidate'}`}
-                        />
+                      {(candidate.localAudioFileId || candidate.audioRecordingUrl) ? (
+                        <div className="space-y-4">
+                          <AudioPlayer
+                            audioUrl={candidate.localAudioFileId 
+                              ? `/api/files/audio/${candidate.localAudioFileId}` 
+                              : candidate.audioRecordingUrl || ""
+                            }
+                            title={`Interview with ${candidate.name || 'Candidate'}`}
+                            candidateName={candidate.name}
+                          />
+                          
+                          {/* Additional audio file controls */}
+                          {candidate.localAudioFileId && (
+                            <Card className="p-4 bg-muted/30">
+                              <h4 className="font-medium mb-3 flex items-center">
+                                <Download className="w-4 h-4 mr-2" />
+                                File Actions
+                              </h4>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => window.open(`/api/files/audio/${candidate.localAudioFileId}/download`, '_blank')}
+                                  data-testid="download-audio-button"
+                                >
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Download Audio
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => window.open(`/api/files/audio/${candidate.localAudioFileId}`, '_blank')}
+                                  data-testid="open-audio-button"
+                                >
+                                  <Play className="w-4 h-4 mr-2" />
+                                  Open in New Tab
+                                </Button>
+                              </div>
+                            </Card>
+                          )}
+                        </div>
                       ) : (
                         <div className="text-center py-8 text-muted-foreground">
                           <Headphones className="w-12 h-12 mx-auto mb-3 opacity-50" />

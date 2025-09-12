@@ -14,6 +14,7 @@ import {
   ObjectStorageService,
   ObjectNotFoundError,
 } from "./objectStorage";
+import { fileStorageService } from "./services/file-storage";
 import { mcpServer } from "./mcp/server";
 import { setupSSE } from "./services/sse";
 import { registerWorkflowRoutes } from "./routes/workflow";
@@ -1811,6 +1812,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Local file storage routes for ElevenLabs recordings and transcripts
+  app.get("/api/files/audio/:fileId", async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      
+      const file = await fileStorageService.getFile(fileId, "audio");
+      if (!file || !await fileStorageService.fileExists(file.localPath)) {
+        return res.status(404).json({ error: "Audio file not found" });
+      }
+
+      const fileBuffer = await fileStorageService.readFile(file.localPath);
+      
+      // Set appropriate headers for audio streaming
+      res.set({
+        "Content-Type": file.mimeType,
+        "Content-Length": file.size.toString(),
+        "Cache-Control": "public, max-age=3600",
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": `inline; filename="${file.filename}"`
+      });
+
+      res.send(fileBuffer);
+    } catch (error) {
+      console.error("Error serving audio file:", error);
+      res.status(500).json({ error: "Error serving audio file" });
+    }
+  });
+
+  app.get("/api/files/transcript/:fileId", async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      
+      const file = await fileStorageService.getFile(fileId, "transcript");
+      if (!file || !await fileStorageService.fileExists(file.localPath)) {
+        return res.status(404).json({ error: "Transcript file not found" });
+      }
+
+      const fileBuffer = await fileStorageService.readFile(file.localPath);
+      
+      // Set appropriate headers for text files
+      res.set({
+        "Content-Type": file.mimeType,
+        "Content-Length": file.size.toString(),
+        "Cache-Control": "public, max-age=3600",
+        "Content-Disposition": `inline; filename="${file.filename}"`
+      });
+
+      res.send(fileBuffer);
+    } catch (error) {
+      console.error("Error serving transcript file:", error);
+      res.status(500).json({ error: "Error serving transcript file" });
+    }
+  });
+
+  // Download route for audio files
+  app.get("/api/files/audio/:fileId/download", async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      
+      const file = await fileStorageService.getFile(fileId, "audio");
+      if (!file || !await fileStorageService.fileExists(file.localPath)) {
+        return res.status(404).json({ error: "Audio file not found" });
+      }
+
+      const fileBuffer = await fileStorageService.readFile(file.localPath);
+      
+      // Force download
+      res.set({
+        "Content-Type": "application/octet-stream",
+        "Content-Length": file.size.toString(),
+        "Content-Disposition": `attachment; filename="${file.filename}"`
+      });
+
+      res.send(fileBuffer);
+    } catch (error) {
+      console.error("Error downloading audio file:", error);
+      res.status(500).json({ error: "Error downloading audio file" });
+    }
+  });
+
+  // Download route for transcript files
+  app.get("/api/files/transcript/:fileId/download", async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      
+      const file = await fileStorageService.getFile(fileId, "transcript");
+      if (!file || !await fileStorageService.fileExists(file.localPath)) {
+        return res.status(404).json({ error: "Transcript file not found" });
+      }
+
+      const fileBuffer = await fileStorageService.readFile(file.localPath);
+      
+      // Force download
+      res.set({
+        "Content-Type": "application/octet-stream", 
+        "Content-Length": file.size.toString(),
+        "Content-Disposition": `attachment; filename="${file.filename}"`
+      });
+
+      res.send(fileBuffer);
+    } catch (error) {
+      console.error("Error downloading transcript file:", error);
+      res.status(500).json({ error: "Error downloading transcript file" });
+    }
+  });
 
   // Object storage endpoints
   app.get("/objects/:objectPath(*)", async (req, res) => {

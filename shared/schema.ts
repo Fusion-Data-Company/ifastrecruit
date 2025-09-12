@@ -22,78 +22,79 @@ export const campaigns = pgTable("campaigns", {
 });
 
 export const candidates = pgTable("candidates", {
+  // === CORE CANDIDATE FIELDS ===
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  campaignId: varchar("campaign_id").references(() => campaigns.id),
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
-  sourceRef: text("source_ref"),
-  resumeUrl: text("resume_url"),
-  tags: text("tags").array(),
   pipelineStage: pipelineStageEnum("pipeline_stage").notNull().default("NEW"),
   score: integer("score").default(0),
-  // === INTERVIEW DATA FIELDS ===
-  notes: text("notes"),
-  interviewData: jsonb("interview_data"),
-  interviewScore: integer("interview_score"),
-  interviewDuration: text("interview_duration"),
-  interviewTranscript: text("interview_transcript"),
-  interviewSummary: text("interview_summary"),
-  evaluationCriteria: jsonb("evaluation_criteria"),
-  dataCollectionResults: jsonb("data_collection_results"),
-  agentId: text("agent_id"),
-  conversationId: text("conversation_id"),
-  interviewDate: timestamp("interview_date"),
-  callDuration: integer("call_duration_secs"),
-  messageCount: integer("message_count"),
-  callStatus: text("call_status"),
-  callSuccessful: text("call_successful"),
-  transcriptSummary: text("transcript_summary"),
-  callSummaryTitle: text("call_summary_title"),
-  agentName: text("agent_name"),
-  // === NEW ELEVENLABS FIELDS ===
-  audioRecordingUrl: text("audio_recording_url"),
-  agentData: jsonb("agent_data"), // Comprehensive agent interaction data
-  conversationMetadata: jsonb("conversation_metadata"), // Conversation-specific metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   
-  // === COMPREHENSIVE ELEVENLABS INTERVIEW FIELDS ===
-  // Core interview responses
-  whyInsurance: text("why_insurance"),
-  whyNow: text("why_now"),
-  salesExperience: text("sales_experience"),
-  difficultCustomerStory: text("difficult_customer_story"),
-  consultativeSelling: text("consultative_selling"),
+  // === SOURCE & METADATA FIELDS ===
+  campaignId: varchar("campaign_id").references(() => campaigns.id), // Legacy support for campaigns
+  sourceRef: text("source_ref"), // Source tracking ("elevenlabs_interview", "manual", etc.)
+  resumeUrl: text("resume_url"), // Uploaded resume file URL
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`), // Searchable tags for organization
+  notes: text("notes"), // Manual notes from recruiters
   
-  // Market preferences and timeline
-  preferredMarkets: text("preferred_markets").array(),
-  timeline: text("timeline"),
-  recommendedNextSteps: text("recommended_next_steps"),
+  // === ELEVENLABS CONVERSATION DATA ===
+  agentId: text("agent_id"), // ElevenLabs agent identifier
+  conversationId: text("conversation_id"), // Unique conversation identifier
+  interviewDate: timestamp("interview_date"), // When the conversation occurred
+  callDuration: integer("call_duration_secs"), // Call duration in seconds
+  messageCount: integer("message_count"), // Number of messages exchanged
+  callStatus: text("call_status"), // Call completion status
+  callSuccessful: text("call_successful"), // Whether call completed successfully
+  agentName: text("agent_name"), // Name of the ElevenLabs agent
+  audioRecordingUrl: text("audio_recording_url"), // Original ElevenLabs audio URL
+  localAudioFileId: text("local_audio_file_id"), // Local file storage ID for audio recording
+  localTranscriptFileId: text("local_transcript_file_id"), // Local file storage ID for transcript
   
-  // Performance indicators
+  // === INTERVIEW CONTENT & ANALYSIS ===
+  interviewTranscript: text("interview_transcript"), // Full conversation transcript
+  transcriptSummary: text("transcript_summary"), // AI-generated summary
+  callSummaryTitle: text("call_summary_title"), // Brief title for the call
+  interviewSummary: text("interview_summary"), // Detailed interview summary
+  interviewDuration: text("interview_duration"), // Formatted duration string
+  
+  // === STRUCTURED INTERVIEW RESPONSES ===
+  whyInsurance: text("why_insurance"), // Why candidate wants insurance career
+  whyNow: text("why_now"), // Why making career change now
+  salesExperience: text("sales_experience"), // Previous sales experience
+  difficultCustomerStory: text("difficult_customer_story"), // How they handle difficult customers
+  consultativeSelling: text("consultative_selling"), // Understanding of consultative selling
+  preferredMarkets: text("preferred_markets").array().default(sql`ARRAY[]::text[]`), // Target markets of interest
+  timeline: text("timeline"), // Availability timeline
+  recommendedNextSteps: text("recommended_next_steps"), // AI-recommended next actions
+  
+  // === PERFORMANCE INDICATORS & SCORES ===
   demoCallPerformed: boolean("demo_call_performed").default(false),
   kevinPersonaUsed: boolean("kevin_persona_used").default(false),
   coachingGiven: boolean("coaching_given").default(false),
   pitchDelivered: boolean("pitch_delivered").default(false),
   
-  // Evaluation scores
-  overallScore: integer("overall_score"),
+  // Individual assessment scores (0-100 scale)
+  overallScore: integer("overall_score"), // Overall candidate assessment
+  interviewScore: integer("interview_score"), // Legacy interview score
   communicationScore: integer("communication_score"),
   salesAptitudeScore: integer("sales_aptitude_score"),
   motivationScore: integer("motivation_score"),
   coachabilityScore: integer("coachability_score"),
   professionalPresenceScore: integer("professional_presence_score"),
   
-  // Development assessment
-  strengths: text("strengths").array(),
-  developmentAreas: text("development_areas").array(),
+  // === ASSESSMENT & DEVELOPMENT ===
+  strengths: text("strengths").array().default(sql`ARRAY[]::text[]`), // Identified candidate strengths
+  developmentAreas: text("development_areas").array().default(sql`ARRAY[]::text[]`), // Areas for improvement
   
-  // Additional structured evaluation data
+  // === STRUCTURED DATA STORAGE ===
+  interviewData: jsonb("interview_data"), // Complete raw interview data
+  evaluationCriteria: jsonb("evaluation_criteria"), // Assessment criteria used
+  dataCollectionResults: jsonb("data_collection_results"), // Structured data extraction results
+  agentData: jsonb("agent_data"), // Comprehensive agent interaction data
+  conversationMetadata: jsonb("conversation_metadata"), // Conversation-specific metadata
   evaluationDetails: jsonb("evaluation_details"), // Detailed evaluation breakdown
   interviewMetrics: jsonb("interview_metrics"), // Performance metrics and statistics
-  // === END ELEVENLABS INTERVIEW FIELDS ===
-  
-  // === END INTERVIEW DATA FIELDS ===
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   emailUnique: unique().on(table.email),
 }));
