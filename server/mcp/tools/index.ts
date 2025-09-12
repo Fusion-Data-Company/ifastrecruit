@@ -596,6 +596,7 @@ export async function createCandidateFromInterview(args: any) {
     if (!email || 
         email.includes('conversation-') || 
         email.includes('@temp.elevenlabs.com') || 
+        email.includes('@ifast-internal.temp') ||
         email.includes('conv_') ||
         !email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
       

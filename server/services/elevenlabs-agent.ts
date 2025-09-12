@@ -273,48 +273,38 @@ export class ElevenLabsAgentService {
       let isValidEmail = false;
       let shouldCreatePartialCandidate = false;
       
-      // Check if we have a valid email
+      // Check if we have a valid email - ONLY create candidates with real emails
       if (candidateEmail && 
           !candidateEmail.includes('conversation-') && 
           !candidateEmail.includes('@temp.elevenlabs.com') && 
+          !candidateEmail.includes('@ifast-internal.temp') &&
           !candidateEmail.includes('conv_') &&
           candidateEmail.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
         isValidEmail = true;
         console.log(`[ElevenLabs Agent] Valid email found: ${candidateEmail}`);
       } else {
-        // Check if we have enough data to create a partial candidate
-        if (extractedData.name && extractedData.name.length > 2 && extractedData.name !== 'undefined') {
-          shouldCreatePartialCandidate = true;
-          // Generate a synthetic email for internal tracking
-          const nameSlug = extractedData.name.toLowerCase()
-            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-            .replace(/\s+/g, '.') // Replace spaces with dots
-            .substring(0, 20); // Limit length
-          candidateEmail = `${nameSlug}.${conversationId.slice(-8)}@ifast-internal.temp`;
-          console.log(`[ElevenLabs Agent] Creating partial candidate with synthetic email: ${candidateEmail}`);
-        } else {
-          console.error(`[ElevenLabs Agent] Insufficient data for candidate creation: name="${extractedData.name}", email="${extractedData.email}", phone="${extractedData.phone}"`);
-          
-          await storage.createAuditLog({
-            actor: "elevenlabs_agent",
-            action: "candidate_creation_insufficient_data", 
-            payloadJson: { 
-              rejectedEmail: extractedData.email,
-              extractedName: extractedData.name,
-              extractedPhone: extractedData.phone,
-              conversationId,
-              reason: "Insufficient data for candidate creation"
-            },
-            pathUsed: "elevenlabs_api",
-          });
+        // NO MORE SYNTHETIC CANDIDATES - only create candidates with real email addresses
+        console.log(`[ElevenLabs Agent] Skipping candidate creation - no valid email found: name="${extractedData.name}", email="${extractedData.email}", phone="${extractedData.phone}"`);
+        
+        await storage.createAuditLog({
+          actor: "elevenlabs_agent",
+          action: "candidate_creation_skipped_no_valid_email", 
+          payloadJson: { 
+            rejectedEmail: extractedData.email,
+            extractedName: extractedData.name,
+            extractedPhone: extractedData.phone,
+            conversationId,
+            reason: "Skipping candidate creation - no valid email address found"
+          },
+          pathUsed: "elevenlabs_api",
+        });
 
-          return {
-            success: false,
-            action: 'failed',
-            error: "Insufficient data for candidate creation",
-            details: { extractedData }
-          };
-        }
+        return {
+          success: false,
+          action: 'failed',
+          error: "No valid email address - candidate creation skipped",
+          details: { extractedData }
+        };
       }
 
       // Check if candidate already exists (using final email)
