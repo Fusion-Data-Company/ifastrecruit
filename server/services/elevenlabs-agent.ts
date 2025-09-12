@@ -217,6 +217,174 @@ export class ElevenLabsAgentService {
   }
 
   /**
+   * Extract rich transcript data including word-level timing, tool calls, and metrics
+   */
+  private extractRichTranscriptData(transcript: any): any {
+    if (!transcript || !Array.isArray(transcript)) {
+      return transcript; // Return as-is if not an array
+    }
+
+    // Process each message to extract all available fields
+    return transcript.map((msg: any) => ({
+      // Core message data
+      role: msg.role || msg.speaker,
+      message: msg.message || msg.content || msg.text,
+      
+      // Timing data
+      time_in_call_secs: msg.time_in_call_secs,
+      endTime: msg.endTime,
+      secondsFromStart: msg.secondsFromStart,
+      time_step_s: msg.time_step_s,
+      duration: msg.duration,
+      
+      // Channel and confidence
+      channel_index: msg.channel_index,
+      confidence: msg.confidence,
+      
+      // Word-level data with timing
+      words: msg.words ? msg.words.map((word: any) => ({
+        word: word.word || word.text,
+        start: word.start,
+        end: word.end,
+        confidence: word.confidence,
+        speaker: word.speaker
+      })) : undefined,
+      
+      // Tool calls and results
+      tool_calls: msg.tool_calls,
+      tool_results: msg.tool_results,
+      
+      // Feedback data
+      feedback: msg.feedback ? {
+        type: msg.feedback.type,
+        score: msg.feedback.score,
+        text: msg.feedback.text
+      } : undefined,
+      
+      // Performance metrics
+      conversation_turn_metrics: msg.conversation_turn_metrics,
+      
+      // Any additional fields
+      ...Object.keys(msg).reduce((acc, key) => {
+        // Only include fields we haven't explicitly handled
+        if (!['role', 'speaker', 'message', 'content', 'text', 'time_in_call_secs', 
+              'endTime', 'secondsFromStart', 'time_step_s', 'duration', 'channel_index', 
+              'confidence', 'words', 'tool_calls', 'tool_results', 'feedback', 
+              'conversation_turn_metrics'].includes(key)) {
+          acc[key] = msg[key];
+        }
+        return acc;
+      }, {} as any)
+    }));
+  }
+
+  /**
+   * Extract word-level transcript data for detailed analysis
+   */
+  private extractWordLevelTranscript(transcript: any): any {
+    if (!transcript || !Array.isArray(transcript)) {
+      return null;
+    }
+
+    const wordLevelData: any[] = [];
+    
+    transcript.forEach((msg: any) => {
+      if (msg.words && Array.isArray(msg.words)) {
+        msg.words.forEach((word: any) => {
+          wordLevelData.push({
+            speaker: msg.role || msg.speaker,
+            word: word.word || word.text,
+            start_time: word.start,
+            end_time: word.end,
+            confidence: word.confidence,
+            channel_index: msg.channel_index,
+            message_index: transcript.indexOf(msg)
+          });
+        });
+      }
+    });
+
+    return wordLevelData.length > 0 ? wordLevelData : null;
+  }
+
+  /**
+   * Extract tool calls and results from transcript
+   */
+  private extractToolCallsAndResults(transcript: any): { calls: any[], results: any[] } {
+    if (!transcript || !Array.isArray(transcript)) {
+      return { calls: [], results: [] };
+    }
+
+    const calls: any[] = [];
+    const results: any[] = [];
+
+    transcript.forEach((msg: any) => {
+      if (msg.tool_calls) {
+        calls.push(...(Array.isArray(msg.tool_calls) ? msg.tool_calls : [msg.tool_calls]));
+      }
+      if (msg.tool_results) {
+        results.push(...(Array.isArray(msg.tool_results) ? msg.tool_results : [msg.tool_results]));
+      }
+    });
+
+    return { calls, results };
+  }
+
+  /**
+   * Extract performance metrics from transcript
+   */
+  private extractPerformanceMetrics(transcript: any): any {
+    if (!transcript || !Array.isArray(transcript)) {
+      return null;
+    }
+
+    const metrics: any = {
+      totalMessages: transcript.length,
+      messagesByRole: {},
+      averageMessageLength: 0,
+      conversationTurns: [],
+      timingData: []
+    };
+
+    let totalLength = 0;
+    
+    transcript.forEach((msg: any, index: number) => {
+      const role = msg.role || msg.speaker || 'unknown';
+      
+      // Count messages by role
+      metrics.messagesByRole[role] = (metrics.messagesByRole[role] || 0) + 1;
+      
+      // Calculate message length
+      const messageText = msg.message || msg.content || msg.text || '';
+      totalLength += messageText.length;
+      
+      // Collect conversation turn metrics
+      if (msg.conversation_turn_metrics) {
+        metrics.conversationTurns.push({
+          index,
+          role,
+          metrics: msg.conversation_turn_metrics
+        });
+      }
+      
+      // Collect timing data
+      if (msg.time_in_call_secs || msg.secondsFromStart) {
+        metrics.timingData.push({
+          index,
+          role,
+          timeInCall: msg.time_in_call_secs,
+          secondsFromStart: msg.secondsFromStart,
+          duration: msg.duration
+        });
+      }
+    });
+
+    metrics.averageMessageLength = transcript.length > 0 ? Math.round(totalLength / transcript.length) : 0;
+    
+    return metrics;
+  }
+
+  /**
    * Process a single conversation and create/update candidate record
    */
   async processConversation(conversationId: string): Promise<ProcessedConversationResult> {
@@ -229,31 +397,124 @@ export class ElevenLabsAgentService {
       // Format transcript as human-readable text
       const formattedTranscript = this.formatTranscriptToPlainText(conversationDetails.transcript);
       
-      // Prepare comprehensive interview data structure
+      // Extract all rich data from the API response
+      const metadata = conversationDetails.metadata || {};
+      const analysis = conversationDetails.analysis || {};
+      const initData = conversationDetails.conversation_initiation_client_data || {};
+      
+      // Extract rich transcript data and metrics
+      const transcriptMessages = this.extractRichTranscriptData(conversationDetails.transcript);
+      const wordLevelTranscript = this.extractWordLevelTranscript(conversationDetails.transcript);
+      const { calls: toolCalls, results: toolResults } = this.extractToolCallsAndResults(conversationDetails.transcript);
+      const performanceMetrics = this.extractPerformanceMetrics(conversationDetails.transcript);
+      
+      // Prepare comprehensive interview data structure with ALL API fields
       const interviewData = {
+        // Core fields (keep for backward compatibility)
         agent_id: AUTHORIZED_AGENT_ID,
         agentId: AUTHORIZED_AGENT_ID,
         conversation_id: conversationId,
         conversationId: conversationId,
         agent_name: "iFast Broker Interview Agent",
         agentName: "iFast Broker Interview Agent",
+        
+        // Plain text transcript (keep for backward compatibility)
         transcript: formattedTranscript,
+        
+        // Rich transcript data (NEW)
+        transcriptMessages: transcriptMessages,
+        wordLevelTranscript: wordLevelTranscript,
+        toolCalls: toolCalls,
+        toolResults: toolResults,
+        
+        // Performance metrics (NEW)
+        conversationTurnMetrics: performanceMetrics?.conversationTurns,
+        messageTimings: performanceMetrics?.timingData,
+        interviewMetrics: performanceMetrics,
+        
+        // Duration and counts
         duration: this.calculateDuration(conversationDetails),
         summary: this.generateSummary(conversationDetails),
-        call_duration_secs: this.parseDurationSeconds(conversationDetails),
-        callDuration: this.parseDurationSeconds(conversationDetails),
+        call_duration_secs: metadata.call_duration_secs || this.parseDurationSeconds(conversationDetails),
+        callDuration: metadata.call_duration_secs || this.parseDurationSeconds(conversationDetails),
         message_count: conversationDetails.transcript ? conversationDetails.transcript.length : 0,
         messageCount: conversationDetails.transcript ? conversationDetails.transcript.length : 0,
-        status: "completed",
-        callStatus: "completed",
-        call_successful: true,
-        callSuccessful: true,
-        transcript_summary: this.generateTranscriptSummary(conversationDetails),
-        transcriptSummary: this.generateTranscriptSummary(conversationDetails),
+        
+        // Status information
+        status: conversationDetails.status || "completed",
+        conversationStatus: conversationDetails.status,
+        callStatus: conversationDetails.status || "completed",
+        
+        // Analysis data
+        call_successful: analysis.call_successful !== false,
+        callSuccessful: analysis.call_successful !== false,
+        transcript_summary: analysis.transcript_summary || this.generateTranscriptSummary(conversationDetails),
+        transcriptSummary: analysis.transcript_summary || this.generateTranscriptSummary(conversationDetails),
+        call_summary_title: analysis.call_summary_title,
+        callSummaryTitle: analysis.call_summary_title,
+        conversationNotes: analysis.conversation_notes,
+        customAnalysisData: analysis.custom_analysis_data,
+        
+        // Timestamps (NEW fields)
         created_at: conversationDetails.created_at,
         ended_at: conversationDetails.ended_at,
-        // Include all metadata
-        ...conversationDetails.metadata
+        startTimeUnixSecs: metadata.start_time_unix_secs,
+        endTimeUnixSecs: metadata.end_time_unix_secs,
+        
+        // Cost and billing (NEW)
+        cost: metadata.cost,
+        charging: metadata.charging,
+        hasChargingTimerTriggered: metadata.has_charging_timer_triggered,
+        hasBillingTimerTriggered: metadata.has_billing_timer_triggered,
+        
+        // Deletion and feedback (NEW)
+        deletionSettings: metadata.deletion_settings,
+        feedbackScore: metadata.feedback_score,
+        feedbackComment: metadata.feedback_comment,
+        
+        // Connection and authorization (NEW)
+        authorizationMethod: metadata.authorization_method,
+        creationMethod: metadata.creation_method,
+        conversationMode: metadata.conversation_mode,
+        source: metadata.source,
+        channelId: metadata.channel_id,
+        clientIp: metadata.client_ip,
+        terminationReason: metadata.termination_reason,
+        conversationApiVersion: metadata.conversation_api_version,
+        
+        // Custom data (NEW)
+        customLlmData: metadata.custom_llm_data,
+        
+        // Audio availability flags (NEW)
+        hasAudio: conversationDetails.has_audio,
+        hasUserAudio: conversationDetails.has_user_audio,
+        hasResponseAudio: conversationDetails.has_response_audio,
+        
+        // User ID (NEW)
+        elevenLabsUserId: conversationDetails.user_id,
+        
+        // Conversation initiation data (NEW)
+        conversationInitiationClientData: initData,
+        customLlmExtraBody: initData.custom_llm_extra_body,
+        serverUrl: initData.server_url,
+        conversationConfigOverride: initData.conversation_config_override,
+        customVoiceSettings: initData.custom_voice_settings,
+        dynamicVariables: initData.dynamic_variables,
+        
+        // Evaluation and data collection results
+        evaluationCriteria: metadata.evaluation_criteria_results,
+        dataCollectionResults: metadata.data_collection_results,
+        
+        // Include all raw metadata for completeness
+        conversationMetadata: metadata,
+        agentData: {
+          agentId: AUTHORIZED_AGENT_ID,
+          agentName: "iFast Broker Interview Agent",
+          ...conversationDetails
+        },
+        
+        // Include all fields from metadata directly for backward compatibility
+        ...metadata
       };
 
       // Validate the interview data
@@ -443,8 +704,71 @@ export class ElevenLabsAgentService {
           audioRecordingUrl: validationResult.data.audio_recording_url || validationResult.data.audioRecordingUrl,
           localAudioFileId: localAudioFileId,
           localTranscriptFileId: localTranscriptFileId,
-          agentData: validationResult.data.agent_data || validationResult.data.agentData,
-          conversationMetadata: validationResult.data.conversation_metadata || validationResult.data.conversationMetadata,
+          agentData: validationResult.data.agentData,
+          conversationMetadata: validationResult.data.conversationMetadata,
+          
+          // === NEW FIELDS FROM v3 API ===
+          
+          // Status and core data
+          conversationStatus: validationResult.data.conversationStatus,
+          elevenLabsUserId: validationResult.data.elevenLabsUserId,
+          
+          // Timestamps
+          startTimeUnixSecs: validationResult.data.startTimeUnixSecs,
+          endTimeUnixSecs: validationResult.data.endTimeUnixSecs,
+          
+          // Cost and billing
+          cost: validationResult.data.cost,
+          charging: validationResult.data.charging,
+          hasChargingTimerTriggered: validationResult.data.hasChargingTimerTriggered,
+          hasBillingTimerTriggered: validationResult.data.hasBillingTimerTriggered,
+          
+          // Deletion and feedback
+          deletionSettings: validationResult.data.deletionSettings,
+          feedbackScore: validationResult.data.feedbackScore,
+          feedbackComment: validationResult.data.feedbackComment,
+          
+          // Connection and authorization
+          authorizationMethod: validationResult.data.authorizationMethod,
+          creationMethod: validationResult.data.creationMethod,
+          conversationMode: validationResult.data.conversationMode,
+          source: validationResult.data.source,
+          channelId: validationResult.data.channelId,
+          clientIp: validationResult.data.clientIp,
+          terminationReason: validationResult.data.terminationReason,
+          conversationApiVersion: validationResult.data.conversationApiVersion,
+          
+          // Custom data
+          customLlmData: validationResult.data.customLlmData,
+          
+          // Analysis fields
+          conversationNotes: validationResult.data.conversationNotes,
+          customAnalysisData: validationResult.data.customAnalysisData,
+          
+          // Audio flags
+          hasAudio: validationResult.data.hasAudio,
+          hasUserAudio: validationResult.data.hasUserAudio,
+          hasResponseAudio: validationResult.data.hasResponseAudio,
+          
+          // Conversation initiation data
+          conversationInitiationClientData: validationResult.data.conversationInitiationClientData,
+          
+          // Rich transcript data
+          transcriptMessages: validationResult.data.transcriptMessages,
+          wordLevelTranscript: validationResult.data.wordLevelTranscript,
+          toolCalls: validationResult.data.toolCalls,
+          toolResults: validationResult.data.toolResults,
+          
+          // Performance metrics
+          conversationTurnMetrics: validationResult.data.conversationTurnMetrics,
+          messageTimings: validationResult.data.messageTimings,
+          
+          // Dynamic variables and configuration
+          dynamicVariables: validationResult.data.dynamicVariables,
+          conversationConfigOverride: validationResult.data.conversationConfigOverride,
+          customVoiceSettings: validationResult.data.customVoiceSettings,
+          serverUrl: validationResult.data.serverUrl,
+          customLlmExtraBody: validationResult.data.customLlmExtraBody,
           
           // Update score with extracted or calculated value
           score: extractedData.overallScore || existingCandidate.score,
@@ -525,8 +849,71 @@ export class ElevenLabsAgentService {
           audioRecordingUrl: validationResult.data.audio_recording_url || validationResult.data.audioRecordingUrl,
           localAudioFileId: localAudioFileId,
           localTranscriptFileId: localTranscriptFileId,
-          agentData: validationResult.data.agent_data || validationResult.data.agentData,
-          conversationMetadata: validationResult.data.conversation_metadata || validationResult.data.conversationMetadata,
+          agentData: validationResult.data.agentData,
+          conversationMetadata: validationResult.data.conversationMetadata,
+          
+          // === NEW FIELDS FROM v3 API ===
+          
+          // Status and core data
+          conversationStatus: validationResult.data.conversationStatus,
+          elevenLabsUserId: validationResult.data.elevenLabsUserId,
+          
+          // Timestamps
+          startTimeUnixSecs: validationResult.data.startTimeUnixSecs,
+          endTimeUnixSecs: validationResult.data.endTimeUnixSecs,
+          
+          // Cost and billing
+          cost: validationResult.data.cost,
+          charging: validationResult.data.charging,
+          hasChargingTimerTriggered: validationResult.data.hasChargingTimerTriggered,
+          hasBillingTimerTriggered: validationResult.data.hasBillingTimerTriggered,
+          
+          // Deletion and feedback
+          deletionSettings: validationResult.data.deletionSettings,
+          feedbackScore: validationResult.data.feedbackScore,
+          feedbackComment: validationResult.data.feedbackComment,
+          
+          // Connection and authorization
+          authorizationMethod: validationResult.data.authorizationMethod,
+          creationMethod: validationResult.data.creationMethod,
+          conversationMode: validationResult.data.conversationMode,
+          source: validationResult.data.source,
+          channelId: validationResult.data.channelId,
+          clientIp: validationResult.data.clientIp,
+          terminationReason: validationResult.data.terminationReason,
+          conversationApiVersion: validationResult.data.conversationApiVersion,
+          
+          // Custom data
+          customLlmData: validationResult.data.customLlmData,
+          
+          // Analysis fields
+          conversationNotes: validationResult.data.conversationNotes,
+          customAnalysisData: validationResult.data.customAnalysisData,
+          
+          // Audio flags
+          hasAudio: validationResult.data.hasAudio,
+          hasUserAudio: validationResult.data.hasUserAudio,
+          hasResponseAudio: validationResult.data.hasResponseAudio,
+          
+          // Conversation initiation data
+          conversationInitiationClientData: validationResult.data.conversationInitiationClientData,
+          
+          // Rich transcript data
+          transcriptMessages: validationResult.data.transcriptMessages,
+          wordLevelTranscript: validationResult.data.wordLevelTranscript,
+          toolCalls: validationResult.data.toolCalls,
+          toolResults: validationResult.data.toolResults,
+          
+          // Performance metrics
+          conversationTurnMetrics: validationResult.data.conversationTurnMetrics,
+          messageTimings: validationResult.data.messageTimings,
+          
+          // Dynamic variables and configuration
+          dynamicVariables: validationResult.data.dynamicVariables,
+          conversationConfigOverride: validationResult.data.conversationConfigOverride,
+          customVoiceSettings: validationResult.data.customVoiceSettings,
+          serverUrl: validationResult.data.serverUrl,
+          customLlmExtraBody: validationResult.data.customLlmExtraBody,
         });
       }
 

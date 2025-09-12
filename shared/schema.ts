@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, unique, real } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -95,6 +95,73 @@ export const candidates = pgTable("candidates", {
   conversationMetadata: jsonb("conversation_metadata"), // Conversation-specific metadata
   evaluationDetails: jsonb("evaluation_details"), // Detailed evaluation breakdown
   interviewMetrics: jsonb("interview_metrics"), // Performance metrics and statistics
+  
+  // === NEW ELEVENLABS API FIELDS (v3 API) ===
+  
+  // Conversation Status & Core Data
+  conversationStatus: text("conversation_status"), // initiated, in-progress, processing, done, failed
+  elevenLabsUserId: text("elevenlabs_user_id"), // User ID from ElevenLabs
+  
+  // Timestamps & Duration (Metadata)
+  startTimeUnixSecs: integer("start_time_unix_secs"), // Unix timestamp of call start
+  endTimeUnixSecs: integer("end_time_unix_secs"), // Unix timestamp of call end
+  
+  // Call Cost & Billing
+  cost: real("cost"), // Call cost in credits/currency
+  charging: jsonb("charging"), // Charging information
+  hasChargingTimerTriggered: boolean("has_charging_timer_triggered").default(false),
+  hasBillingTimerTriggered: boolean("has_billing_timer_triggered").default(false),
+  
+  // Deletion & Feedback
+  deletionSettings: jsonb("deletion_settings"), // Data deletion configuration
+  feedbackScore: integer("feedback_score"), // User feedback score
+  feedbackComment: text("feedback_comment"), // User feedback text
+  
+  // Connection & Authorization
+  authorizationMethod: text("authorization_method"), // How the call was authorized
+  creationMethod: text("creation_method"), // How conversation was created
+  conversationMode: text("conversation_mode"), // Mode of conversation
+  source: text("source"), // Source of the conversation
+  channelId: text("channel_id"), // Channel identifier
+  clientIp: text("client_ip"), // Client IP address
+  terminationReason: text("termination_reason"), // Why conversation ended
+  conversationApiVersion: text("conversation_api_version"), // API version used
+  
+  // Custom Data
+  customLlmData: jsonb("custom_llm_data"), // Custom LLM data passed
+  
+  // Analysis Fields
+  conversationNotes: text("conversation_notes"), // Notes from analysis
+  customAnalysisData: jsonb("custom_analysis_data"), // Custom analysis results
+  
+  // Audio Availability Flags
+  hasAudio: boolean("has_audio").default(false), // Whether audio is available
+  hasUserAudio: boolean("has_user_audio").default(false), // User audio available
+  hasResponseAudio: boolean("has_response_audio").default(false), // Agent audio available
+  
+  // Conversation Initiation Data
+  conversationInitiationClientData: jsonb("conversation_initiation_client_data"), // Client data at initiation
+  
+  // Rich Transcript Data (stored as JSONB for complex structure)
+  transcriptMessages: jsonb("transcript_messages"), // Full transcript with all message details
+  
+  // Word-Level Transcript Data
+  wordLevelTranscript: jsonb("word_level_transcript"), // Word-by-word timing and confidence
+  
+  // Tool Calls & Results
+  toolCalls: jsonb("tool_calls"), // All tool calls made during conversation
+  toolResults: jsonb("tool_results"), // Results from tool calls
+  
+  // Performance Metrics
+  conversationTurnMetrics: jsonb("conversation_turn_metrics"), // Turn-by-turn metrics
+  messageTimings: jsonb("message_timings"), // Timing data for each message
+  
+  // Dynamic Variables & Configuration
+  dynamicVariables: jsonb("dynamic_variables"), // Dynamic variables used
+  conversationConfigOverride: jsonb("conversation_config_override"), // Config overrides
+  customVoiceSettings: jsonb("custom_voice_settings"), // Voice settings used
+  serverUrl: text("server_url"), // Server URL if custom
+  customLlmExtraBody: jsonb("custom_llm_extra_body") // Extra LLM configuration
 }, (table) => ({
   emailUnique: unique().on(table.email),
   conversationIdUnique: unique().on(table.conversationId),
