@@ -1,0 +1,163 @@
+COMPLETE ACTION PROMPT: iFast Broker Enterprise Recruiting Platform Enhancement
+PROJECT CONTEXT
+You are working on the iFast Broker Enterprise Recruiting Platform - a production recruiting system with ElevenLabs voice agent integration. The goal is to transform it from "mid-level" to "elite" quality suitable for executive use, complete the ElevenLabs MCP integration, and enable full voice-driven platform control.
+
+CURRENT STATUS SUMMARY
+COMPLETED WORK ✅
+Elite candidate modal redesign with glassmorphic styling (client/src/components/CandidateModal.tsx)
+Transcript section redesign from "wall of text" to collapsible interface (client/src/components/EnhancedTranscript.tsx)
+Pipeline stage rename: "Technical Screen" → "In Slack" across all components
+Calendar styling enhancement with professional colorful design (client/src/components/Calendar.tsx)
+Analytics dashboard transformation to real production data with remaining accuracy issues (client/src/components/AnalyticsDashboard.tsx)
+CRITICAL CONSTRAINTS ⚠️
+DO NOT ALTER: Backend agent agent_0601k4t9d82qe5ybsgkngct0zzkm processing in server/services/elevenlabs-agent.ts, server/services/elevenlabs-automation.ts, server/services/elevenlabs-poison-handler.ts
+DO NOT BREAK: Existing MCP tools in server/mcp/server.ts and server/mcp/tools/index.ts
+ADDITIVE ONLY: All changes must be additions, not replacements
+AGENT ARCHITECTURE
+agent_3401k4612x44fqcvzgj0hz2shnhv (Platform Assistant) - Bottom-right UI, needs full MCP access for voice platform control
+agent_0601k4t9d82qe5ybsgkngct0zzkm (Interview Agent) - Backend processing, working correctly, DO NOT MODIFY
+agent_01k07mhgszfcg9br6n46m8d35m (Placeholder) - In client/src/components/ElevenLabsWidgets.tsx line 142, replace with correct ID
+PHASE 1: COMPLETE ELITE UI TRANSFORMATION
+Task 1.1: Fix Analytics Dashboard Accuracy Issues
+File: client/src/components/AnalyticsDashboard.tsx
+Problem: Trends data uses flawed methodology, time metrics are approximations
+Action:
+
+Fix trends calculation to count interviews by actual interview dates across ALL candidates, not just those created that day
+Fix offers/hires trends to use actual transition dates, not creation date + current stage
+Update time metrics to use proper stage transition timestamps instead of (now - createdAt)
+Add data validation and proper null handling
+Ensure all metrics are suitable for executive decision-making
+Task 1.2: Fix ElevenLabs ID Display Issues
+Files: Search for ElevenLabs ID display across pipeline components
+Problem: Agent IDs running across pipeline page causing overflow
+Action:
+
+Find where agent IDs are displayed in pipeline views
+Add proper text truncation, ellipsis, or wrapping
+Ensure responsive display across screen sizes
+PHASE 2: ELEVENLABS MCP INTEGRATION
+Task 2.1: Safe Agent ID Replacement
+File: client/src/components/ElevenLabsWidgets.tsx line 142
+Action: Replace placeholder agent_01k07mhgszfcg9br6n46m8d35m with correct agent_0601k4t9d82qe5ybsgkngct0zzkm
+Constraint: Frontend only, do not touch backend references
+
+Task 2.2: Add ElevenLabs MCP Tools
+File: server/mcp/server.ts and server/mcp/tools/index.ts
+Reference: Use ElevenLabs MCP documentation patterns
+Action: Add these tools to existing MCP server (additive only):
+
+Core Conversation Tools:
+
+list_conversations - List conversations with filtering (agent_id, date ranges, etc.)
+get_conversation_transcript - Get full transcript with metadata
+get_conversation_audio - Download audio recordings with format options
+search_conversations - Search by content/metadata
+analyze_conversation - Detailed conversation analysis
+export_transcript - Export in various formats (txt, json, srt, vtt, etc.)
+WebSocket Integration:
+
+start_realtime_conversation - Initialize WebSocket connections
+get_websocket_token - Get signed WebSocket URLs
+Real-time conversation handling
+Audio Format Support:
+
+Audio format validation (MP3, PCM, ulaw)
+Format conversion utilities
+Tier-based audio restrictions
+Task 2.3: Webhook Configuration Tools
+Files: Extend server/mcp/tools/index.ts
+Action: Add webhook management tools:
+
+configure_webhook - Set up webhooks for real-time notifications
+verify_webhook_signature - Signature verification utilities
+PHASE 3: PLATFORM ASSISTANT AGENT MCP
+Task 3.1: Conversation Context Database
+Files: shared/schema.ts, server/storage.ts
+Action: Add new database tables:
+
+-- platform_conversations: Store conversation history
+-- conversation_context: Track current context and session state  
+-- conversation_memory: Key facts and insights to remember
+Schema Requirements:
+
+Single user system
+Conversation persistence across sessions
+Context retrieval on agent initialization
+Memory storage for important facts
+Task 3.2: Context Management MCP Tools
+Files: server/mcp/tools/index.ts
+Action: Add conversation context tools:
+
+get_conversation_context - Retrieve last conversation state on initialization
+update_conversation_context - Update conversation state during interactions
+store_conversation_memory - Save important facts/insights
+search_conversation_history - Search past conversations for context
+Task 3.3: Platform Operations MCP Tools
+Files: server/mcp/tools/index.ts
+Action: Add voice-driven platform control tools:
+
+Analytics & Reporting:
+
+get_daily_candidate_count - "how many new candidates today?"
+get_candidates_by_score - "show me candidates over 85 AI score"
+get_pipeline_metrics - Real-time pipeline status
+get_source_performance - Performance by lead source
+generate_hiring_report - Comprehensive analytics
+Candidate Management:
+
+search_candidates - Find candidates by any criteria
+get_candidate_details - Detailed candidate information
+update_candidate_stage - Move candidates through pipeline
+schedule_interview - Voice-driven interview booking
+get_interview_transcripts - Access ElevenLabs interview data
+System Monitoring:
+
+get_system_health - Overall platform status
+get_elevenlabs_sync_status - Integration health monitoring
+get_automation_status - Background process status
+get_error_logs - Recent system errors
+trigger_data_sync - Manual sync operations
+Advanced Workflows:
+
+bulk_candidate_operations - Mass updates via voice
+create_hiring_campaign - Voice campaign setup
+generate_custom_reports - Ad-hoc reporting
+send_notifications - Communicate with candidates
+PHASE 4: PRODUCTION READINESS
+Task 4.1: Data Model Enhancements
+Files: shared/schema.ts, server/storage.ts
+Action: Add proper stage transition tracking:
+
+stageEnteredAt timestamps for each pipeline stage
+offerDate and hireDate fields
+Historical transition tracking for accurate analytics
+Task 4.2: Error Handling & Security
+Files: All MCP tool files
+Action:
+
+Comprehensive error handling for all new MCP tools
+Rate limiting implementation
+API key validation and security measures
+Circuit breakers for external API calls
+Task 4.3: Testing & Validation
+Action:
+
+Test all new MCP tools thoroughly
+Validate conversation context persistence
+Ensure Platform Assistant agent can access all tools
+Verify no existing functionality is broken
+EXECUTION ORDER
+Start with Phase 1 - Complete elite UI transformation
+Then Phase 2 - Add ElevenLabs MCP integration
+Then Phase 3 - Build Platform Assistant MCP capabilities
+Finally Phase 4 - Production readiness and testing
+SUCCESS CRITERIA
+Analytics dashboard provides accurate executive-grade metrics
+Platform Assistant agent can control entire platform via voice
+All ElevenLabs conversation data accessible through MCP
+Conversation context persists across sessions
+No existing functionality is broken
+Platform suitable for elite/executive use
+FINAL INSTRUCTION
+Execute this plan systematically, starting with Phase 1. Use the task management tools to track progress. Call the architect for review before marking any major phase complete. Maintain the existing working functionality while adding new capabilities.
