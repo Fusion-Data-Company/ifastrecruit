@@ -1063,31 +1063,38 @@ export async function listConversations(args: any) {
   try {
     const { agent_id, start_date, end_date, limit = 100, offset = 0, status } = args;
     
-    // Validate agent ID if provided
+    // SECURITY: Enforce authorized agent ID only
+    const validatedAgentId = AUTHORIZED_AGENT_ID;
     if (agent_id && agent_id !== AUTHORIZED_AGENT_ID) {
-      throw new Error(`Unauthorized agent ID. Only ${AUTHORIZED_AGENT_ID} is allowed.`);
+      throw new Error(`SECURITY: Unauthorized agent ID. Access denied.`);
     }
+    
+    // SECURITY: Enforce pagination limits
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+    const safeOffset = Math.max(0, offset);
 
     const result = await elevenlabsIntegration.listConversations({
-      agent_id: agent_id || AUTHORIZED_AGENT_ID,
+      agent_id: validatedAgentId,
       start_date,
       end_date,
-      limit,
-      offset,
+      limit: safeLimit,
+      offset: safeOffset,
       status
     });
 
     await storage.createAuditLog({
       actor: "mcp",
       action: "list_conversations",
-      payloadJson: { agent_id, start_date, end_date, limit, offset, status },
+      payloadJson: { agent_id: validatedAgentId, start_date, end_date, limit: safeLimit, offset: safeOffset, status },
     });
 
     return {
       success: true,
       conversations: result.conversations || [],
       total: result.total || 0,
-      hasMore: result.hasMore || false
+      hasMore: result.hasMore || false,
+      limit_applied: safeLimit,
+      offset_applied: safeOffset
     };
   } catch (error) {
     throw new Error(`Failed to list conversations: ${String(error)}`);
@@ -1117,10 +1124,11 @@ export async function getConversationTranscript(args: any) {
       formattedTranscript = formatTranscriptAsVTT(result.wordLevelTranscript);
     }
 
+    // SECURITY: Audit log without PII - don't log transcript content
     await storage.createAuditLog({
       actor: "mcp",
       action: "get_conversation_transcript",
-      payloadJson: { conversation_id, format },
+      payloadJson: { conversation_id, format, transcript_length: formattedTranscript?.length || 0 },
     });
 
     return {
@@ -1157,7 +1165,8 @@ export async function getConversationAudio(args: any) {
       throw new Error(`Unsupported audio format: ${format}. Supported formats: ${supportedFormats.join(', ')}`);
     }
 
-    const result = await elevenlabsIntegration.getAudioRecording(conversation_id, format);
+    // Get signed audio URL instead of relative proxy URL
+    const result = await elevenlabsIntegration.getSignedAudioUrl(conversation_id, format);
 
     await storage.createAuditLog({
       actor: "mcp",
@@ -1168,7 +1177,7 @@ export async function getConversationAudio(args: any) {
     return {
       success: true,
       conversation_id,
-      audio_url: result.audio_url,
+      audio_url: result.signed_url,
       format: format,
       size_bytes: result.size_bytes,
       download_expires_at: result.expires_at
@@ -1189,28 +1198,42 @@ export async function searchConversations(args: any) {
       throw new Error('search query is required');
     }
 
-    // Use agent ID filter if provided
-    const searchAgentId = agent_id || AUTHORIZED_AGENT_ID;
+    // SECURITY: Enforce authorized agent ID only
+    if (agent_id && agent_id !== AUTHORIZED_AGENT_ID) {
+      throw new Error(`SECURITY: Unauthorized agent ID. Access denied.`);
+    }
+    const validatedAgentId = AUTHORIZED_AGENT_ID;
+    
+    // SECURITY: Enforce pagination limits
+    const safeLimit = Math.min(Math.max(1, limit), 50);
     
     const result = await elevenlabsIntegration.searchConversations({
       query,
-      agent_id: searchAgentId,
+      agent_id: validatedAgentId,
       start_date,
       end_date,
-      limit
+      limit: safeLimit
     });
 
+    // SECURITY: Redact PII from audit logs - don't log full query content
     await storage.createAuditLog({
       actor: "mcp",
       action: "search_conversations",
-      payloadJson: { query, agent_id: searchAgentId, start_date, end_date, limit },
+      payloadJson: { 
+        query_length: query.length, 
+        agent_id: validatedAgentId, 
+        start_date, 
+        end_date, 
+        limit: safeLimit 
+      },
     });
 
     return {
       success: true,
-      query,
+      query_length: query.length,
       results: result.conversations || [],
-      total_found: result.total || 0
+      total_found: result.total || 0,
+      limit_applied: safeLimit
     };
   } catch (error) {
     throw new Error(`Failed to search conversations: ${String(error)}`);
@@ -1341,11 +1364,39 @@ export async function configureWebhook(args: any) {
       throw new Error('webhook_url is required');
     }
 
-    // Validate URL format
+    // SECURITY: Validate URL format and restrict to HTTPS only
+    let parsedUrl;
     try {
-      new URL(webhook_url);
+      parsedUrl = new URL(webhook_url);
     } catch {
       throw new Error('Invalid webhook_url format');
+    }
+
+    // SECURITY: Only allow HTTPS URLs for production security
+    if (parsedUrl.protocol !== 'https:') {
+      throw new Error('SECURITY: Only HTTPS webhook URLs are allowed');
+    }
+
+    // SECURITY: Validate allowed domains (prevent SSRF)
+    const allowedDomains = [
+      'replit.app',
+      'repl.co',
+      'ngrok.io',
+      'webhook.site',
+      'pipedream.com'
+    ];
+    
+    const isAllowedDomain = allowedDomains.some(domain => 
+      parsedUrl.hostname.endsWith(domain) || parsedUrl.hostname === domain
+    );
+    
+    if (!isAllowedDomain) {
+      throw new Error(`SECURITY: Webhook domain not allowed. Allowed domains: ${allowedDomains.join(', ')}`);
+    }
+
+    // SECURITY: Require secret for webhook signature verification
+    if (!secret || secret.length < 16) {
+      throw new Error('SECURITY: Webhook secret is required and must be at least 16 characters');
     }
 
     const result = await elevenlabsIntegration.configureWebhook({
@@ -1357,7 +1408,7 @@ export async function configureWebhook(args: any) {
     await storage.createAuditLog({
       actor: "mcp",
       action: "configure_webhook",
-      payloadJson: { webhook_url, events, has_secret: !!secret },
+      payloadJson: { webhook_url, events, has_secret: true, domain: parsedUrl.hostname },
     });
 
     return {
@@ -1365,7 +1416,8 @@ export async function configureWebhook(args: any) {
       webhook_id: result.webhook_id,
       url: webhook_url,
       events,
-      status: 'active'
+      status: 'active',
+      security_validated: true
     };
   } catch (error) {
     throw new Error(`Failed to configure webhook: ${String(error)}`);
