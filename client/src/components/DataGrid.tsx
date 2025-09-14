@@ -638,11 +638,11 @@ function ExpandedRowContent({ candidate }: { candidate: Candidate }) {
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">Agent ID:</span>
-                <div className="mt-1 font-mono text-sm">{candidate.agentId || '-'}</div>
+                <div className="mt-1 font-mono text-sm truncate overflow-hidden" title={candidate.agentId}>{candidate.agentId || '-'}</div>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">Conversation ID:</span>
-                <div className="mt-1 font-mono text-sm">{candidate.conversationId || '-'}</div>
+                <div className="mt-1 font-mono text-sm truncate overflow-hidden" title={candidate.conversationId}>{candidate.conversationId || '-'}</div>
               </div>
               <div>
                 <span className="font-medium text-muted-foreground">Call Status:</span>

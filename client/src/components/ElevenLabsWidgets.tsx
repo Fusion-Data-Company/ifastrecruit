@@ -139,7 +139,7 @@ export function MainUIAgent() {
 export function InterviewAgent() {
   return (
     <ElevenLabsWidget 
-      agentId="agent_01k07mhgszfcg9br6n46m8d35m"
+      agentId="agent_0601k4t9d82qe5ybsgkngct0zzkm"
       position="top-right"
       testId="interview-agent"
     />

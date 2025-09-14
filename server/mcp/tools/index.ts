@@ -359,16 +359,67 @@ export async function upsertCandidate(args: any) {
 }
 
 // CRITICAL: Data extraction utilities for ElevenLabs conversations
-function extractCandidateDataFromPayload(interviewData: any): {
-  name: string | null;
-  email: string | null;
-  phone: string | null;
-  overallScore: number | null;
-} {
-  let name = null;
-  let email = null;
-  let phone = null;
-  let overallScore = null;
+type ExtractedCandidateData = {
+  name: string | undefined;
+  email: string | undefined;
+  phone: string | undefined;
+  overallScore: number | undefined;
+  // ElevenLabs conversation data
+  agentId?: string;
+  conversationId?: string;
+  interviewDate?: Date;
+  callDuration?: number;
+  messageCount?: number;
+  callStatus?: string;
+  callSuccessful?: string;
+  agentName?: string;
+  audioRecordingUrl?: string;
+  localAudioFileId?: string;
+  localTranscriptFileId?: string;
+  // Interview content
+  interviewTranscript?: string;
+  transcriptSummary?: string;
+  callSummaryTitle?: string;
+  interviewSummary?: string;
+  interviewDuration?: string;
+  // Interview responses
+  whyInsurance?: string;
+  whyNow?: string;
+  salesExperience?: string;
+  difficultCustomerStory?: string;
+  consultativeSelling?: string;
+  preferredMarkets?: string[];
+  timeline?: string;
+  recommendedNextSteps?: string;
+  // Performance indicators
+  demoCallPerformed?: boolean;
+  kevinPersonaUsed?: boolean;
+  coachingGiven?: boolean;
+  pitchDelivered?: boolean;
+  // Scores
+  communicationScore?: number;
+  salesAptitudeScore?: number;
+  motivationScore?: number;
+  coachabilityScore?: number;
+  professionalPresenceScore?: number;
+  // Development
+  strengths?: string[];
+  developmentAreas?: string[];
+  // Structured data
+  interviewData?: any;
+  evaluationCriteria?: any;
+  dataCollectionResults?: any;
+  agentData?: any;
+  conversationMetadata?: any;
+  evaluationDetails?: any;
+  interviewMetrics?: any;
+};
+
+function extractCandidateDataFromPayload(interviewData: any): ExtractedCandidateData {
+  let name: string | undefined = undefined;
+  let email: string | undefined = undefined;
+  let phone: string | undefined = undefined;
+  let overallScore: number | undefined = undefined;
 
   // === 1. EXTRACT FROM STRUCTURED DATA FIELDS ===
   const dataCollectionResults = interviewData.data_collection_results || interviewData.dataCollectionResults || {};
@@ -541,7 +592,73 @@ function extractCandidateDataFromPayload(interviewData: any): {
 
   console.log(`[MCP] 🔍 EXTRACTION RESULTS: name="${name}", email="${email}", phone="${phone}", score=${overallScore}`);
   
-  return { name, email, phone, overallScore };
+  // Build comprehensive extracted data object
+  const result: ExtractedCandidateData = {
+    name,
+    email, 
+    phone,
+    overallScore,
+    // Core ElevenLabs data
+    agentId: interviewData.agent_id || interviewData.agentId,
+    conversationId: interviewData.conversation_id || interviewData.conversationId,
+    callDuration: interviewData.call_duration_secs || interviewData.callDuration,
+    messageCount: interviewData.message_count || interviewData.messageCount,
+    callStatus: interviewData.status || interviewData.callStatus,
+    callSuccessful: typeof (interviewData.call_successful || interviewData.callSuccessful) === 'string' ? 
+                    (interviewData.call_successful || interviewData.callSuccessful) : 
+                    typeof (interviewData.call_successful || interviewData.callSuccessful) === 'boolean' ? 
+                    String(interviewData.call_successful || interviewData.callSuccessful) : undefined,
+    agentName: interviewData.agent_name || interviewData.agentName,
+    audioRecordingUrl: interviewData.audio_recording_url || interviewData.audioRecordingUrl,
+    // Interview content
+    interviewTranscript: interviewData.transcript,
+    transcriptSummary: interviewData.transcript_summary || interviewData.transcriptSummary,
+    callSummaryTitle: interviewData.call_summary_title || interviewData.callSummaryTitle,
+    interviewSummary: interviewData.summary,
+    interviewDuration: interviewData.duration,
+    // Interview responses (convert null to undefined)
+    whyInsurance: interviewData.why_insurance || interviewData.whyInsurance || undefined,
+    whyNow: interviewData.why_now || interviewData.whyNow || undefined,
+    salesExperience: interviewData.sales_experience || interviewData.salesExperience || undefined,
+    difficultCustomerStory: interviewData.difficult_customer_story || interviewData.difficultCustomerStory || undefined,
+    consultativeSelling: interviewData.consultative_selling || interviewData.consultativeSelling || undefined,
+    preferredMarkets: Array.isArray(interviewData.preferred_markets) ? interviewData.preferred_markets : 
+                      Array.isArray(interviewData.preferredMarkets) ? interviewData.preferredMarkets : 
+                      typeof interviewData.preferred_markets === 'string' ? [interviewData.preferred_markets] :
+                      typeof interviewData.preferredMarkets === 'string' ? [interviewData.preferredMarkets] : undefined,
+    timeline: interviewData.timeline || undefined,
+    recommendedNextSteps: interviewData.recommended_next_steps || interviewData.recommendedNextSteps || undefined,
+    // Performance indicators
+    demoCallPerformed: interviewData.demo_call_performed || interviewData.demoCallPerformed || false,
+    kevinPersonaUsed: interviewData.kevin_persona_used || interviewData.kevinPersonaUsed || false,
+    coachingGiven: interviewData.coaching_given || interviewData.coachingGiven || false,
+    pitchDelivered: interviewData.pitch_delivered || interviewData.pitchDelivered || false,
+    // Individual scores (convert null to undefined)
+    communicationScore: interviewData.communication_score || interviewData.communicationScore || undefined,
+    salesAptitudeScore: interviewData.sales_aptitude_score || interviewData.salesAptitudeScore || undefined,
+    motivationScore: interviewData.motivation_score || interviewData.motivationScore || undefined,
+    coachabilityScore: interviewData.coachability_score || interviewData.coachabilityScore || undefined,
+    professionalPresenceScore: interviewData.professional_presence_score || interviewData.professionalPresenceScore || undefined,
+    // Development data (convert null to undefined)
+    strengths: interviewData.strengths || undefined,
+    developmentAreas: interviewData.development_areas || interviewData.developmentAreas || undefined,
+    // Structured data (JSONB fields)
+    interviewData: interviewData,
+    evaluationCriteria: interviewData.evaluation_criteria_results || interviewData.evaluationCriteria,
+    dataCollectionResults: interviewData.data_collection_results || interviewData.dataCollectionResults,
+    agentData: interviewData.agent_data || interviewData.agentData,
+    conversationMetadata: interviewData.conversation_metadata || interviewData.conversationMetadata,
+    evaluationDetails: interviewData.evaluation_details || interviewData.evaluationDetails,
+    interviewMetrics: interviewData.interview_metrics || interviewData.interviewMetrics
+  };
+  
+  // Parse interview date
+  if (interviewData.interview_date || interviewData.start_time_unix_secs) {
+    const timestamp = interviewData.interview_date || ((interviewData.start_time_unix_secs || 0) * 1000);
+    result.interviewDate = new Date(timestamp);
+  }
+  
+  return result;
 }
 
 // Specialized tool for ElevenLabs interview agents to create candidates
@@ -716,70 +833,7 @@ export async function createCandidateFromInterview(args: any) {
 
     console.log(`[MCP] ✅ SECURITY CHECKPOINT PASSED: createCandidateFromInterview called with validated data from authorized agent ${agentId}`);
 
-    // Extract detailed interview data from validated interviewData object (already done above)
-    // Additional data extraction from raw interviewData object
-      // === BASIC ELEVENLABS DATA ===
-      extractedData.interviewData = interviewData;
-      extractedData.interviewTranscript = interviewData.transcript || '';
-      extractedData.interviewDuration = interviewData.duration || '';
-      extractedData.interviewSummary = interviewData.summary || '';
-      extractedData.evaluationCriteria = interviewData.evaluation_criteria_results || interviewData.evaluationCriteria || null;
-      extractedData.dataCollectionResults = interviewData.data_collection_results || interviewData.dataCollectionResults || null;
-      extractedData.conversationId = interviewData.conversation_id || interviewData.conversationId || '';
-      extractedData.agentId = interviewData.agent_id || interviewData.agentId || '';
-      extractedData.agentName = interviewData.agent_name || interviewData.agentName || '';
-      extractedData.callDuration = interviewData.call_duration_secs || interviewData.callDuration || null;
-      extractedData.messageCount = interviewData.message_count || interviewData.messageCount || null;
-      extractedData.callStatus = interviewData.status || interviewData.callStatus || '';
-      extractedData.callSuccessful = interviewData.call_successful || interviewData.callSuccessful || '';
-      extractedData.transcriptSummary = interviewData.transcript_summary || interviewData.transcriptSummary || '';
-      extractedData.callSummaryTitle = interviewData.call_summary_title || interviewData.callSummaryTitle || '';
-      
-      // === COMPREHENSIVE ELEVENLABS INTERVIEW FIELDS ===
-      // Core interview responses
-      extractedData.whyInsurance = interviewData.why_insurance || interviewData.whyInsurance || null;
-      extractedData.whyNow = interviewData.why_now || interviewData.whyNow || null;
-      extractedData.salesExperience = interviewData.sales_experience || interviewData.salesExperience || null;
-      extractedData.difficultCustomerStory = interviewData.difficult_customer_story || interviewData.difficultCustomerStory || null;
-      extractedData.consultativeSelling = interviewData.consultative_selling || interviewData.consultativeSelling || null;
-      
-      // Market preferences and timeline
-      extractedData.preferredMarkets = interviewData.preferred_markets || interviewData.preferredMarkets || null;
-      extractedData.timeline = interviewData.timeline || null;
-      extractedData.recommendedNextSteps = interviewData.recommended_next_steps || interviewData.recommendedNextSteps || null;
-      
-      // Performance indicators (booleans)
-      extractedData.demoCallPerformed = interviewData.demo_call_performed || interviewData.demoCallPerformed || false;
-      extractedData.kevinPersonaUsed = interviewData.kevin_persona_used || interviewData.kevinPersonaUsed || false;
-      extractedData.coachingGiven = interviewData.coaching_given || interviewData.coachingGiven || false;
-      extractedData.pitchDelivered = interviewData.pitch_delivered || interviewData.pitchDelivered || false;
-      
-      // Evaluation scores
-      extractedData.overallScore = interviewData.overall_score || interviewData.overallScore || null;
-      extractedData.communicationScore = interviewData.communication_score || interviewData.communicationScore || null;
-      extractedData.salesAptitudeScore = interviewData.sales_aptitude_score || interviewData.salesAptitudeScore || null;
-      extractedData.motivationScore = interviewData.motivation_score || interviewData.motivationScore || null;
-      extractedData.coachabilityScore = interviewData.coachability_score || interviewData.coachabilityScore || null;
-      extractedData.professionalPresenceScore = interviewData.professional_presence_score || interviewData.professionalPresenceScore || null;
-      
-      // Development assessment (arrays)
-      extractedData.strengths = interviewData.strengths || null;
-      extractedData.developmentAreas = interviewData.development_areas || interviewData.developmentAreas || null;
-      
-      // Additional structured evaluation data (JSONB)
-      extractedData.evaluationDetails = interviewData.evaluation_details || interviewData.evaluationDetails || null;
-      extractedData.interviewMetrics = interviewData.interview_metrics || interviewData.interviewMetrics || null;
-      
-      // Audio and agent data
-      extractedData.audioRecordingUrl = interviewData.audio_recording_url || interviewData.audioRecordingUrl || null;
-      extractedData.agentData = interviewData.agent_data || interviewData.agentData || null;
-      extractedData.conversationMetadata = interviewData.conversation_metadata || interviewData.conversationMetadata || null;
-      
-      // Parse dates
-      if (interviewData.interview_date || interviewData.start_time_unix_secs) {
-        const timestamp = interviewData.interview_date || ((interviewData.start_time_unix_secs || 0) * 1000);
-        extractedData.interviewDate = new Date(timestamp);
-      }
+    // No additional extraction needed - extractedData already contains all fields from the function
 
     // Check if candidate already exists
     let existingCandidate;
@@ -792,7 +846,7 @@ export async function createCandidateFromInterview(args: any) {
     if (existingCandidate) {
       // Update existing candidate with ALL interview data
       const updateData = {
-        pipelineStage,
+        pipelineStage: pipelineStage as "FIRST_INTERVIEW" | "NEW" | "TECHNICAL_SCREEN" | "FINAL_INTERVIEW" | "OFFER" | "HIRED" | "REJECTED",
         score: score || existingCandidate.score,
         interviewScore: score,
         notes,
@@ -845,14 +899,15 @@ export async function createCandidateFromInterview(args: any) {
     } else {
       // Create new candidate with ALL interview data
       const candidateData: any = {
-        name,
-        email,
-        pipelineStage,
+        pipelineStage: pipelineStage as "FIRST_INTERVIEW" | "NEW" | "TECHNICAL_SCREEN" | "FINAL_INTERVIEW" | "OFFER" | "HIRED" | "REJECTED",
         score: score || 0,
         interviewScore: score,
         sourceRef: "elevenlabs_interview",
         notes,
-        ...extractedData
+        ...extractedData,
+        // Override with final values to avoid duplicates
+        name,
+        email
       };
       
       if (phone) candidateData.phone = phone;
@@ -997,4 +1052,445 @@ function generateTimeSlots(startDate: string, endDate: string, duration: number)
 
 function generateSecureToken(): string {
   return require("crypto").randomBytes(32).toString("hex");
+}
+
+// ===== ELEVENLABS MCP TOOLS =====
+
+/**
+ * List ElevenLabs conversations with filtering options
+ */
+export async function listConversations(args: any) {
+  try {
+    const { agent_id, start_date, end_date, limit = 100, offset = 0, status } = args;
+    
+    // Validate agent ID if provided
+    if (agent_id && agent_id !== AUTHORIZED_AGENT_ID) {
+      throw new Error(`Unauthorized agent ID. Only ${AUTHORIZED_AGENT_ID} is allowed.`);
+    }
+
+    const result = await elevenlabsIntegration.listConversations({
+      agent_id: agent_id || AUTHORIZED_AGENT_ID,
+      start_date,
+      end_date,
+      limit,
+      offset,
+      status
+    });
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "list_conversations",
+      payloadJson: { agent_id, start_date, end_date, limit, offset, status },
+    });
+
+    return {
+      success: true,
+      conversations: result.conversations || [],
+      total: result.total || 0,
+      hasMore: result.hasMore || false
+    };
+  } catch (error) {
+    throw new Error(`Failed to list conversations: ${String(error)}`);
+  }
+}
+
+/**
+ * Get full transcript with metadata for a conversation
+ */
+export async function getConversationTranscript(args: any) {
+  try {
+    const { conversation_id, format = 'json' } = args;
+    
+    if (!conversation_id) {
+      throw new Error('conversation_id is required');
+    }
+
+    const result = await elevenlabsIntegration.getConversationDetails(conversation_id);
+    
+    // Format transcript based on requested format
+    let formattedTranscript = result.transcript;
+    if (format === 'text' && result.transcript) {
+      formattedTranscript = result.transcript;
+    } else if (format === 'srt' && result.wordLevelTranscript) {
+      formattedTranscript = formatTranscriptAsSRT(result.wordLevelTranscript);
+    } else if (format === 'vtt' && result.wordLevelTranscript) {
+      formattedTranscript = formatTranscriptAsVTT(result.wordLevelTranscript);
+    }
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "get_conversation_transcript",
+      payloadJson: { conversation_id, format },
+    });
+
+    return {
+      success: true,
+      conversation_id,
+      transcript: formattedTranscript,
+      metadata: {
+        duration: result.call_duration_secs,
+        messageCount: result.message_count,
+        status: result.status,
+        created_at: result.created_at,
+        ended_at: result.ended_at
+      }
+    };
+  } catch (error) {
+    throw new Error(`Failed to get conversation transcript: ${String(error)}`);
+  }
+}
+
+/**
+ * Download audio recording with format options
+ */
+export async function getConversationAudio(args: any) {
+  try {
+    const { conversation_id, format = 'mp3' } = args;
+    
+    if (!conversation_id) {
+      throw new Error('conversation_id is required');
+    }
+
+    // Validate audio format
+    const supportedFormats = ['mp3', 'wav', 'pcm', 'ulaw'];
+    if (!supportedFormats.includes(format.toLowerCase())) {
+      throw new Error(`Unsupported audio format: ${format}. Supported formats: ${supportedFormats.join(', ')}`);
+    }
+
+    const result = await elevenlabsIntegration.getAudioRecording(conversation_id, format);
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "get_conversation_audio",
+      payloadJson: { conversation_id, format },
+    });
+
+    return {
+      success: true,
+      conversation_id,
+      audio_url: result.audio_url,
+      format: format,
+      size_bytes: result.size_bytes,
+      download_expires_at: result.expires_at
+    };
+  } catch (error) {
+    throw new Error(`Failed to get conversation audio: ${String(error)}`);
+  }
+}
+
+/**
+ * Search conversations by content or metadata
+ */
+export async function searchConversations(args: any) {
+  try {
+    const { query, agent_id, start_date, end_date, limit = 50 } = args;
+    
+    if (!query) {
+      throw new Error('search query is required');
+    }
+
+    // Use agent ID filter if provided
+    const searchAgentId = agent_id || AUTHORIZED_AGENT_ID;
+    
+    const result = await elevenlabsIntegration.searchConversations({
+      query,
+      agent_id: searchAgentId,
+      start_date,
+      end_date,
+      limit
+    });
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "search_conversations",
+      payloadJson: { query, agent_id: searchAgentId, start_date, end_date, limit },
+    });
+
+    return {
+      success: true,
+      query,
+      results: result.conversations || [],
+      total_found: result.total || 0
+    };
+  } catch (error) {
+    throw new Error(`Failed to search conversations: ${String(error)}`);
+  }
+}
+
+/**
+ * Analyze conversation for insights and metrics
+ */
+export async function analyzeConversation(args: any) {
+  try {
+    const { conversation_id } = args;
+    
+    if (!conversation_id) {
+      throw new Error('conversation_id is required');
+    }
+
+    // Get conversation details
+    const conversation = await elevenlabsIntegration.getConversationDetails(conversation_id);
+    
+    // Perform analysis using LLM
+    const analysisPrompt = `Analyze this recruiting interview conversation and provide insights:
+
+Transcript: ${conversation.transcript}
+Duration: ${conversation.call_duration_secs} seconds
+Message Count: ${conversation.message_count}
+
+Please provide:
+1. Key highlights and strengths
+2. Areas of concern or red flags
+3. Overall assessment score (1-100)
+4. Recommended next steps
+5. Candidate fit assessment
+
+Format as JSON with fields: highlights, concerns, score, next_steps, fit_assessment`;
+
+    const analysis = await openrouterIntegration.chat(analysisPrompt, 'orchestrator');
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "analyze_conversation",
+      payloadJson: { conversation_id },
+    });
+
+    return {
+      success: true,
+      conversation_id,
+      analysis: analysis.content,
+      metadata: {
+        analyzed_at: new Date().toISOString(),
+        duration: conversation.call_duration_secs,
+        message_count: conversation.message_count
+      }
+    };
+  } catch (error) {
+    throw new Error(`Failed to analyze conversation: ${String(error)}`);
+  }
+}
+
+/**
+ * Export transcript in various formats
+ */
+export async function exportTranscript(args: any) {
+  try {
+    const { conversation_id, format = 'txt', include_metadata = true } = args;
+    
+    if (!conversation_id) {
+      throw new Error('conversation_id is required');
+    }
+
+    const conversation = await elevenlabsIntegration.getConversationDetails(conversation_id);
+    
+    let exportData = '';
+    const metadata = include_metadata ? {
+      conversation_id,
+      date: conversation.created_at,
+      duration: conversation.call_duration_secs,
+      participants: ['Agent', 'Candidate']
+    } : null;
+
+    switch (format.toLowerCase()) {
+      case 'txt':
+        exportData = formatTranscriptAsText(conversation.transcript, metadata);
+        break;
+      case 'json':
+        exportData = JSON.stringify({
+          ...metadata,
+          transcript: conversation.transcript,
+          word_level: conversation.wordLevelTranscript
+        }, null, 2);
+        break;
+      case 'srt':
+        exportData = formatTranscriptAsSRT(conversation.wordLevelTranscript);
+        break;
+      case 'vtt':
+        exportData = formatTranscriptAsVTT(conversation.wordLevelTranscript);
+        break;
+      default:
+        throw new Error(`Unsupported export format: ${format}`);
+    }
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "export_transcript",
+      payloadJson: { conversation_id, format, include_metadata },
+    });
+
+    return {
+      success: true,
+      conversation_id,
+      format,
+      data: exportData,
+      exported_at: new Date().toISOString()
+    };
+  } catch (error) {
+    throw new Error(`Failed to export transcript: ${String(error)}`);
+  }
+}
+
+/**
+ * Configure webhook for real-time notifications
+ */
+export async function configureWebhook(args: any) {
+  try {
+    const { webhook_url, events = ['conversation.ended'], secret } = args;
+    
+    if (!webhook_url) {
+      throw new Error('webhook_url is required');
+    }
+
+    // Validate URL format
+    try {
+      new URL(webhook_url);
+    } catch {
+      throw new Error('Invalid webhook_url format');
+    }
+
+    const result = await elevenlabsIntegration.configureWebhook({
+      url: webhook_url,
+      events,
+      secret
+    });
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "configure_webhook",
+      payloadJson: { webhook_url, events, has_secret: !!secret },
+    });
+
+    return {
+      success: true,
+      webhook_id: result.webhook_id,
+      url: webhook_url,
+      events,
+      status: 'active'
+    };
+  } catch (error) {
+    throw new Error(`Failed to configure webhook: ${String(error)}`);
+  }
+}
+
+/**
+ * Verify webhook signature for security
+ */
+export async function verifyWebhookSignature(args: any) {
+  try {
+    const { payload, signature, secret } = args;
+    
+    if (!payload || !signature || !secret) {
+      throw new Error('payload, signature, and secret are required');
+    }
+
+    const isValid = elevenlabsIntegration.verifyWebhookSignature(payload, signature, secret);
+
+    await storage.createAuditLog({
+      actor: "mcp",
+      action: "verify_webhook_signature",
+      payloadJson: { signature_valid: isValid },
+    });
+
+    return {
+      success: true,
+      signature_valid: isValid,
+      verified_at: new Date().toISOString()
+    };
+  } catch (error) {
+    throw new Error(`Failed to verify webhook signature: ${String(error)}`);
+  }
+}
+
+// Helper functions for transcript formatting
+function formatTranscriptAsText(transcript: string, metadata: any): string {
+  let output = '';
+  
+  if (metadata) {
+    output += `Conversation: ${metadata.conversation_id}\n`;
+    output += `Date: ${metadata.date}\n`;
+    output += `Duration: ${metadata.duration} seconds\n`;
+    output += `Participants: ${metadata.participants.join(', ')}\n`;
+    output += '\n---\n\n';
+  }
+  
+  output += transcript;
+  return output;
+}
+
+function formatTranscriptAsSRT(wordLevelTranscript: any): string {
+  if (!wordLevelTranscript || !Array.isArray(wordLevelTranscript)) {
+    return '';
+  }
+
+  let srt = '';
+  let index = 1;
+  
+  // Group words into subtitle chunks (every 10 words or natural breaks)
+  const chunks = groupWordsForSubtitles(wordLevelTranscript);
+  
+  chunks.forEach(chunk => {
+    const startTime = formatTimeForSRT(chunk.start_time);
+    const endTime = formatTimeForSRT(chunk.end_time);
+    
+    srt += `${index}\n`;
+    srt += `${startTime} --> ${endTime}\n`;
+    srt += `${chunk.text}\n\n`;
+    index++;
+  });
+  
+  return srt;
+}
+
+function formatTranscriptAsVTT(wordLevelTranscript: any): string {
+  if (!wordLevelTranscript || !Array.isArray(wordLevelTranscript)) {
+    return 'WEBVTT\n\n';
+  }
+
+  let vtt = 'WEBVTT\n\n';
+  
+  const chunks = groupWordsForSubtitles(wordLevelTranscript);
+  
+  chunks.forEach(chunk => {
+    const startTime = formatTimeForVTT(chunk.start_time);
+    const endTime = formatTimeForVTT(chunk.end_time);
+    
+    vtt += `${startTime} --> ${endTime}\n`;
+    vtt += `${chunk.text}\n\n`;
+  });
+  
+  return vtt;
+}
+
+function groupWordsForSubtitles(words: any[]): any[] {
+  const chunks = [];
+  const wordsPerChunk = 10;
+  
+  for (let i = 0; i < words.length; i += wordsPerChunk) {
+    const chunkWords = words.slice(i, i + wordsPerChunk);
+    chunks.push({
+      start_time: chunkWords[0].start_time,
+      end_time: chunkWords[chunkWords.length - 1].end_time,
+      text: chunkWords.map(w => w.word).join(' ')
+    });
+  }
+  
+  return chunks;
+}
+
+function formatTimeForSRT(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+}
+
+function formatTimeForVTT(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
 }

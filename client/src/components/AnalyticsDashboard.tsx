@@ -10,7 +10,7 @@ import {
   AreaChart, Area, RadialBarChart, RadialBar
 } from 'recharts';
 import { useState } from 'react';
-import { format, subDays, startOfDay, differenceInDays, parseISO } from 'date-fns';
+import { format, subDays, startOfDay, parseISO } from 'date-fns';
 import type { Candidate } from '@shared/schema';
 
 interface AnalyticsDashboardProps {
@@ -80,6 +80,14 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
 
   // Generate analytics data from candidates with robust validation
   const safeC = Array.isArray(candidates) ? candidates : [];
+  
+  // Helper function to safely calculate difference in days with proper typing
+  const calculateDaysDifference = (dateLeft: Date, dateRight: Date): number => {
+    // Calculate the difference in milliseconds
+    const diffTime = dateLeft.getTime() - dateRight.getTime();
+    // Convert milliseconds to days and round to ensure we get full days
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  };
   
   // Helper function to safely parse dates
   const safeParseDate = (dateString: string | null | undefined): Date | null => {
@@ -171,13 +179,13 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
         const interviewDate = new Date(candidate.interviewDate);
         // If they're past first interview stage, calculate from interview date
         if (['TECHNICAL_SCREEN', 'FINAL_INTERVIEW', 'OFFER', 'HIRED'].includes(stage)) {
-          return sum + Math.max(1, differenceInDays(new Date(), interviewDate));
+          return sum + Math.max(1, calculateDaysDifference(new Date(), interviewDate));
         }
       }
       
       // For active candidates in current stage, calculate time since creation
       // This gives a minimum time in stage for active candidates
-      return sum + Math.max(1, differenceInDays(new Date(), createdDate));
+      return sum + Math.max(1, createdDate ? calculateDaysDifference(new Date(), createdDate) : 1);
     }, 0);
     
     return Math.round((totalDays / candidatesInStage.length) * 10) / 10;
@@ -282,12 +290,12 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
           // If we have an interview date, add estimated processing time
           if (candidate.interviewDate) {
             const interviewDate = new Date(candidate.interviewDate);
-            const baseTime = differenceInDays(interviewDate, createdDate);
+            const baseTime = createdDate ? calculateDaysDifference(interviewDate, createdDate) : 0;
             // Add estimated 7-14 days for post-interview processing (average 10 days)
             return sum + baseTime + 10;
           }
           // Fallback: Use current date but this is less accurate for old hires
-          return sum + Math.max(7, differenceInDays(new Date(), createdDate));
+          return sum + Math.max(7, createdDate ? calculateDaysDifference(new Date(), createdDate) : 7);
         }, 0);
         return Math.round((totalDays / candidates.length) * 10) / 10;
       };
@@ -299,11 +307,11 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
           const createdDate = new Date(candidate.createdAt!);
           // Use actual interview date if available
           if (candidate.interviewDate) {
-            return sum + Math.max(0, differenceInDays(new Date(candidate.interviewDate), createdDate));
+            return sum + Math.max(0, createdDate ? calculateDaysDifference(new Date(candidate.interviewDate), createdDate) : 0);
           }
           // For candidates in interview stages without interview date, estimate
           if (['FIRST_INTERVIEW', 'TECHNICAL_SCREEN', 'FINAL_INTERVIEW'].includes(candidate.pipelineStage)) {
-            return sum + Math.max(1, differenceInDays(new Date(), createdDate));
+            return sum + Math.max(1, createdDate ? calculateDaysDifference(new Date(), createdDate) : 1);
           }
           return sum + 0; // Skip candidates without interview data
         }, 0);
@@ -325,12 +333,12 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
           // Estimate offer timing based on interview date + processing time
           if (candidate.interviewDate) {
             const interviewDate = new Date(candidate.interviewDate);
-            const baseTime = differenceInDays(interviewDate, createdDate);
+            const baseTime = createdDate ? calculateDaysDifference(interviewDate, createdDate) : 0;
             // Add estimated 3-7 days for post-interview to offer (average 5 days)
             return sum + baseTime + 5;
           }
           // Fallback for offers without interview dates
-          return sum + Math.max(5, differenceInDays(new Date(), createdDate));
+          return sum + Math.max(5, createdDate ? calculateDaysDifference(new Date(), createdDate) : 5);
         }, 0);
         return Math.round((totalDays / candidates.length) * 10) / 10;
       };
@@ -438,14 +446,14 @@ export default function AnalyticsDashboard({ className }: AnalyticsDashboardProp
           // Use interview date + estimated processing time for more accurate calculation
           if (c.interviewDate) {
             const interviewDate = safeParseDate(c.interviewDate);
-            if (interviewDate) {
-              const baseTime = differenceInDays(interviewDate, createdDate);
+            if (interviewDate && createdDate) {
+              const baseTime = calculateDaysDifference(interviewDate, createdDate);
               return sum + baseTime + 10; // Add estimated post-interview processing time
             }
           }
           
           // Fallback: Use minimum realistic time for hired candidates
-          return sum + Math.max(7, differenceInDays(new Date(), createdDate));
+          return sum + Math.max(7, createdDate ? calculateDaysDifference(new Date(), createdDate) : 0);
         }, 0) / hiredCandidatesWithDates.length) * 10) / 10 : 0;
       
       // Quality score with enhanced validation

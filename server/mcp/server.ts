@@ -13,7 +13,16 @@ import {
   writeInterview,
   updateSlackPools,
   operateBrowser,
-  llmRoute
+  llmRoute,
+  // ElevenLabs MCP tools
+  listConversations,
+  getConversationTranscript,
+  getConversationAudio,
+  searchConversations,
+  analyzeConversation,
+  exportTranscript,
+  configureWebhook,
+  verifyWebhookSignature
 } from "./tools";
 
 export class MCPServer {
@@ -43,6 +52,16 @@ export class MCPServer {
     this.tools.set("update_slack_pools", updateSlackPools);
     this.tools.set("operate_browser", operateBrowser);
     this.tools.set("llm.route", llmRoute);
+    
+    // ElevenLabs MCP tools
+    this.tools.set("elevenlabs.list_conversations", listConversations);
+    this.tools.set("elevenlabs.get_conversation_transcript", getConversationTranscript);
+    this.tools.set("elevenlabs.get_conversation_audio", getConversationAudio);
+    this.tools.set("elevenlabs.search_conversations", searchConversations);
+    this.tools.set("elevenlabs.analyze_conversation", analyzeConversation);
+    this.tools.set("elevenlabs.export_transcript", exportTranscript);
+    this.tools.set("elevenlabs.configure_webhook", configureWebhook);
+    this.tools.set("elevenlabs.verify_webhook_signature", verifyWebhookSignature);
 
     this.setupHandlers();
   }
@@ -110,6 +129,16 @@ export class MCPServer {
       "update_slack_pools": "Ensure Slack channels exist and post updates",
       "operate_browser": "Execute browser automation via Airtop for fallback scenarios",
       "llm.route": "Route LLM requests through OpenRouter with policy profiles",
+      
+      // ElevenLabs MCP tool descriptions
+      "elevenlabs.list_conversations": "List ElevenLabs conversations with filtering options for agent, date range, and status",
+      "elevenlabs.get_conversation_transcript": "Get full conversation transcript with metadata in various formats (json, text, srt, vtt)",
+      "elevenlabs.get_conversation_audio": "Download conversation audio recording in multiple formats (mp3, wav, pcm, ulaw)",
+      "elevenlabs.search_conversations": "Search conversations by content or metadata with flexible filters",
+      "elevenlabs.analyze_conversation": "AI-powered analysis of conversations for insights, scoring, and recommendations",
+      "elevenlabs.export_transcript": "Export transcripts in various formats with optional metadata inclusion",
+      "elevenlabs.configure_webhook": "Configure webhooks for real-time conversation notifications and events",
+      "elevenlabs.verify_webhook_signature": "Verify webhook signature for security validation",
     };
     return descriptions[name] || "Tool description not available";
   }
@@ -304,6 +333,204 @@ export class MCPServer {
           "profile": { "type": "string", "description": "Policy profile" }
         },
         "required": ["prompt"],
+        "additionalProperties": false
+      },
+      
+      // ElevenLabs MCP tool schemas
+      "elevenlabs.list_conversations": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "agent_id": { 
+            "type": "string", 
+            "description": "Agent ID to filter conversations (defaults to authorized agent)" 
+          },
+          "start_date": { 
+            "type": "string", 
+            "format": "date-time", 
+            "description": "Start date for conversation filtering" 
+          },
+          "end_date": { 
+            "type": "string", 
+            "format": "date-time", 
+            "description": "End date for conversation filtering" 
+          },
+          "limit": { 
+            "type": "number", 
+            "default": 100, 
+            "minimum": 1, 
+            "maximum": 1000,
+            "description": "Maximum number of conversations to return" 
+          },
+          "offset": { 
+            "type": "number", 
+            "default": 0, 
+            "minimum": 0,
+            "description": "Number of conversations to skip for pagination" 
+          },
+          "status": { 
+            "type": "string", 
+            "enum": ["active", "ended", "failed"],
+            "description": "Filter conversations by status" 
+          }
+        },
+        "additionalProperties": false
+      },
+      
+      "elevenlabs.get_conversation_transcript": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "conversation_id": { 
+            "type": "string", 
+            "description": "Conversation ID to get transcript for" 
+          },
+          "format": { 
+            "type": "string", 
+            "enum": ["json", "text", "srt", "vtt"],
+            "default": "json",
+            "description": "Format to return transcript in" 
+          }
+        },
+        "required": ["conversation_id"],
+        "additionalProperties": false
+      },
+      
+      "elevenlabs.get_conversation_audio": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "conversation_id": { 
+            "type": "string", 
+            "description": "Conversation ID to get audio for" 
+          },
+          "format": { 
+            "type": "string", 
+            "enum": ["mp3", "wav", "pcm", "ulaw"],
+            "default": "mp3",
+            "description": "Audio format to download" 
+          }
+        },
+        "required": ["conversation_id"],
+        "additionalProperties": false
+      },
+      
+      "elevenlabs.search_conversations": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "query": { 
+            "type": "string", 
+            "description": "Search query for conversation content" 
+          },
+          "agent_id": { 
+            "type": "string", 
+            "description": "Agent ID to filter search results" 
+          },
+          "start_date": { 
+            "type": "string", 
+            "format": "date-time", 
+            "description": "Start date for search filtering" 
+          },
+          "end_date": { 
+            "type": "string", 
+            "format": "date-time", 
+            "description": "End date for search filtering" 
+          },
+          "limit": { 
+            "type": "number", 
+            "default": 50, 
+            "minimum": 1, 
+            "maximum": 500,
+            "description": "Maximum number of results to return" 
+          }
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      },
+      
+      "elevenlabs.analyze_conversation": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "conversation_id": { 
+            "type": "string", 
+            "description": "Conversation ID to analyze" 
+          }
+        },
+        "required": ["conversation_id"],
+        "additionalProperties": false
+      },
+      
+      "elevenlabs.export_transcript": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "conversation_id": { 
+            "type": "string", 
+            "description": "Conversation ID to export transcript for" 
+          },
+          "format": { 
+            "type": "string", 
+            "enum": ["txt", "json", "srt", "vtt"],
+            "default": "txt",
+            "description": "Export format for transcript" 
+          },
+          "include_metadata": { 
+            "type": "boolean", 
+            "default": true,
+            "description": "Whether to include conversation metadata in export" 
+          }
+        },
+        "required": ["conversation_id"],
+        "additionalProperties": false
+      },
+      
+      "elevenlabs.configure_webhook": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "webhook_url": { 
+            "type": "string", 
+            "format": "uri",
+            "description": "URL endpoint for webhook notifications" 
+          },
+          "events": { 
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["conversation.started", "conversation.ended", "conversation.failed", "conversation.updated"]
+            },
+            "default": ["conversation.ended"],
+            "description": "List of events to subscribe to" 
+          },
+          "secret": { 
+            "type": "string", 
+            "description": "Secret key for webhook signature verification" 
+          }
+        },
+        "required": ["webhook_url"],
+        "additionalProperties": false
+      },
+      
+      "elevenlabs.verify_webhook_signature": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "payload": { 
+            "type": "string", 
+            "description": "Webhook payload body as string" 
+          },
+          "signature": { 
+            "type": "string", 
+            "description": "Webhook signature from headers" 
+          },
+          "secret": { 
+            "type": "string", 
+            "description": "Secret key used for signature verification" 
+          }
+        },
+        "required": ["payload", "signature", "secret"],
         "additionalProperties": false
       }
     };

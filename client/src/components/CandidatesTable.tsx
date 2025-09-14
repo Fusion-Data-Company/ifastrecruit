@@ -428,10 +428,10 @@ function CandidateCard({ candidate, onViewDetails, index }: CandidateCardProps) 
                         </Badge>
                       )}
                       {candidate.agentId && (
-                        <Badge className="bg-gradient-to-r from-emerald-500/80 to-green-500/80 text-white border-emerald-300/30 shadow-lg">
-                          <Bot className="w-3 h-3 mr-1" />
-                          <span className="truncate max-w-24" title={candidate.agentId}>
-                            {candidate.agentId.length > 12 ? `${candidate.agentId.substring(0, 12)}...` : candidate.agentId}
+                        <Badge className="bg-gradient-to-r from-emerald-500/80 to-green-500/80 text-white border-emerald-300/30 shadow-lg max-w-32">
+                          <Bot className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <span className="truncate" title={candidate.agentId}>
+                            {candidate.agentId.length > 16 ? `${candidate.agentId.substring(0, 16)}...` : candidate.agentId}
                           </span>
                         </Badge>
                       )}
