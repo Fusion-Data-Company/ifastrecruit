@@ -32,6 +32,14 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
     console.log('- Position:', position);
     console.log('- TestID:', testId);
     
+    // Check for AudioWorklet support
+    if (typeof window.AudioWorkletNode === 'undefined') {
+      console.warn('⚠️ AudioWorklet not supported in this browser');
+      setErrorMessage('Browser does not support advanced audio features');
+      setWidgetStatus('error');
+      return;
+    }
+    
     // Load the ElevenLabs ConvAI widget script if not already loaded
     if (!document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]')) {
       const script = document.createElement('script');
@@ -43,6 +51,19 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
         console.log('✅ ElevenLabs ConvAI script loaded successfully');
         setWidgetStatus('loaded');
         
+        // Add global error handler for AudioWorklet issues
+        const handleGlobalError = (event: ErrorEvent | PromiseRejectionEvent) => {
+          const message = 'message' in event ? event.message : event.reason?.toString() || 'Unknown error';
+          if (message.includes('raw-audio-processor') || message.includes('worklet') || message.includes('AudioWorklet')) {
+            console.warn('🎧 AudioWorklet issue detected, but widget may still function for text interactions');
+            // Don't set error status for AudioWorklet issues as the widget may still work for text
+            return;
+          }
+        };
+        
+        window.addEventListener('error', handleGlobalError);
+        window.addEventListener('unhandledrejection', handleGlobalError);
+
         // Add widget event listeners for debugging
         setTimeout(() => {
           const widget = document.querySelector('elevenlabs-convai');
@@ -50,7 +71,15 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
             // Listen for widget events
             widget.addEventListener('error', (e: any) => {
               console.error('🚨 ElevenLabs Widget Error:', e);
-              setErrorMessage(`Widget Error: ${e.detail || 'Unknown error'}`);
+              const detail = e.detail || 'Unknown error';
+              
+              // Don't treat AudioWorklet errors as fatal - widget may still work for text
+              if (detail.includes('raw-audio-processor') || detail.includes('worklet') || detail.includes('AudioWorklet')) {
+                console.warn('🎧 Audio features may be limited, but text chat should work');
+                return;
+              }
+              
+              setErrorMessage(`Widget Error: ${detail}`);
               setWidgetStatus('error');
             });
             
@@ -63,6 +92,12 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
             });
           }
         }, 1000);
+        
+        // Cleanup function
+        return () => {
+          window.removeEventListener('error', handleGlobalError);
+          window.removeEventListener('unhandledrejection', handleGlobalError);
+        };
       };
       
       script.onerror = () => {
@@ -103,11 +138,23 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
         <div style={{ marginTop: '8px', fontSize: '10px', opacity: 0.8 }}>
           Domain: {window.location.hostname}
           <br />
-          Check ElevenLabs agent settings:
-          <br />
-          • Agent must be public (auth disabled)
-          <br />
-          • Domain must be in allowlist
+          {errorMessage.includes('AudioWorklet') || errorMessage.includes('worklet') ? (
+            <>
+              Audio features may be limited in this browser.
+              <br />
+              • Try using Chrome or Edge for full functionality
+              <br />
+              • Text chat may still work
+            </>
+          ) : (
+            <>
+              Check ElevenLabs agent settings:
+              <br />
+              • Agent must be public (auth disabled)
+              <br />
+              • Domain must be in allowlist
+            </>
+          )}
         </div>
       </div>
     );
