@@ -585,49 +585,49 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
               <TabsList className="grid w-full grid-cols-7 bg-gradient-to-r from-slate-800/60 via-slate-700/50 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 p-2.5 rounded-2xl shadow-xl shadow-slate-900/50">
                 <TabsTrigger 
                   value="overview" 
-                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                  className="flex items-center space-x-2 px-4 py-5 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
                 >
                   <User className="w-4 h-4" />
                   <span className="hidden sm:inline tracking-wide">Overview</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="interview" 
-                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                  className="flex items-center space-x-2 px-4 py-5 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span className="hidden sm:inline tracking-wide">Interview</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="technical" 
-                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                  className="flex items-center space-x-2 px-4 py-5 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
                 >
                   <Cpu className="w-4 h-4" />
                   <span className="hidden sm:inline tracking-wide">Technical</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="transcript" 
-                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                  className="flex items-center space-x-2 px-4 py-5 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
                 >
                   <FileText className="w-4 h-4" />
                   <span className="hidden sm:inline tracking-wide">Transcript</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="evaluation" 
-                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                  className="flex items-center space-x-2 px-4 py-5 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span className="hidden sm:inline tracking-wide">Analytics</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="metadata" 
-                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                  className="flex items-center space-x-2 px-4 py-5 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
                 >
                   <Database className="w-4 h-4" />
                   <span className="hidden sm:inline tracking-wide">Data</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="audio" 
-                  className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
+                  className="flex items-center space-x-2 px-4 py-5 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
                 >
                   <Headphones className="w-4 h-4" />
                   <span className="hidden sm:inline tracking-wide">Audio</span>
