@@ -269,6 +269,66 @@ export const elevenLabsTracking = pgTable("elevenlabs_tracking", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// === PHASE 3: CONVERSATION CONTEXT & MEMORY TABLES ===
+
+// Platform conversations - conversations happening within the platform (not just ElevenLabs)
+export const platformConversations = pgTable("platform_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: text("conversation_id").notNull().unique(), // External conversation ID (ElevenLabs, etc.)
+  agentId: text("agent_id").notNull(), // Agent handling the conversation
+  source: text("source").notNull(), // "elevenlabs", "manual", "chat", etc.
+  status: text("status").notNull().default("active"), // "active", "ended", "paused", "archived"
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  endedAt: timestamp("ended_at"),
+  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+  participantCount: integer("participant_count").default(2),
+  messageCount: integer("message_count").default(0),
+  durationSeconds: integer("duration_seconds"),
+  metadata: jsonb("metadata"), // Flexible metadata storage
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Conversation context - contextual information and state for ongoing conversations
+export const conversationContext = pgTable("conversation_context", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  platformConversationId: varchar("platform_conversation_id").notNull().references(() => platformConversations.id),
+  contextKey: text("context_key").notNull(), // "candidate_profile", "interview_stage", "preferences", etc.
+  contextValue: jsonb("context_value").notNull(), // Structured context data
+  contextType: text("context_type").notNull(), // "candidate", "agent", "system", "business_rule"
+  priority: integer("priority").default(5), // 1-10 priority for context relevance
+  expiresAt: timestamp("expires_at"), // Optional expiration for temporary context
+  isActive: boolean("is_active").default(true),
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`), // Searchable tags
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Conversation memory - long-term memory storage for learning and personalization
+export const conversationMemory = pgTable("conversation_memory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: text("agent_id").notNull(), // Agent that owns this memory
+  memoryKey: text("memory_key").notNull(), // "candidate_preferences", "successful_techniques", etc.
+  memoryValue: jsonb("memory_value").notNull(), // Structured memory data
+  memoryType: text("memory_type").notNull(), // "learned_pattern", "user_preference", "success_factor", "failure_pattern"
+  confidence: real("confidence").default(0.5), // Confidence in this memory (0.0-1.0)
+  usageCount: integer("usage_count").default(0), // How many times this memory has been accessed
+  lastUsedAt: timestamp("last_used_at"),
+  source: text("source").notNull(), // Where this memory came from
+  relatedConversationIds: text("related_conversation_ids").array().default(sql`ARRAY[]::text[]`),
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Add unique constraints for key-based lookups
+export const conversationContextUniqueConstraint = unique("conversation_context_unique")
+  .on(conversationContext.platformConversationId, conversationContext.contextKey, conversationContext.contextType);
+
+export const conversationMemoryUniqueConstraint = unique("conversation_memory_unique")
+  .on(conversationMemory.agentId, conversationMemory.memoryKey, conversationMemory.memoryType);
+
 // Relations
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
   candidates: many(candidates),
@@ -310,6 +370,18 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
   }),
 }));
 
+// Phase 3: Conversation context relations
+export const platformConversationsRelations = relations(platformConversations, ({ many }) => ({
+  contextEntries: many(conversationContext),
+}));
+
+export const conversationContextRelations = relations(conversationContext, ({ one }) => ({
+  platformConversation: one(platformConversations, {
+    fields: [conversationContext.platformConversationId],
+    references: [platformConversations.id],
+  }),
+}));
+
 // Insert schemas
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: true, createdAt: true });
 export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true });
@@ -321,6 +393,11 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertWorkflowRuleSchema = createInsertSchema(workflowRules).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertApifyRunSchema = createInsertSchema(apifyRuns).omit({ id: true, createdAt: true });
 export const insertElevenLabsTrackingSchema = createInsertSchema(elevenLabsTracking).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Phase 3: Conversation context insert schemas
+export const insertPlatformConversationSchema = createInsertSchema(platformConversations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertConversationContextSchema = createInsertSchema(conversationContext).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertConversationMemorySchema = createInsertSchema(conversationMemory).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type Campaign = typeof campaigns.$inferSelect;
@@ -334,6 +411,11 @@ export type WorkflowRule = typeof workflowRules.$inferSelect;
 export type ApifyRun = typeof apifyRuns.$inferSelect;
 export type ElevenLabsTracking = typeof elevenLabsTracking.$inferSelect;
 
+// Phase 3: Conversation context types
+export type PlatformConversation = typeof platformConversations.$inferSelect;
+export type ConversationContext = typeof conversationContext.$inferSelect;
+export type ConversationMemory = typeof conversationMemory.$inferSelect;
+
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
 export type InsertInterview = z.infer<typeof insertInterviewSchema>;
@@ -344,3 +426,8 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertWorkflowRule = z.infer<typeof insertWorkflowRuleSchema>;
 export type InsertApifyRun = z.infer<typeof insertApifyRunSchema>;
 export type InsertElevenLabsTracking = z.infer<typeof insertElevenLabsTrackingSchema>;
+
+// Phase 3: Conversation context insert types  
+export type InsertPlatformConversation = z.infer<typeof insertPlatformConversationSchema>;
+export type InsertConversationContext = z.infer<typeof insertConversationContextSchema>;
+export type InsertConversationMemory = z.infer<typeof insertConversationMemorySchema>;

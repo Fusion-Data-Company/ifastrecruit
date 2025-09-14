@@ -1546,3 +1546,277 @@ function formatTimeForVTT(seconds: number): string {
   
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
 }
+
+// ===== PHASE 3: CONVERSATION CONTEXT MCP TOOLS =====
+
+/**
+ * Create a platform conversation record
+ */
+export async function createPlatformConversation(args: any) {
+  try {
+    const { conversationId, agentId, source, metadata = {}, participantCount = 2 } = args;
+    
+    if (!conversationId || !agentId || !source) {
+      throw new Error("conversationId, agentId, and source are required");
+    }
+
+    // SECURITY: For ElevenLabs conversations, validate authorized agent
+    if (source === "elevenlabs" && agentId !== AUTHORIZED_AGENT_ID) {
+      throw new Error(`UNAUTHORIZED: Only agent ${AUTHORIZED_AGENT_ID} is authorized for ElevenLabs conversations`);
+    }
+
+    const result = await storage.upsertPlatformConversation({
+      conversationId,
+      agentId,
+      source,
+      metadata,
+      participantCount
+    });
+
+    return {
+      success: true,
+      conversation: result.conversation,
+      action: result.action,
+      message: `Platform conversation ${result.action} successfully`
+    };
+  } catch (error) {
+    console.error("[MCP] createPlatformConversation error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Set conversation context for an active conversation
+ */
+export async function setConversationContext(args: any) {
+  try {
+    const { conversationId, contextKey, contextValue, contextType = "system", priority = 5, tags = [] } = args;
+    
+    if (!conversationId || !contextKey || contextValue === undefined || !contextType) {
+      throw new Error("conversationId, contextKey, contextValue, and contextType are required");
+    }
+
+    // Get the platform conversation first
+    const platformConversation = await storage.getPlatformConversationByConversationId(conversationId);
+    if (!platformConversation) {
+      throw new Error(`Platform conversation not found for conversationId: ${conversationId}`);
+    }
+
+    // SECURITY: For ElevenLabs conversations, validate authorized agent
+    if (platformConversation.source === "elevenlabs" && platformConversation.agentId !== AUTHORIZED_AGENT_ID) {
+      throw new Error(`UNAUTHORIZED: Only agent ${AUTHORIZED_AGENT_ID} is authorized for ElevenLabs conversation context`);
+    }
+
+    const result = await storage.upsertConversationContext({
+      platformConversationId: platformConversation.id,
+      contextKey,
+      contextValue,
+      contextType,
+      priority,
+      tags
+    });
+
+    return {
+      success: true,
+      context: result.context,
+      action: result.action,
+      message: `Context ${result.action} successfully for conversation ${conversationId}`
+    };
+  } catch (error) {
+    console.error("[MCP] setConversationContext error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Get conversation context for a conversation
+ */
+export async function getConversationContext(args: any) {
+  try {
+    const { conversationId, contextKey, contextType } = args;
+    
+    if (!conversationId) {
+      throw new Error("conversationId is required");
+    }
+
+    // Get the platform conversation first
+    const platformConversation = await storage.getPlatformConversationByConversationId(conversationId);
+    if (!platformConversation) {
+      throw new Error(`Platform conversation not found for conversationId: ${conversationId}`);
+    }
+
+    let contexts;
+    
+    if (contextKey && contextType) {
+      // Get specific context
+      const context = await storage.getConversationContextByKey(
+        platformConversation.id,
+        contextKey,
+        contextType
+      );
+      contexts = context ? [context] : [];
+    } else {
+      // Get all contexts for the conversation
+      contexts = await storage.getConversationContexts(platformConversation.id);
+    }
+
+    return {
+      success: true,
+      conversationId,
+      platformConversationId: platformConversation.id,
+      contexts,
+      message: `Retrieved ${contexts.length} context entries for conversation ${conversationId}`
+    };
+  } catch (error) {
+    console.error("[MCP] getConversationContext error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Store conversation memory for an agent
+ */
+export async function storeConversationMemory(args: any) {
+  try {
+    const { 
+      agentId, 
+      memoryKey, 
+      memoryValue, 
+      memoryType = "learned_pattern", 
+      confidence = 0.5, 
+      source = "conversation",
+      relatedConversationIds = [],
+      tags = []
+    } = args;
+    
+    if (!agentId || !memoryKey || memoryValue === undefined) {
+      throw new Error("agentId, memoryKey, and memoryValue are required");
+    }
+
+    // SECURITY: For ElevenLabs agents, validate authorized agent
+    if (agentId !== AUTHORIZED_AGENT_ID) {
+      console.warn(`[MCP] Memory storage for non-authorized agent: ${agentId}. Allowing for platform agents.`);
+    }
+
+    const result = await storage.upsertConversationMemory({
+      agentId,
+      memoryKey,
+      memoryValue,
+      memoryType,
+      confidence: Math.max(0, Math.min(1, confidence)), // Clamp between 0 and 1
+      source,
+      relatedConversationIds,
+      tags
+    });
+
+    return {
+      success: true,
+      memory: result.memory,
+      action: result.action,
+      message: `Memory ${result.action} successfully for agent ${agentId}`
+    };
+  } catch (error) {
+    console.error("[MCP] storeConversationMemory error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Retrieve conversation memory for an agent
+ */
+export async function getConversationMemory(args: any) {
+  try {
+    const { agentId, memoryKey, memoryType, limit = 50 } = args;
+    
+    if (!agentId) {
+      throw new Error("agentId is required");
+    }
+
+    const safeLimit = Math.min(Math.max(1, limit), 100); // Enforce reasonable limits
+
+    let memories;
+    
+    if (memoryKey && memoryType) {
+      // Get specific memory
+      const memory = await storage.getConversationMemoryByKey(agentId, memoryKey, memoryType);
+      memories = memory ? [memory] : [];
+      
+      // Mark memory as used
+      if (memory) {
+        await storage.incrementMemoryUsage(memory.id);
+      }
+    } else {
+      // Get all memories for the agent
+      memories = await storage.getConversationMemoryByAgent(agentId, safeLimit);
+    }
+
+    return {
+      success: true,
+      agentId,
+      memories,
+      message: `Retrieved ${memories.length} memory entries for agent ${agentId}`
+    };
+  } catch (error) {
+    console.error("[MCP] getConversationMemory error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Search conversation memory for an agent
+ */
+export async function searchConversationMemory(args: any) {
+  try {
+    const { agentId, searchTerms, memoryTypes = [] } = args;
+    
+    if (!agentId || !Array.isArray(searchTerms) || searchTerms.length === 0) {
+      throw new Error("agentId and searchTerms (non-empty array) are required");
+    }
+
+    // SECURITY: Sanitize search terms
+    const sanitizedSearchTerms = searchTerms
+      .filter(term => typeof term === 'string' && term.trim().length > 0)
+      .map(term => term.trim().substring(0, 100)) // Limit term length
+      .slice(0, 10); // Limit number of search terms
+
+    if (sanitizedSearchTerms.length === 0) {
+      throw new Error("No valid search terms provided");
+    }
+
+    const memories = await storage.searchConversationMemory(
+      agentId, 
+      sanitizedSearchTerms, 
+      memoryTypes.length > 0 ? memoryTypes : undefined
+    );
+
+    return {
+      success: true,
+      agentId,
+      searchTerms: sanitizedSearchTerms,
+      memoryTypes,
+      memories,
+      message: `Found ${memories.length} memory entries for search terms: ${sanitizedSearchTerms.join(", ")}`
+    };
+  } catch (error) {
+    console.error("[MCP] searchConversationMemory error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}

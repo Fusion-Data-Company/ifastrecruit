@@ -22,7 +22,14 @@ import {
   analyzeConversation,
   exportTranscript,
   configureWebhook,
-  verifyWebhookSignature
+  verifyWebhookSignature,
+  // Phase 3: Conversation Context MCP tools
+  createPlatformConversation,
+  setConversationContext,
+  getConversationContext,
+  storeConversationMemory,
+  getConversationMemory,
+  searchConversationMemory
 } from "./tools";
 
 export class MCPServer {
@@ -62,6 +69,14 @@ export class MCPServer {
     this.tools.set("elevenlabs.export_transcript", exportTranscript);
     this.tools.set("elevenlabs.configure_webhook", configureWebhook);
     this.tools.set("elevenlabs.verify_webhook_signature", verifyWebhookSignature);
+    
+    // Phase 3: Conversation Context MCP tools
+    this.tools.set("conversation.create_platform_conversation", createPlatformConversation);
+    this.tools.set("conversation.set_context", setConversationContext);
+    this.tools.set("conversation.get_context", getConversationContext);
+    this.tools.set("conversation.store_memory", storeConversationMemory);
+    this.tools.set("conversation.get_memory", getConversationMemory);
+    this.tools.set("conversation.search_memory", searchConversationMemory);
 
     this.setupHandlers();
   }
@@ -139,6 +154,14 @@ export class MCPServer {
       "elevenlabs.export_transcript": "Export transcripts in various formats with optional metadata inclusion",
       "elevenlabs.configure_webhook": "Configure webhooks for real-time conversation notifications and events",
       "elevenlabs.verify_webhook_signature": "Verify webhook signature for security validation",
+      
+      // Phase 3: Conversation Context MCP tool descriptions
+      "conversation.create_platform_conversation": "Create or update a platform conversation record for tracking conversations across different sources",
+      "conversation.set_context": "Set contextual information for an active conversation (candidate data, interview stage, preferences, etc.)",
+      "conversation.get_context": "Retrieve contextual information for a conversation, either specific context or all contexts",
+      "conversation.store_memory": "Store long-term memory for an agent including learned patterns, user preferences, and success factors",
+      "conversation.get_memory": "Retrieve stored memory for an agent, either specific memory or all memories with usage tracking",
+      "conversation.search_memory": "Search through agent memory using keywords and memory types for intelligent context retrieval",
     };
     return descriptions[name] || "Tool description not available";
   }
@@ -531,6 +554,200 @@ export class MCPServer {
           }
         },
         "required": ["payload", "signature", "secret"],
+        "additionalProperties": false
+      },
+      
+      // Phase 3: Conversation Context MCP tool schemas
+      "conversation.create_platform_conversation": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "conversationId": { 
+            "type": "string", 
+            "description": "External conversation ID (ElevenLabs conversation ID, etc.)" 
+          },
+          "agentId": { 
+            "type": "string", 
+            "description": "Agent handling the conversation" 
+          },
+          "source": { 
+            "type": "string", 
+            "description": "Source of the conversation (elevenlabs, manual, chat, etc.)" 
+          },
+          "metadata": { 
+            "type": "object", 
+            "description": "Additional metadata for the conversation" 
+          },
+          "participantCount": { 
+            "type": "integer", 
+            "minimum": 1,
+            "default": 2,
+            "description": "Number of participants in the conversation" 
+          }
+        },
+        "required": ["conversationId", "agentId", "source"],
+        "additionalProperties": false
+      },
+      
+      "conversation.set_context": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "conversationId": { 
+            "type": "string", 
+            "description": "External conversation ID" 
+          },
+          "contextKey": { 
+            "type": "string", 
+            "description": "Key for the context (candidate_profile, interview_stage, preferences, etc.)" 
+          },
+          "contextValue": { 
+            "description": "Value of the context (JSON object or primitive)" 
+          },
+          "contextType": { 
+            "type": "string", 
+            "enum": ["candidate", "agent", "system", "business_rule"],
+            "default": "system",
+            "description": "Type of context being stored" 
+          },
+          "priority": { 
+            "type": "integer", 
+            "minimum": 1,
+            "maximum": 10,
+            "default": 5,
+            "description": "Priority of this context (1-10)" 
+          },
+          "tags": { 
+            "type": "array", 
+            "items": { "type": "string" },
+            "description": "Tags for searchability" 
+          }
+        },
+        "required": ["conversationId", "contextKey", "contextValue"],
+        "additionalProperties": false
+      },
+      
+      "conversation.get_context": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "conversationId": { 
+            "type": "string", 
+            "description": "External conversation ID" 
+          },
+          "contextKey": { 
+            "type": "string", 
+            "description": "Specific context key to retrieve (optional)" 
+          },
+          "contextType": { 
+            "type": "string", 
+            "description": "Specific context type to retrieve (optional)" 
+          }
+        },
+        "required": ["conversationId"],
+        "additionalProperties": false
+      },
+      
+      "conversation.store_memory": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "agentId": { 
+            "type": "string", 
+            "description": "Agent ID owning this memory" 
+          },
+          "memoryKey": { 
+            "type": "string", 
+            "description": "Key for the memory (candidate_preferences, successful_techniques, etc.)" 
+          },
+          "memoryValue": { 
+            "description": "Value of the memory (JSON object or primitive)" 
+          },
+          "memoryType": { 
+            "type": "string", 
+            "enum": ["learned_pattern", "user_preference", "success_factor", "failure_pattern"],
+            "default": "learned_pattern",
+            "description": "Type of memory being stored" 
+          },
+          "confidence": { 
+            "type": "number", 
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.5,
+            "description": "Confidence in this memory (0.0-1.0)" 
+          },
+          "source": { 
+            "type": "string", 
+            "default": "conversation",
+            "description": "Source where this memory came from" 
+          },
+          "relatedConversationIds": { 
+            "type": "array", 
+            "items": { "type": "string" },
+            "description": "Related conversation IDs" 
+          },
+          "tags": { 
+            "type": "array", 
+            "items": { "type": "string" },
+            "description": "Tags for searchability" 
+          }
+        },
+        "required": ["agentId", "memoryKey", "memoryValue"],
+        "additionalProperties": false
+      },
+      
+      "conversation.get_memory": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "agentId": { 
+            "type": "string", 
+            "description": "Agent ID to retrieve memory for" 
+          },
+          "memoryKey": { 
+            "type": "string", 
+            "description": "Specific memory key to retrieve (optional)" 
+          },
+          "memoryType": { 
+            "type": "string", 
+            "description": "Specific memory type to retrieve (optional)" 
+          },
+          "limit": { 
+            "type": "integer", 
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of memories to retrieve" 
+          }
+        },
+        "required": ["agentId"],
+        "additionalProperties": false
+      },
+      
+      "conversation.search_memory": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "agentId": { 
+            "type": "string", 
+            "description": "Agent ID to search memory for" 
+          },
+          "searchTerms": { 
+            "type": "array", 
+            "items": { "type": "string" },
+            "minItems": 1,
+            "description": "Search terms to look for in memory" 
+          },
+          "memoryTypes": { 
+            "type": "array", 
+            "items": { 
+              "type": "string",
+              "enum": ["learned_pattern", "user_preference", "success_factor", "failure_pattern"]
+            },
+            "description": "Filter by specific memory types (optional)" 
+          }
+        },
+        "required": ["agentId", "searchTerms"],
         "additionalProperties": false
       }
     };

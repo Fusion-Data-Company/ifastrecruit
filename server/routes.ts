@@ -8,7 +8,10 @@ import {
   insertInterviewSchema, 
   insertBookingSchema,
   insertApifyActorSchema,
-  insertApifyRunSchema
+  insertApifyRunSchema,
+  insertPlatformConversationSchema,
+  insertConversationContextSchema,
+  insertConversationMemorySchema
 } from "@shared/schema";
 import {
   ObjectStorageService,
@@ -629,6 +632,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // =========================
+  // PHASE 3: CONVERSATION CONTEXT API
+  // =========================
+
+  // Platform Conversation endpoints
+  app.get("/api/conversations", async (req, res) => {
+    try {
+      const { page = 1, limit = 50 } = req.query;
+      const conversations = await storage.getPlatformConversations(Number(page), Number(limit));
+      res.json(conversations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get("/api/conversations/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const conversation = await storage.getPlatformConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      res.json(conversation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post("/api/conversations", async (req, res) => {
+    try {
+      const conversationData = insertPlatformConversationSchema.parse(req.body);
+      const conversation = await storage.createPlatformConversation(conversationData);
+      res.json(conversation);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid conversation data", details: String(error) });
+    }
+  });
+
+  app.patch("/api/conversations/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const conversation = await storage.updatePlatformConversation(id, updates);
+      res.json(conversation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update conversation" });
+    }
+  });
+
+  // Conversation Context endpoints
+  app.get("/api/conversations/:conversationId/context", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const contextEntries = await storage.getConversationContexts(conversationId);
+      res.json(contextEntries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversation context" });
+    }
+  });
+
+  app.post("/api/conversations/:conversationId/context", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const contextData = insertConversationContextSchema.parse({
+        ...req.body,
+        platformConversationId: conversationId
+      });
+      const context = await storage.createConversationContext(contextData);
+      res.json(context);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid context data", details: String(error) });
+    }
+  });
+
+  app.patch("/api/context/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const context = await storage.updateConversationContext(id, updates);
+      res.json(context);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update context" });
+    }
+  });
+
+  app.delete("/api/context/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteConversationContext(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete context" });
+    }
+  });
+
+  // Conversation Memory endpoints
+  app.get("/api/memory/:agentId", async (req, res) => {
+    try {
+      const { agentId } = req.params;
+      const { limit = 100 } = req.query;
+      const memories = await storage.getConversationMemoryByAgent(agentId, Number(limit));
+      res.json(memories);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch agent memory" });
+    }
+  });
+
+  app.post("/api/memory", async (req, res) => {
+    try {
+      const memoryData = insertConversationMemorySchema.parse(req.body);
+      const memory = await storage.createConversationMemory(memoryData);
+      res.json(memory);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid memory data", details: String(error) });
+    }
+  });
+
+  app.patch("/api/memory/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const memory = await storage.updateConversationMemory(id, updates);
+      res.json(memory);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update memory" });
+    }
+  });
+
+  app.delete("/api/memory/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteConversationMemory(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete memory" });
+    }
+  });
+
+  app.post("/api/memory/:id/use", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const memory = await storage.incrementMemoryUsage(id);
+      res.json(memory);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to increment memory usage" });
+    }
+  });
+
+  app.post("/api/memory/search", async (req, res) => {
+    try {
+      const { agentId, searchTerms, memoryTypes } = req.body;
+      if (!agentId || !Array.isArray(searchTerms)) {
+        return res.status(400).json({ error: "agentId and searchTerms (array) are required" });
+      }
+      const memories = await storage.searchConversationMemory(agentId, searchTerms, memoryTypes);
+      res.json(memories);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search memory" });
+    }
+  });
 
   // Mailjet webhook - protected with API key validation
   app.post("/api/mailjet/webhooks", validateApiKey, async (req, res) => {

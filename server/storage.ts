@@ -9,6 +9,9 @@ import {
   users,
   workflowRules,
   elevenLabsTracking,
+  platformConversations,
+  conversationContext,
+  conversationMemory,
   type Campaign,
   type Candidate, 
   type Interview,
@@ -19,6 +22,9 @@ import {
   type User,
   type WorkflowRule,
   type ElevenLabsTracking,
+  type PlatformConversation,
+  type ConversationContext,
+  type ConversationMemory,
   type InsertCampaign,
   type InsertCandidate,
   type InsertInterview,
@@ -28,10 +34,13 @@ import {
   type InsertAuditLog,
   type InsertUser,
   type InsertWorkflowRule,
-  type InsertElevenLabsTracking
+  type InsertElevenLabsTracking,
+  type InsertPlatformConversation,
+  type InsertConversationContext,
+  type InsertConversationMemory
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, count, sql } from "drizzle-orm";
+import { eq, desc, count, sql, and } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
@@ -102,6 +111,35 @@ export interface IStorage {
   getElevenLabsTracking(agentId: string): Promise<ElevenLabsTracking | undefined>;
   createElevenLabsTracking(tracking: InsertElevenLabsTracking): Promise<ElevenLabsTracking>;
   updateElevenLabsTracking(agentId: string, updates: Partial<ElevenLabsTracking>): Promise<ElevenLabsTracking>;
+
+  // Phase 3: Conversation Context methods
+  // Platform conversation methods
+  getPlatformConversations(page?: number, limit?: number): Promise<PlatformConversation[]>;
+  getPlatformConversation(id: string): Promise<PlatformConversation | undefined>;
+  getPlatformConversationByConversationId(conversationId: string): Promise<PlatformConversation | undefined>;
+  createPlatformConversation(conversation: InsertPlatformConversation): Promise<PlatformConversation>;
+  updatePlatformConversation(id: string, updates: Partial<PlatformConversation>): Promise<PlatformConversation>;
+  upsertPlatformConversation(conversation: InsertPlatformConversation): Promise<{ conversation: PlatformConversation; action: 'created' | 'updated' }>;
+
+  // Conversation context methods
+  getConversationContexts(platformConversationId: string): Promise<ConversationContext[]>;
+  getConversationContext(id: string): Promise<ConversationContext | undefined>;
+  getConversationContextByKey(platformConversationId: string, contextKey: string, contextType: string): Promise<ConversationContext | undefined>;
+  createConversationContext(context: InsertConversationContext): Promise<ConversationContext>;
+  updateConversationContext(id: string, updates: Partial<ConversationContext>): Promise<ConversationContext>;
+  upsertConversationContext(context: InsertConversationContext): Promise<{ context: ConversationContext; action: 'created' | 'updated' }>;
+  deleteConversationContext(id: string): Promise<void>;
+
+  // Conversation memory methods
+  getConversationMemoryByAgent(agentId: string, limit?: number): Promise<ConversationMemory[]>;
+  getConversationMemory(id: string): Promise<ConversationMemory | undefined>;
+  getConversationMemoryByKey(agentId: string, memoryKey: string, memoryType: string): Promise<ConversationMemory | undefined>;
+  searchConversationMemory(agentId: string, searchTerms: string[], memoryTypes?: string[]): Promise<ConversationMemory[]>;
+  createConversationMemory(memory: InsertConversationMemory): Promise<ConversationMemory>;
+  updateConversationMemory(id: string, updates: Partial<ConversationMemory>): Promise<ConversationMemory>;
+  upsertConversationMemory(memory: InsertConversationMemory): Promise<{ memory: ConversationMemory; action: 'created' | 'updated' }>;
+  deleteConversationMemory(id: string): Promise<void>;
+  incrementMemoryUsage(id: string): Promise<ConversationMemory>;
 
   // Utility methods
   saveICSFile(content: string): Promise<string>;
@@ -447,6 +485,243 @@ export class DatabaseStorage implements IStorage {
       .update(elevenLabsTracking)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(elevenLabsTracking.agentId, agentId))
+      .returning();
+    return updated;
+  }
+
+  // === PHASE 3: CONVERSATION CONTEXT METHODS ===
+
+  // Platform conversation methods
+  async getPlatformConversations(page = 1, limit = 50): Promise<PlatformConversation[]> {
+    const offset = (page - 1) * limit;
+    return await db
+      .select()
+      .from(platformConversations)
+      .orderBy(desc(platformConversations.lastActivityAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getPlatformConversation(id: string): Promise<PlatformConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(platformConversations)
+      .where(eq(platformConversations.id, id));
+    return conversation || undefined;
+  }
+
+  async getPlatformConversationByConversationId(conversationId: string): Promise<PlatformConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(platformConversations)
+      .where(eq(platformConversations.conversationId, conversationId));
+    return conversation || undefined;
+  }
+
+  async createPlatformConversation(conversation: InsertPlatformConversation): Promise<PlatformConversation> {
+    const [created] = await db
+      .insert(platformConversations)
+      .values(conversation)
+      .returning();
+    return created;
+  }
+
+  async updatePlatformConversation(id: string, updates: Partial<PlatformConversation>): Promise<PlatformConversation> {
+    const [updated] = await db
+      .update(platformConversations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(platformConversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async upsertPlatformConversation(conversation: InsertPlatformConversation): Promise<{ conversation: PlatformConversation; action: 'created' | 'updated' }> {
+    const existing = await this.getPlatformConversationByConversationId(conversation.conversationId);
+    
+    if (existing) {
+      const updated = await this.updatePlatformConversation(existing.id, conversation);
+      return { conversation: updated, action: 'updated' };
+    } else {
+      const created = await this.createPlatformConversation(conversation);
+      return { conversation: created, action: 'created' };
+    }
+  }
+
+  // Conversation context methods
+  async getConversationContexts(platformConversationId: string): Promise<ConversationContext[]> {
+    return await db
+      .select()
+      .from(conversationContext)
+      .where(eq(conversationContext.platformConversationId, platformConversationId))
+      .orderBy(desc(conversationContext.priority), desc(conversationContext.createdAt));
+  }
+
+  async getConversationContext(id: string): Promise<ConversationContext | undefined> {
+    const [context] = await db
+      .select()
+      .from(conversationContext)
+      .where(eq(conversationContext.id, id));
+    return context || undefined;
+  }
+
+  async getConversationContextByKey(platformConversationId: string, contextKey: string, contextType: string): Promise<ConversationContext | undefined> {
+    const [context] = await db
+      .select()
+      .from(conversationContext)
+      .where(
+        and(
+          eq(conversationContext.platformConversationId, platformConversationId),
+          eq(conversationContext.contextKey, contextKey),
+          eq(conversationContext.contextType, contextType)
+        )
+      );
+    return context || undefined;
+  }
+
+  async createConversationContext(context: InsertConversationContext): Promise<ConversationContext> {
+    const [created] = await db
+      .insert(conversationContext)
+      .values(context)
+      .returning();
+    return created;
+  }
+
+  async updateConversationContext(id: string, updates: Partial<ConversationContext>): Promise<ConversationContext> {
+    const [updated] = await db
+      .update(conversationContext)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(conversationContext.id, id))
+      .returning();
+    return updated;
+  }
+
+  async upsertConversationContext(context: InsertConversationContext): Promise<{ context: ConversationContext; action: 'created' | 'updated' }> {
+    const existing = await this.getConversationContextByKey(
+      context.platformConversationId,
+      context.contextKey,
+      context.contextType
+    );
+    
+    if (existing) {
+      const updated = await this.updateConversationContext(existing.id, context);
+      return { context: updated, action: 'updated' };
+    } else {
+      const created = await this.createConversationContext(context);
+      return { context: created, action: 'created' };
+    }
+  }
+
+  async deleteConversationContext(id: string): Promise<void> {
+    await db.delete(conversationContext).where(eq(conversationContext.id, id));
+  }
+
+  // Conversation memory methods
+  async getConversationMemoryByAgent(agentId: string, limit = 100): Promise<ConversationMemory[]> {
+    return await db
+      .select()
+      .from(conversationMemory)
+      .where(and(eq(conversationMemory.agentId, agentId), eq(conversationMemory.isActive, true)))
+      .orderBy(desc(conversationMemory.confidence), desc(conversationMemory.lastUsedAt))
+      .limit(limit);
+  }
+
+  async getConversationMemory(id: string): Promise<ConversationMemory | undefined> {
+    const [memory] = await db
+      .select()
+      .from(conversationMemory)
+      .where(eq(conversationMemory.id, id));
+    return memory || undefined;
+  }
+
+  async getConversationMemoryByKey(agentId: string, memoryKey: string, memoryType: string): Promise<ConversationMemory | undefined> {
+    const [memory] = await db
+      .select()
+      .from(conversationMemory)
+      .where(
+        and(
+          eq(conversationMemory.agentId, agentId),
+          eq(conversationMemory.memoryKey, memoryKey),
+          eq(conversationMemory.memoryType, memoryType)
+        )
+      );
+    return memory || undefined;
+  }
+
+  async searchConversationMemory(agentId: string, searchTerms: string[], memoryTypes?: string[]): Promise<ConversationMemory[]> {
+    let query = db
+      .select()
+      .from(conversationMemory)
+      .where(and(eq(conversationMemory.agentId, agentId), eq(conversationMemory.isActive, true)));
+
+    // Add memory type filtering if provided
+    if (memoryTypes && memoryTypes.length > 0) {
+      // Note: In a real implementation, you'd want to use proper IN clause syntax
+      // For now, we'll filter on the first type
+      query = query.where(eq(conversationMemory.memoryType, memoryTypes[0]));
+    }
+
+    const results = await query
+      .orderBy(desc(conversationMemory.confidence), desc(conversationMemory.lastUsedAt))
+      .limit(50);
+
+    // Filter by search terms in memory - this is a simple implementation
+    // In production, you might want to use full-text search capabilities
+    if (searchTerms.length > 0) {
+      return results.filter(memory => {
+        const searchableText = `${memory.memoryKey} ${JSON.stringify(memory.memoryValue)} ${memory.tags.join(' ')}`.toLowerCase();
+        return searchTerms.some(term => searchableText.includes(term.toLowerCase()));
+      });
+    }
+
+    return results;
+  }
+
+  async createConversationMemory(memory: InsertConversationMemory): Promise<ConversationMemory> {
+    const [created] = await db
+      .insert(conversationMemory)
+      .values(memory)
+      .returning();
+    return created;
+  }
+
+  async updateConversationMemory(id: string, updates: Partial<ConversationMemory>): Promise<ConversationMemory> {
+    const [updated] = await db
+      .update(conversationMemory)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(conversationMemory.id, id))
+      .returning();
+    return updated;
+  }
+
+  async upsertConversationMemory(memory: InsertConversationMemory): Promise<{ memory: ConversationMemory; action: 'created' | 'updated' }> {
+    const existing = await this.getConversationMemoryByKey(
+      memory.agentId,
+      memory.memoryKey,
+      memory.memoryType
+    );
+    
+    if (existing) {
+      const updated = await this.updateConversationMemory(existing.id, memory);
+      return { memory: updated, action: 'updated' };
+    } else {
+      const created = await this.createConversationMemory(memory);
+      return { memory: created, action: 'created' };
+    }
+  }
+
+  async deleteConversationMemory(id: string): Promise<void> {
+    await db.delete(conversationMemory).where(eq(conversationMemory.id, id));
+  }
+
+  async incrementMemoryUsage(id: string): Promise<ConversationMemory> {
+    const [updated] = await db
+      .update(conversationMemory)
+      .set({
+        usageCount: sql`${conversationMemory.usageCount} + 1`,
+        lastUsedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(conversationMemory.id, id))
       .returning();
     return updated;
   }
