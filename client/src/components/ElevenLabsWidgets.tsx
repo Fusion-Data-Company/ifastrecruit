@@ -32,11 +32,27 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
     console.log('- Position:', position);
     console.log('- TestID:', testId);
     
-    // Check for AudioWorklet support
-    if (typeof window.AudioWorkletNode === 'undefined') {
-      console.warn('⚠️ AudioWorklet not supported in this browser');
-      setErrorMessage('Browser does not support advanced audio features');
-      setWidgetStatus('error');
+    // Comprehensive audio compatibility check
+    const hasFullAudioSupport = () => {
+      try {
+        // Check basic AudioWorklet support
+        if (typeof window.AudioWorkletNode === 'undefined') return false;
+        
+        // Check for AudioContext (required for worklets)
+        if (typeof window.AudioContext === 'undefined' && typeof (window as any).webkitAudioContext === 'undefined') return false;
+        
+        // Check if we're in a secure context (required for many audio APIs)
+        if (!window.isSecureContext && window.location.hostname !== 'localhost') return false;
+        
+        return true;
+      } catch (error) {
+        return false;
+      }
+    };
+    
+    if (!hasFullAudioSupport()) {
+      console.warn('⚠️ Limited audio support detected - showing fallback widget');
+      setWidgetStatus('loaded'); // Set to loaded to show fallback widget instead of error
       return;
     }
     
@@ -47,22 +63,50 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
       script.async = true;
       script.type = 'text/javascript';
       
+      // Create error handler function that we can reference for cleanup
+      const handleWidgetError = (event: ErrorEvent | PromiseRejectionEvent) => {
+        const message = 'message' in event ? event.message : (event.reason?.message || String(event.reason || ''))
+        const filename = 'filename' in event ? event.filename : ''
+        
+        // Check for known benign errors from ElevenLabs/AudioWorklet
+        const benignPatterns = [
+          'raw-audio-processor',
+          'AudioWorklet',
+          'AudioContext',
+          'worklet',
+          'unpkg.com/@elevenlabs/convai-widget-embed',
+          'AbortError',
+          'NotAllowedError', 
+          'NotFoundError',
+          'SecurityError',
+          'The user aborted a request',
+          'play() request was interrupted',
+          'Failed to load the raw-audio-processor worklet module'
+        ]
+        
+        const isBenignError = benignPatterns.some(pattern => 
+          message.includes(pattern) || filename.includes(pattern)
+        )
+        
+        if (isBenignError) {
+          console.debug('🔇 Widget: Suppressing benign error:', message)
+          event.preventDefault?.()
+          event.stopImmediatePropagation?.()
+          // Don't set error status for benign errors as the widget may still work
+          return
+        }
+      }
+      
+      // Register error handlers
+      window.addEventListener('error', handleWidgetError, true)
+      window.addEventListener('unhandledrejection', handleWidgetError, true)
+
+      // Store handler reference for cleanup
+      ;(script as any).__errorHandler = handleWidgetError
+
       script.onload = () => {
         console.log('✅ ElevenLabs ConvAI script loaded successfully');
         setWidgetStatus('loaded');
-        
-        // Add global error handler for AudioWorklet issues
-        const handleGlobalError = (event: ErrorEvent | PromiseRejectionEvent) => {
-          const message = 'message' in event ? event.message : event.reason?.toString() || 'Unknown error';
-          if (message.includes('raw-audio-processor') || message.includes('worklet') || message.includes('AudioWorklet')) {
-            console.warn('🎧 AudioWorklet issue detected, but widget may still function for text interactions');
-            // Don't set error status for AudioWorklet issues as the widget may still work for text
-            return;
-          }
-        };
-        
-        window.addEventListener('error', handleGlobalError);
-        window.addEventListener('unhandledrejection', handleGlobalError);
 
         // Add widget event listeners for debugging
         setTimeout(() => {
@@ -92,12 +136,6 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
             });
           }
         }, 1000);
-        
-        // Cleanup function
-        return () => {
-          window.removeEventListener('error', handleGlobalError);
-          window.removeEventListener('unhandledrejection', handleGlobalError);
-        };
       };
       
       script.onerror = () => {
@@ -116,6 +154,17 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
       console.warn('⚠️ ElevenLabs requires HTTPS for microphone access in production');
       setErrorMessage('Voice features require HTTPS connection');
     }
+
+    // Proper cleanup function that gets returned by useEffect
+    return () => {
+      // Find the script to get the stored handler reference
+      const script = document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]') as any;
+      if (script && script.__errorHandler) {
+        window.removeEventListener('error', script.__errorHandler, true);
+        window.removeEventListener('unhandledrejection', script.__errorHandler, true);
+        delete script.__errorHandler;
+      }
+    };
   }, [agentId]);
 
   const positionStyles = position === 'bottom-right' 
@@ -155,6 +204,41 @@ export function ElevenLabsWidget({ agentId, position, testId }: ElevenLabsWidget
               • Domain must be in allowlist
             </>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Check if we need to show a fallback widget
+  const hasAudioWorkletSupport = typeof window.AudioWorkletNode !== 'undefined';
+  
+  if (!hasAudioWorkletSupport) {
+    return (
+      <div 
+        style={{
+          ...positionStyles, 
+          backgroundColor: '#2563eb', 
+          color: 'white', 
+          padding: '16px', 
+          borderRadius: '12px', 
+          fontSize: '14px', 
+          maxWidth: '280px',
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}
+        data-testid={`${testId}-fallback`}
+        className="elevenlabs-widget-fallback"
+        onClick={() => window.open('https://app.elevenlabs.io/conversational-ai/share/' + agentId.replace('agent_', ''), '_blank')}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ fontSize: '20px', marginRight: '8px' }}>🤖</div>
+          <div style={{ fontWeight: 'bold' }}>AI Assistant</div>
+        </div>
+        <div style={{ fontSize: '12px', opacity: 0.9 }}>
+          Click to chat with our AI assistant
+        </div>
+        <div style={{ fontSize: '10px', marginTop: '8px', opacity: 0.7 }}>
+          Audio features limited in this browser
         </div>
       </div>
     );

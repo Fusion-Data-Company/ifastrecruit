@@ -46,8 +46,18 @@ export class FileStorageService {
     try {
       console.log(`[File Storage] Downloading audio recording from: ${audioUrl}`);
       
+      // Convert relative URL to absolute URL if needed
+      let fullUrl = audioUrl;
+      if (audioUrl.startsWith('/')) {
+        const baseUrl = process.env.REPL_SLUG 
+          ? `https://${process.env.REPL_SLUG}.replit.app`
+          : 'http://localhost:5000';
+        fullUrl = `${baseUrl}${audioUrl}`;
+        console.log(`[File Storage] Converting relative URL to absolute: ${fullUrl}`);
+      }
+      
       // Download the audio file
-      const response = await fetch(audioUrl);
+      const response = await fetch(fullUrl);
       if (!response.ok) {
         throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`);
       }

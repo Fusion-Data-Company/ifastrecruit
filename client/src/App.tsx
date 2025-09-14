@@ -36,7 +36,7 @@ function App() {
         <Toaster />
         <Router />
         {/* Platform Assistant - Fortune 500 Enterprise AI Assistant */}
-        <MainUIAgent />
+        {/* <MainUIAgent /> */}
       </TooltipProvider>
     </QueryClientProvider>
   );
