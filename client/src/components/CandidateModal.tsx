@@ -1013,16 +1013,22 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
                     )}
 
                     {/* Transcript Messages */}
-                    {candidate.transcriptMessages && (
+                    {candidate.interviewTranscript && (
                       <Card className="bg-gradient-to-br from-slate-900/40 to-slate-800/40 backdrop-blur-sm border-cyan-500/20">
                         <CardHeader className="border-b border-cyan-500/10">
                           <CardTitle className="flex items-center space-x-2 text-base">
                             <MessageSquare className="w-4 h-4 text-cyan-400" />
-                            <span className="font-serif">Structured Messages</span>
+                            <span className="font-serif">Interview Conversation</span>
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="mt-4">
-                          <JsonDataDisplay data={candidate.transcriptMessages} title="Messages" />
+                          <EnhancedTranscript 
+                            transcript={String(candidate.interviewTranscript)}
+                            candidateName={candidate.name}
+                            agentName="AI Interviewer"
+                            interviewDate={candidate.createdAt}
+                            className="max-h-96"
+                          />
                         </CardContent>
                       </Card>
                     )}
