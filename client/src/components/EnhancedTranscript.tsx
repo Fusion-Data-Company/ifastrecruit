@@ -48,95 +48,39 @@ export function EnhancedTranscript({
   const [showOnlyAgent, setShowOnlyAgent] = useState(false);
   const { toast } = useToast();
 
-  // Parse transcript into structured messages with improved whitespace handling
+  // Parse transcript into natural conversation format - simple and clean
   const parseTranscript = (rawTranscript: string): TranscriptMessage[] => {
     if (!rawTranscript) return [];
 
-    try {
-      // Try to parse as JSON first (structured format)
-      const parsed = JSON.parse(rawTranscript);
+    // Clean the transcript and split into lines
+    const lines = rawTranscript
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.match(/^=+/) && !line.match(/^-+/) && line !== 'Generated:' && !line.startsWith('Conversation ID:'));
+    
+    const messages: TranscriptMessage[] = [];
+    
+    for (const line of lines) {
+      // Look for natural conversation pattern: "speaker: message"
+      const match = line.match(/^(agent|user|candidate|ai|assistant|bot):\s*(.+)$/i);
       
-      // Handle direct array format
-      if (Array.isArray(parsed)) {
-        return parsed.map((item: any): TranscriptMessage => ({
-          speaker: (item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate') as 'agent' | 'candidate',
-          message: (item.message || item.text || String(item)).replace(/\s+/g, ' ').trim(),
-          timestamp: item.timestamp,
-          duration: item.duration
-        })).filter(msg => msg.message.length > 0);
-      }
-      
-      // Handle object with messages array (common ElevenLabs format)
-      if (parsed && typeof parsed === 'object') {
-        const messagesArray = parsed.messages || parsed.transcript || parsed.data || [];
-        if (Array.isArray(messagesArray) && messagesArray.length > 0) {
-          return messagesArray.map((item: any): TranscriptMessage => ({
-            speaker: (item.speaker === 'agent' || item.speaker === 'ai' ? 'agent' : 'candidate') as 'agent' | 'candidate',
-            message: (item.message || item.text || String(item)).replace(/\s+/g, ' ').trim(),
-            timestamp: item.timestamp,
-            duration: item.duration
-          })).filter(msg => msg.message.length > 0);
-        }
+      if (match) {
+        const speakerText = match[1].toLowerCase();
+        const message = match[2].trim();
         
-        // Handle single object with text content
-        if (parsed.message || parsed.text) {
-          return ([{
-            speaker: (parsed.speaker === 'agent' || parsed.speaker === 'ai' ? 'agent' : 'candidate') as 'agent' | 'candidate',
-            message: (parsed.message || parsed.text).replace(/\s+/g, ' ').trim(),
-            timestamp: parsed.timestamp,
-            duration: parsed.duration
-          }] as TranscriptMessage[]).filter(msg => msg.message.length > 0);
-        }
-      }
-    } catch {
-      // If not JSON, parse as plain text with enhanced cleanup
-      const lines = rawTranscript
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0 && !line.match(/^\s*$/)); // Filter empty and whitespace-only lines
-      
-      const messages: TranscriptMessage[] = [];
-      
-      for (const line of lines) {
-        // Try to identify speaker patterns
-        let speaker: 'agent' | 'candidate' = 'candidate';
-        let message = line.trim();
-        
-        // Common patterns for agent identification
-        if (line.match(/^(Agent|AI|Assistant|Bot|System)[\s:]/i)) {
-          speaker = 'agent';
-          message = line.replace(/^(Agent|AI|Assistant|Bot|System)[\s:]+/i, '').trim();
-        } else if (line.match(/^(Candidate|User|Applicant)[\s:]/i)) {
-          speaker = 'candidate';
-          message = line.replace(/^(Candidate|User|Applicant)[\s:]+/i, '').trim();
-        } else if (line.includes('[Agent]') || line.includes('[AI]')) {
-          speaker = 'agent';
-          message = line.replace(/\[(Agent|AI)\]/gi, '').trim();
-        } else if (line.includes('[Candidate]') || line.includes('[User]')) {
-          speaker = 'candidate';
-          message = line.replace(/\[(Candidate|User)\]/gi, '').trim();
-        }
-        
-        // Extract timestamp if present
-        const timestampMatch = message.match(/^\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s*/);
-        let timestamp;
-        if (timestampMatch) {
-          timestamp = timestampMatch[1];
-          message = message.replace(timestampMatch[0], '').trim();
-        }
-        
-        // Clean up excessive whitespace and ensure message has content
-        message = message.replace(/\s+/g, ' ').trim();
+        // Determine speaker type - agent vs candidate/user
+        const speaker: 'agent' | 'candidate' = 
+          (speakerText === 'agent' || speakerText === 'ai' || speakerText === 'assistant' || speakerText === 'bot') 
+            ? 'agent' 
+            : 'candidate';
         
         if (message && message.length > 0) {
-          messages.push({ speaker, message, timestamp });
+          messages.push({ speaker, message });
         }
       }
-      
-      return messages;
     }
     
-    return [];
+    return messages;
   };
 
   // Group consecutive messages by the same speaker
@@ -205,14 +149,9 @@ export function EnhancedTranscript({
 
   const copyTranscript = () => {
     const formattedTranscript = messageGroups.map(group => {
-      const speakerName = group.speaker === 'agent' ? agentName : candidateName || 'Candidate';
-      const timeRange = group.startTimestamp ? 
-        (group.startTimestamp === group.endTimestamp ? 
-          `[${group.startTimestamp}] ` : 
-          `[${group.startTimestamp} - ${group.endTimestamp}] `) : '';
-      
-      const groupMessages = group.messages.map(msg => msg.message).join(' ');
-      return `${timeRange}${speakerName}: ${groupMessages}`;
+      return group.messages.map(msg => 
+        `${group.speaker}: ${msg.message}`
+      ).join('\n');
     }).join('\n\n');
     
     navigator.clipboard.writeText(formattedTranscript);
@@ -224,14 +163,9 @@ export function EnhancedTranscript({
 
   const downloadTranscript = () => {
     const formattedTranscript = messageGroups.map(group => {
-      const speakerName = group.speaker === 'agent' ? agentName : candidateName || 'Candidate';
-      const timeRange = group.startTimestamp ? 
-        (group.startTimestamp === group.endTimestamp ? 
-          `[${group.startTimestamp}] ` : 
-          `[${group.startTimestamp} - ${group.endTimestamp}] `) : '';
-      
-      const groupMessages = group.messages.map(msg => msg.message).join(' ');
-      return `${timeRange}${speakerName}: ${groupMessages}`;
+      return group.messages.map(msg => 
+        `${group.speaker}: ${msg.message}`
+      ).join('\n');
     }).join('\n\n');
     
     const blob = new Blob([formattedTranscript], { type: 'text/plain' });
@@ -487,8 +421,8 @@ export function EnhancedTranscript({
             </div>
 
             
-            {/* Enhanced Transcript Messages */}
-            <ScrollArea className="h-[400px] md:h-[500px] lg:h-[600px] p-6 bg-gradient-to-b from-white/40 to-gray-50/40 dark:from-gray-900/40 dark:to-gray-800/40">
+            {/* Clean Natural Transcript Display */}
+            <ScrollArea className="h-[400px] md:h-[500px] lg:h-[600px] p-6 bg-white/50 dark:bg-gray-900/50">
               {filteredGroups.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
@@ -498,98 +432,32 @@ export function EnhancedTranscript({
                   <p className="text-gray-600 dark:text-gray-400">Try adjusting your search criteria or filters</p>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4 text-left">
                   {filteredGroups.map((group, groupIndex) => (
-                    <div key={groupIndex} className="group">
-                      <div className={`flex items-start space-x-4 ${
-                        group.speaker === 'agent' 
-                          ? 'justify-start' 
-                          : 'justify-end flex-row-reverse space-x-reverse'
-                      }`}>
-                        {/* Speaker Avatar */}
-                        <div className="flex-shrink-0">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-sm border ${
-                            group.speaker === 'agent'
-                              ? 'bg-gradient-to-br from-primary/20 to-primary/10 border-primary/20'
-                              : 'bg-gradient-to-br from-secondary/20 to-secondary/10 border-secondary/20'
-                          }`}>
-                            {group.speaker === 'agent' ? (
-                              <Bot className="h-5 w-5 text-primary" />
-                            ) : (
-                              <User className="h-5 w-5 text-secondary" />
-                            )}
-                          </div>
+                    <div key={groupIndex} className="space-y-2">
+                      {group.messages.map((msg, msgIndex) => (
+                        <div key={msgIndex} className="leading-relaxed">
+                          <p className="text-gray-800 dark:text-gray-200 text-sm md:text-base">
+                            <span className={`font-medium ${
+                              group.speaker === 'agent' ? 'text-primary' : 'text-secondary'
+                            }`}>
+                              {group.speaker}:
+                            </span>
+                            <span className="ml-2">
+                              {searchTerm ? (
+                                <span dangerouslySetInnerHTML={{
+                                  __html: msg.message.replace(
+                                    new RegExp(`(${searchTerm})`, 'gi'),
+                                    '<mark class="bg-yellow-200 dark:bg-yellow-600">$1</mark>'
+                                  )
+                                }} />
+                              ) : (
+                                msg.message
+                              )}
+                            </span>
+                          </p>
                         </div>
-                        
-                        {/* Message Content */}
-                        <div className={`max-w-[75%] md:max-w-[85%] ${
-                          group.speaker === 'agent' 
-                            ? 'bg-gradient-to-br from-white/90 to-primary/5 border-primary/20' 
-                            : 'bg-gradient-to-br from-white/90 to-secondary/5 border-secondary/20'
-                        } border rounded-2xl p-4 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200`}>
-                          {/* Speaker Header */}
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                {group.speaker === 'agent' ? agentName : candidateName || 'Candidate'}
-                              </span>
-                              <Badge variant="secondary" className={`text-xs ${
-                                group.speaker === 'agent' 
-                                  ? 'bg-primary/10 text-primary border-primary/20'
-                                  : 'bg-secondary/10 text-secondary border-secondary/20'
-                              }`}>
-                                {group.messages.length} message{group.messages.length > 1 ? 's' : ''}
-                              </Badge>
-                            </div>
-                            {(group.startTimestamp || group.endTimestamp) && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400 bg-white/60 dark:bg-gray-800/60 px-2 py-1 rounded-md">
-                                {group.startTimestamp}
-                                {group.startTimestamp !== group.endTimestamp && group.endTimestamp && 
-                                  ` - ${group.endTimestamp}`
-                                }
-                              </span>
-                            )}
-                          </div>
-                          
-                          {/* Messages */}
-                          <div className="space-y-3">
-                            {group.messages.map((message, messageIndex) => (
-                              <div key={messageIndex} className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
-                                {searchTerm && message.message.toLowerCase().includes(searchTerm.toLowerCase()) ? (
-                                  (() => {
-                                    const lowerMessage = message.message.toLowerCase();
-                                    const lowerSearchTerm = searchTerm.toLowerCase();
-                                    const parts = [];
-                                    let lastIndex = 0;
-                                    let index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
-                                    
-                                    while (index !== -1) {
-                                      if (index > lastIndex) {
-                                        parts.push(message.message.slice(lastIndex, index));
-                                      }
-                                      parts.push(
-                                        <mark key={`match-${index}`} className="bg-yellow-200/80 dark:bg-yellow-800/60 px-1 py-0.5 rounded">
-                                          {message.message.slice(index, index + searchTerm.length)}
-                                        </mark>
-                                      );
-                                      lastIndex = index + searchTerm.length;
-                                      index = lowerMessage.indexOf(lowerSearchTerm, lastIndex);
-                                    }
-                                    
-                                    if (lastIndex < message.message.length) {
-                                      parts.push(message.message.slice(lastIndex));
-                                    }
-                                    
-                                    return parts;
-                                  })()
-                                ) : (
-                                  message.message
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   ))}
                 </div>
