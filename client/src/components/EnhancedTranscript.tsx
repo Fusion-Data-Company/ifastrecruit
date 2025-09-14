@@ -429,7 +429,7 @@ export function EnhancedTranscript({
                     placeholder="Search conversation..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-primary/20 focus:border-primary/40 focus:ring-primary/20"
+                    className="pl-10 bg-white/80 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 backdrop-blur-sm border-primary/20 focus:border-primary/40 focus:ring-primary/20"
                     data-testid="transcript-search"
                   />
                 </div>
