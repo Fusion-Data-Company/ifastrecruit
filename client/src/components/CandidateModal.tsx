@@ -582,7 +582,7 @@ export default function CandidateModal({ candidate, isOpen, onClose }: Candidate
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
             >
-              <TabsList className="grid w-full grid-cols-7 bg-gradient-to-r from-slate-800/60 via-slate-700/50 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 p-1.5 rounded-2xl shadow-xl shadow-slate-900/50">
+              <TabsList className="grid w-full grid-cols-7 bg-gradient-to-r from-slate-800/60 via-slate-700/50 to-slate-800/60 backdrop-blur-xl border border-slate-600/40 p-2.5 rounded-2xl shadow-xl shadow-slate-900/50">
                 <TabsTrigger 
                   value="overview" 
                   className="flex items-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-600 data-[state=active]:via-blue-600 data-[state=active]:to-cyan-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-cyan-500/30 hover:bg-slate-700/50"
