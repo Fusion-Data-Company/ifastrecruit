@@ -48,6 +48,48 @@ export function EnhancedTranscript({
   const [showOnlyAgent, setShowOnlyAgent] = useState(false);
   const { toast } = useToast();
 
+  // Helper function to render highlighted text with proper React elements
+  const renderHighlightedText = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+    
+    const lowerText = text.toLowerCase();
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    const segments = [];
+    let lastIndex = 0;
+    let segmentIndex = 0;
+    
+    let index = lowerText.indexOf(lowerSearchTerm, lastIndex);
+    while (index !== -1) {
+      // Add text before the match
+      if (index > lastIndex) {
+        segments.push(
+          <span key={`text-${segmentIndex++}`}>
+            {text.slice(lastIndex, index)}
+          </span>
+        );
+      }
+      // Add the highlighted match
+      segments.push(
+        <mark key={`highlight-${segmentIndex++}`} className="bg-yellow-200 dark:bg-yellow-600 px-1 py-0.5 rounded">
+          {text.slice(index, index + searchTerm.length)}
+        </mark>
+      );
+      lastIndex = index + searchTerm.length;
+      index = lowerText.indexOf(lowerSearchTerm, lastIndex);
+    }
+    
+    // Add remaining text after the last match
+    if (lastIndex < text.length) {
+      segments.push(
+        <span key={`text-${segmentIndex++}`}>
+          {text.slice(lastIndex)}
+        </span>
+      );
+    }
+    
+    return segments.length > 0 ? segments : text;
+  };
+
   // Parse transcript into natural conversation format - simple and clean
   const parseTranscript = (rawTranscript: string): TranscriptMessage[] => {
     if (!rawTranscript) return [];
@@ -444,16 +486,10 @@ export function EnhancedTranscript({
                               {group.speaker}:
                             </span>
                             <span className="ml-2">
-                              {searchTerm ? (
-                                <span dangerouslySetInnerHTML={{
-                                  __html: msg.message.replace(
-                                    new RegExp(`(${searchTerm})`, 'gi'),
-                                    '<mark class="bg-yellow-200 dark:bg-yellow-600">$1</mark>'
-                                  )
-                                }} />
-                              ) : (
-                                msg.message
-                              )}
+                              {searchTerm && msg.message.toLowerCase().includes(searchTerm.toLowerCase()) 
+                                ? renderHighlightedText(msg.message, searchTerm)
+                                : msg.message
+                              }
                             </span>
                           </p>
                         </div>
