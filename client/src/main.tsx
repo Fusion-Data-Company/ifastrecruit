@@ -38,7 +38,8 @@ function handleBenignError(event: ErrorEvent | PromiseRejectionEvent) {
 }
 
 // Register global error handlers before rendering
-window.addEventListener('error', handleBenignError, true)
-window.addEventListener('unhandledrejection', handleBenignError, true)
+// TEMPORARILY COMMENTED OUT: These conflict with Replit runtime error overlay
+// window.addEventListener('error', handleBenignError, true)
+// window.addEventListener('unhandledrejection', handleBenignError, true)
 
 createRoot(document.getElementById("root")!).render(<App />);
