@@ -131,6 +131,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     elevenLabsAutomation.setBroadcastFunction(app.locals.broadcastSSE);
     console.log("[ElevenLabs Automation] SSE broadcasting configured");
     
+    // DISABLED: ElevenLabs automation polling to reduce log noise
+    // To re-enable, uncomment the following section:
+    /*
     // Start automated polling after a delay to ensure system is ready
     setTimeout(async () => {
       try {
@@ -140,6 +143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("[ElevenLabs Automation] Failed to start automated polling:", error);
       }
     }, 10000); // 10 second delay
+    */
+    console.log("[ElevenLabs Automation] Automatic polling is DISABLED - use manual trigger endpoint if needed");
   }
 
   // Health check
