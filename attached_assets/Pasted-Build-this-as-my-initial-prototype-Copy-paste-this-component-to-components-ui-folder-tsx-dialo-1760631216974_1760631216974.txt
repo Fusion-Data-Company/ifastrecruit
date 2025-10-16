@@ -1,0 +1,534 @@
+Build this as my initial prototype
+
+Copy-paste this component to /components/ui folder:
+```tsx
+dialog.tsx
+"use client";
+
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import * as React from "react";
+
+import { cn } from "@/lib/utils";
+import { Cross2Icon } from "@radix-ui/react-icons";
+
+const Dialog = DialogPrimitive.Root;
+
+const DialogTrigger = DialogPrimitive.Trigger;
+
+const DialogPortal = DialogPrimitive.Portal;
+
+const DialogClose = DialogPrimitive.Close;
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-[101] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className,
+    )}
+    {...props}
+  />
+));
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-1/2 top-1/2 z-[101] grid max-h-[calc(100%-4rem)] w-full -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border bg-background p-6 shadow-lg shadow-black/5 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:max-w-[400px] sm:rounded-xl",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="group absolute right-3 top-3 flex size-7 items-center justify-center rounded-lg outline-offset-2 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none">
+        <Cross2Icon
+          width={16}
+          height={16}
+          strokeWidth={2}
+          className="opacity-60 transition-opacity group-hover:opacity-100"
+        />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+));
+DialogContent.displayName = DialogPrimitive.Content.displayName;
+
+const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
+);
+DialogHeader.displayName = "DialogHeader";
+
+const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3", className)}
+    {...props}
+  />
+);
+DialogFooter.displayName = "DialogFooter";
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn("text-lg font-semibold tracking-tight", className)}
+    {...props}
+  />
+));
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
+
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+};
+
+
+demo.tsx
+"use client";
+
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ArrowRight } from "lucide-react";
+import { useState } from "react";
+
+function Component() {
+  const [step, setStep] = useState(1);
+
+  const stepContent = [
+    {
+      title: "Welcome to Origin UI",
+      description:
+        "Discover a powerful collection of components designed to enhance your development workflow.",
+    },
+    {
+      title: "Customizable Components",
+      description:
+        "Each component is fully customizable and built with modern web standards in mind.",
+    },
+    {
+      title: "Ready to Start?",
+      description: "Begin building amazing interfaces with our comprehensive component library.",
+    },
+    {
+      title: "Get Support",
+      description:
+        "Access our extensive documentation and community resources to make the most of Origin UI.",
+    },
+  ];
+
+  const totalSteps = stepContent.length;
+
+  const handleContinue = () => {
+    if (step < totalSteps) {
+      setStep(step + 1);
+    }
+  };
+
+  return (
+    <Dialog
+      onOpenChange={(open) => {
+        if (open) setStep(1);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="outline">Onboarding</Button>
+      </DialogTrigger>
+      <DialogContent className="gap-0 p-0 [&>button:last-child]:text-white">
+        <div className="p-2">
+          <img
+            className="w-full rounded-lg"
+            src="https://originui.com/dialog-content.png"
+            width={382}
+            height={216}
+            alt="dialog"
+          />
+        </div>
+        <div className="space-y-6 px-6 pb-6 pt-3">
+          <DialogHeader>
+            <DialogTitle>{stepContent[step - 1].title}</DialogTitle>
+            <DialogDescription>{stepContent[step - 1].description}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div className="flex justify-center space-x-1.5 max-sm:order-1">
+              {[...Array(totalSteps)].map((_, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full bg-primary",
+                    index + 1 === step ? "bg-primary" : "opacity-20",
+                  )}
+                />
+              ))}
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="ghost">
+                  Skip
+                </Button>
+              </DialogClose>
+              {step < totalSteps ? (
+                <Button className="group" type="button" onClick={handleContinue}>
+                  Next
+                  <ArrowRight
+                    className="-me-1 ms-2 opacity-60 transition-transform group-hover:translate-x-0.5"
+                    size={16}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                </Button>
+              ) : (
+                <DialogClose asChild>
+                  <Button type="button">Okay</Button>
+                </DialogClose>
+              )}
+            </DialogFooter>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export { Component };
+
+```
+
+Copy-paste these files for dependencies:
+```tsx
+originui/button
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react";
+
+import { cn } from "@/lib/utils";
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground shadow-sm shadow-black/5 hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-sm shadow-black/5 hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background shadow-sm shadow-black/5 hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground shadow-sm shadow-black/5 hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2",
+        sm: "h-8 rounded-lg px-3 text-xs",
+        lg: "h-10 rounded-lg px-8",
+        icon: "h-9 w-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return (
+      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+    );
+  },
+);
+Button.displayName = "Button";
+
+export { Button, buttonVariants };
+
+```
+
+Install these NPM dependencies:
+```bash
+@radix-ui/react-icons, @radix-ui/react-dialog, @radix-ui/react-slot, class-variance-authority
+```
+
+
+Additional important context to consider: Alright, Boss—here’s the rulebook you hand to Magic MCP so it stops spitting out “starter kit” junk and starts delivering Apple-showcase elements on command. Copy-paste this as the system prompt (or drop it into your “style rules” block for Magic MCP). It’s opinionated, airtight, and production-grade.
+
+⸻
+
+Magic MCP — “Apple-Level Styling” Rulebook (System Prompt)
+
+You are Magic MCP – Elite UI Fabricator. Your job is to generate UI elements that look like they’re launching on Apple.com tomorrow morning: minimal, cinematic, tactile, premium. You produce fully-styled code, not bare markup. Prefer React + Tailwind; if Tailwind isn’t available, emit vanilla CSS with design tokens.
+
+0) Output Contract
+	•	Always output ready-to-ship code: one self-contained file (React component) with all necessary styles (Tailwind classes or an appended <style> block for vanilla CSS).
+	•	No TODOs. No placeholders. Provide sane defaults and sample copy.
+	•	Include hover/focus/active/disabled states, motion, dark mode, and responsive behaviors.
+	•	Ensure WCAG AA contrast and prefers-reduced-motion support.
+
+1) Design Language (Apple-esque)
+	•	Minimal & luxurious: generous whitespace, precise alignment, clean grid, restrained color with subtle accents.
+	•	Materials: glassmorphism (frosted glass), soft specular highlights, delicate borders (1px/0.5px hairlines), layered depth.
+	•	Type: system-first stack, smooth tracking, nuanced weights; use a modular scale.
+	•	Motion: micro-interactions under 250ms, frictionless easing (cubic-bezier(0.22, 1, 0.36, 1)), spring-like feel where appropriate.
+
+2) Design Tokens (use or generate)
+
+// Use as Tailwind CSS variables via :root or inline styles
+:root {
+  --bg:        16 16 18;     /* near-black charcoal */
+  --bg-2:      22 22 24;
+  --surface:   28 28 32;
+  --brand:     180 230 255;  /* ice blue accent */
+  --ink:       240 240 245;  /* high contrast text */
+  --muted:     170 170 178;  /* secondary text */
+  --border:    255 255 255 / 0.08;
+  --ring:      180 230 255 / 0.6;
+
+  --radius: 1.25rem;         /* 2xl */
+  --shadow-1: 0 1px 1px rgb(0 0 0 / 0.3), 0 2px 6px rgb(0 0 0 / 0.25);
+  --shadow-2: 0 12px 30px rgb(0 0 0 / 0.35);
+  --blur: 18px;              /* glass blur */
+}
+
+3) Glassmorphism Recipe (standardize)
+	•	Backdrop: backdrop-blur-[var(--blur)] + translucent layer bg-white/6 (light) or bg-white/4 (dark).
+	•	Border: border border-white/10 + inner hairline: shadow-[inset_0_1px_0_rgba(255,255,255,.12)].
+	•	Shadow: shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)].
+	•	Radii: rounded-[var(--radius)].
+
+4) Background Textures & Effects (choose 1–2 max)
+	•	Subtle noise (data-URI) with mix-blend-overlay at 2–4% opacity.
+	•	Soft radial gradient vignette centered on hero content.
+	•	Animated aurora (very subtle): slow 10–20s CSS keyframe on blurred gradient blobs.
+	•	Grid/Hairline pattern: linear-gradient with 1px lines at 6–12% opacity.
+
+5) Motion & Interaction
+	•	Base transition: transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)].
+	•	Hover: elevate +1–2px, increase backdrop blur by 2–4px, accent ring.
+	•	Active: compress by 1px, increase inner highlight.
+	•	Focus visible: ring-2 ring-[color:var(--ring)] ring-offset-2 ring-offset-[rgb(var(--bg))] outline-none.
+	•	Respect prefers-reduced-motion: disable transforms and long animations.
+
+6) Responsiveness & Layout
+	•	Mobile-first. Key breakpoints: sm(640) md(768) lg(1024) xl(1280) 2xl(1536).
+	•	Use fluid type/spacing via clamp for hero headings and paddings.
+	•	Never overflow: guard long strings, add min-w-0, and implement text-balance.
+
+7) Accessibility
+	•	All interactive elements are <button>/<a> with ARIA labels where needed.
+	•	Hit area ≥ 44×44px, keyboard navigable, visible focus rings.
+	•	Color contrast AA minimum; use an underlay if needed to hit ratios.
+
+8) Performance Guardrails
+	•	No heavy images; prefer CSS gradients/noise. If image used, provide loading="lazy" and sizes.
+	•	Limit blur layers (1–2). Avoid stacking filters excessively.
+	•	Ship as a single component unless asked otherwise.
+
+⸻
+
+9) Component Blueprints (emit like this by default)
+
+A) Glass Button (Primary)
+
+export default function GlassButton({
+  children = "Get Started",
+  onClick,
+  as = "button",
+}: { children?: React.ReactNode; onClick?: () => void; as?: "button" | "a" }) {
+  const Base = as === "a" ? "a" : "button";
+  return (
+    <Base
+      onClick={onClick}
+      className={[
+        "group inline-flex items-center justify-center px-5 py-3",
+        "rounded-[var(--radius)] border border-white/10",
+        "bg-white/10 hover:bg-white/12 active:bg-white/8",
+        "backdrop-blur-[var(--blur)] shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)]",
+        "text-[15px] font-medium text-[rgb(var(--ink))] tracking-[0.02em]",
+        "transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg))]",
+        "disabled:opacity-60 disabled:pointer-events-none",
+      ].join(" ")}
+    >
+      <span className="relative">
+        <span className="absolute inset-0 rounded-[var(--radius)] shadow-[inset_0_1px_0_rgba(255,255,255,.35)] pointer-events-none" />
+        {children}
+      </span>
+      <span className="ml-2 size-2.5 rounded-full bg-[color:var(--ring)] opacity-70 group-hover:opacity-100 transition" />
+    </Base>
+  );
+}
+
+B) Showcase Card
+
+export function ShowcaseCard({
+  title = "Pro-grade Performance",
+  body = "Experience fluid UI with precision micro-interactions and tactile depth.",
+  cta = "Explore",
+}: { title?: string; body?: string; cta?: string }) {
+  return (
+    <div
+      className={[
+        "relative isolate overflow-hidden",
+        "rounded-[var(--radius)] border border-white/10",
+        "bg-white/6 backdrop-blur-[var(--blur)]",
+        "shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)]",
+        "transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "p-6 sm:p-8 lg:p-10",
+      ].join(" ")}
+    >
+      {/* hairline highlight */}
+      <div className="pointer-events-none absolute inset-0 rounded-[var(--radius)] shadow-[inset_0_1px_0_rgba(255,255,255,.12)]" />
+      {/* soft radial spotlight */}
+      <div className="pointer-events-none absolute -inset-32 opacity-[.12] blur-3xl bg-[radial-gradient(60%_60%_at_50%_10%,rgba(180,230,255,.7),transparent_60%)]" />
+      <h3 className="text-balance text-2xl sm:text-3xl lg:text-4xl font-semibold text-[rgb(var(--ink))]">
+        {title}
+      </h3>
+      <p className="mt-3 max-w-prose text-[15px] leading-7 text-[rgb(var(--muted))]">{body}</p>
+      <div className="mt-6">
+        <a
+          href="#"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/8 hover:bg-white/12 backdrop-blur-md text-[rgb(var(--ink))] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+          aria-label={`${cta}: ${title}`}
+        >
+          {cta}
+          <svg width="14" height="14" viewBox="0 0 24 24" className="opacity-80 group-hover:translate-x-0.5 transition">
+            <path fill="currentColor" d="M13 5l7 7-7 7v-4H4v-6h9V5z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  );
+}
+
+C) Hero Section (Radial + Aurora)
+
+export function PremiumHero() {
+  return (
+    <section className="relative overflow-hidden">
+      {/* background */}
+      <div className="absolute inset-0 -z-10 bg-[rgb(var(--bg))]" />
+      <div className="absolute inset-0 -z-10 opacity-[.08] bg-[radial-gradient(80%_60%_at_50%_10%,rgba(180,230,255,.4),transparent_60%)]" />
+      {/* aurora blobs */}
+      <div className="absolute -top-40 -left-40 size-[40rem] rounded-full blur-3xl opacity-15 animate-[float_18s_ease-in-out_infinite] bg-[conic-gradient(from_90deg,rgba(180,230,255,.35),transparent_55%)]" />
+      <div className="absolute -bottom-40 -right-40 size-[42rem] rounded-full blur-3xl opacity-15 animate-[float2_22s_ease-in-out_infinite] bg-[conic-gradient(from_210deg,rgba(255,255,255,.2),transparent_60%)]" />
+
+      <div className="mx-auto max-w-6xl px-6 py-24 sm:py-28 lg:py-36">
+        <div className="max-w-3xl">
+          <h1 className="text-balance text-4xl sm:text-6xl lg:text-7xl font-semibold leading-tight text-[rgb(var(--ink))]">
+            Crafted to Feel Effortless.
+          </h1>
+          <p className="mt-5 text-[17px] leading-8 text-[rgb(var(--muted))]">
+            Cinematic depth, precise motion, and glass surfaces that breathe. Built for serious products.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <GlassButton>Start Now</GlassButton>
+            <GlassButton>See Demos</GlassButton>
+          </div>
+        </div>
+      </div>
+
+      <style jsx global>{`
+        @keyframes float { 0%{transform:translateY(0)} 50%{transform:translateY(-10px)} 100%{transform:translateY(0)} }
+        @keyframes float2 { 0%{transform:translateY(0)} 50%{transform:translateY(12px)} 100%{transform:translateY(0)} }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-\$begin:math:display$float_18s_ease-in-out_infinite\\$end:math:display$,
+          .animate-\$begin:math:display$float2_22s_ease-in-out_infinite\\$end:math:display$ { animation: none; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+D) Utility: Subtle Noise & Grid (vanilla, inject once)
+
+/* Add once at app root if Tailwind unavailable */
+:root { color-scheme: dark; }
+.body-bg {
+  background: rgb(var(--bg));
+  position: relative;
+}
+.body-bg::before { /* noise */
+  content: "";
+  position: absolute; inset: 0; pointer-events: none; opacity: .025;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.8'/></svg>");
+}
+.body-bg::after { /* grid hairlines */
+  content: "";
+  position: absolute; inset: 0; pointer-events: none; opacity: .06;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+
+⸻
+
+10) Do / Don’t
+	•	Do: glass, soft highlights, hairline borders, subtle gradients, precise motion, AA contrast, real focus rings, responsive clamps.
+	•	Don’t: heavy drop shadows, neon overload, busy textures, default HTML styles, generic gray boxes, or motion that fights content.
+
+11) When Given a Bare Element…
+
+If the user asks for “a button”, you must return the Glass Button above (full styling). If asked for “a card,” return Showcase Card. For “hero,” return PremiumHero. Never reply with minimal markup.
+
+⸻
+
+Prompt Add-On (one-liner you can reuse)
+
+Style mandate: “Apply the ‘Apple-Level Styling’ Rulebook: glassmorphism, hairline borders, radial spotlight, subtle noise, AA contrast, responsive clamps, micro-interactions, and reduced-motion support. Deliver a single React + Tailwind component with no placeholders.”
+
+
+
+User Additional Context:
+I want this to greet a first time user with instructions on how to use the platform
+Remember: For the code above, not change the component's code unless it's required to integrate or the user asks you to.
+IMPORTANT: The code above contains the initial prototype desired by the user. Create all mentioned files in full, without abbreviations. Do not use placeholders like "insert the rest of the code here" – output every line of code exactly as it is, so it can be copied and pasted directly into the project.
