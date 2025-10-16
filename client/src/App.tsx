@@ -15,7 +15,21 @@ import ElevenLabsPage from "@/pages/elevenlabs";
 import MessengerPage from "@/pages/MessengerPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import DevMessengerPage from "@/pages/DevMessengerPage";
+import LoginPage from "@/pages/LoginPage";
 import NotFound from "@/pages/not-found";
+
+// Admin wrapper that includes ElevenLabs agent
+function AdminPageWrapper({ children }: { children: React.ReactNode }) {
+  const { isAdmin } = useAuth();
+  
+  return (
+    <>
+      {children}
+      {/* Only show ElevenLabs agent on admin pages */}
+      {isAdmin && <MainUIAgent />}
+    </>
+  );
+}
 
 interface OnboardingGuardProps {
   children: React.ReactNode;
@@ -38,8 +52,14 @@ function OnboardingGuard({ children }: OnboardingGuardProps) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  // Not authenticated - let the route handle it
+  // Not authenticated - redirect to login unless on public pages
   if (!user) {
+    const publicPaths = ['/login', '/booking', '/interview'];
+    const isPublicPath = publicPaths.some(path => location.startsWith(path));
+    
+    if (!isPublicPath) {
+      return <Redirect to="/login" />;
+    }
     return <>{children}</>;
   }
 
@@ -72,14 +92,15 @@ function Router() {
   return (
     <OnboardingGuard>
       <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/candidates" component={Candidates} />
-        <Route path="/interviews" component={Interviews} />
-        <Route path="/interview/:token" component={Interview} />
+        <Route path="/login" component={LoginPage} />
+        <Route path="/">{() => <AdminPageWrapper><Dashboard /></AdminPageWrapper>}</Route>
+        <Route path="/dashboard">{() => <AdminPageWrapper><Dashboard /></AdminPageWrapper>}</Route>
+        <Route path="/candidates">{() => <AdminPageWrapper><Candidates /></AdminPageWrapper>}</Route>
+        <Route path="/interviews">{() => <AdminPageWrapper><Interviews /></AdminPageWrapper>}</Route>
+        <Route path="/interview/:token">{() => <AdminPageWrapper><Interview /></AdminPageWrapper>}</Route>
         <Route path="/booking/:token" component={Booking} />
-        <Route path="/airtop" component={AirtopIntegration} />
-        <Route path="/elevenlabs" component={ElevenLabsPage} />
+        <Route path="/airtop">{() => <AdminPageWrapper><AirtopIntegration /></AdminPageWrapper>}</Route>
+        <Route path="/elevenlabs">{() => <AdminPageWrapper><ElevenLabsPage /></AdminPageWrapper>}</Route>
         <Route path="/onboarding" component={OnboardingPage} />
         <Route path="/messenger" component={MessengerPage} />
         <Route component={NotFound} />
@@ -94,8 +115,6 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
-        {/* Platform Assistant - Fortune 500 Enterprise AI Assistant */}
-        <MainUIAgent />
       </TooltipProvider>
     </QueryClientProvider>
   );
