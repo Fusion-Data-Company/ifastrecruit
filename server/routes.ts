@@ -341,6 +341,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      
+      // Debug log to see user details
+      console.log("[AUTH DEBUG] User logged in:", {
+        email: user?.email,
+        isAdmin: user?.isAdmin,
+        userId: userId
+      });
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
