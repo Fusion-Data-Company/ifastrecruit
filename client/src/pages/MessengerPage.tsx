@@ -29,7 +29,9 @@ import {
   ChevronRight,
   Search,
   Settings,
-  Plus
+  Plus,
+  Bot,
+  Sparkles
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
@@ -64,6 +66,7 @@ interface Message {
     isAdmin?: boolean;
   };
   isEdited?: boolean;
+  isAiGenerated?: boolean;
   reactions?: Array<{ emoji: string; userId: string }>;
 }
 
@@ -135,6 +138,8 @@ export default function MessengerPage() {
   const [showParsedResumeModal, setShowParsedResumeModal] = useState(false);
   const [selectedResume, setSelectedResume] = useState<any>(null);
   const [userFiles, setUserFiles] = useState<any[]>([]);
+  const [askJasonMode, setAskJasonMode] = useState(false);
+  const [jasonLoading, setJasonLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -363,6 +368,71 @@ export default function MessengerPage() {
     }
   });
 
+  // Jason AI mutation
+  const askJasonMutation = useMutation({
+    mutationFn: async (message: string) => {
+      // Prepare conversation history based on view mode
+      const conversationHistory = viewMode === 'channel' 
+        ? channelMessages.slice(-5).map(msg => ({
+            role: msg.isAiGenerated ? 'assistant' : 'user',
+            content: msg.content
+          }))
+        : directMessages.slice(-5).map(msg => ({
+            role: msg.senderId === 'jason-ai' ? 'assistant' : 'user',
+            content: msg.content
+          }));
+
+      const response = await apiRequest('/api/messenger/ai/jason', {
+        method: 'POST',
+        body: JSON.stringify({
+          message,
+          channel: selectedChannel?.name || selectedDMUser?.firstName || 'general',
+          conversationHistory,
+          isDM: viewMode === 'dm',
+          dmUserId: selectedDMUser?.id
+        })
+      });
+      return response;
+    },
+    onSuccess: async (response) => {
+      // Send the AI response as a message in the current channel or DM
+      if (response.message) {
+        if (viewMode === 'channel' && selectedChannel) {
+          // Send as a channel message with AI flag
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'message',
+              payload: {
+                channelId: selectedChannel.id,
+                userId: 'jason-ai',
+                content: response.message,
+                isAiGenerated: true
+              }
+            }));
+          }
+        } else if (viewMode === 'dm' && selectedDMUser) {
+          // Send as a direct message with AI flag
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'direct_message',
+              payload: {
+                receiverId: selectedDMUser.id,
+                content: response.message,
+                isAiGenerated: true,
+                senderId: 'jason-ai'
+              }
+            }));
+          }
+        }
+      }
+      setJasonLoading(false);
+      setAskJasonMode(false);
+    },
+    onError: () => {
+      setJasonLoading(false);
+    }
+  });
+
   // File upload handlers
   const handleFileUpload = useCallback(async (file: File) => {
     if (!file) return;
@@ -414,6 +484,14 @@ export default function MessengerPage() {
 
   const handleSendMessage = () => {
     if (!messageInput.trim() && !uploadingFile) return;
+    
+    // If in Ask Jason mode, send to AI instead
+    if (askJasonMode && messageInput.trim()) {
+      setJasonLoading(true);
+      askJasonMutation.mutate(messageInput);
+      setMessageInput('');
+      return;
+    }
     
     if (viewMode === 'channel') {
       sendChannelMessageMutation.mutate({ content: messageInput });
@@ -850,6 +928,12 @@ export default function MessengerPage() {
                               Admin
                             </Badge>
                           )}
+                          {message.isAiGenerated && (
+                            <Badge className="px-1.5 py-0 text-[10px] bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-400 flex items-center gap-1">
+                              <Bot className="h-3 w-3" />
+                              AI Mentor
+                            </Badge>
+                          )}
                           <span className="text-xs text-gray-500">
                             {formatTime(message.createdAt)}
                           </span>
@@ -1013,6 +1097,24 @@ export default function MessengerPage() {
               >
                 <Paperclip className="h-5 w-5" />
               </button>
+
+              {/* Ask Jason AI Button */}
+              <Button
+                onClick={() => {
+                  setAskJasonMode(!askJasonMode);
+                }}
+                size="sm"
+                variant={askJasonMode ? "default" : "ghost"}
+                className={cn(
+                  "flex items-center gap-2",
+                  askJasonMode && "bg-gradient-to-r from-purple-500 to-indigo-500 text-white"
+                )}
+                data-testid="ask-jason"
+              >
+                <Bot className="h-4 w-4" />
+                {askJasonMode ? "Asking Jason..." : "Ask Jason"}
+                <Sparkles className="h-3 w-3" />
+              </Button>
               
               <Input
                 value={messageInput}
@@ -1026,6 +1128,8 @@ export default function MessengerPage() {
                 placeholder={
                   uploadingFile 
                     ? "Uploading file..." 
+                    : askJasonMode
+                      ? "Ask Jason for advice about insurance, licensing, or career growth..."
                     : viewMode === 'channel' && selectedChannel 
                       ? `Message #${selectedChannel.name}` 
                       : selectedDMUser 

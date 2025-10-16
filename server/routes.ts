@@ -79,6 +79,7 @@ import cors from "cors";
 import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import { messengerWS } from "./services/messenger-websocket";
 import { jasonAI } from "./services/jason-ai-persona";
+import { jasonPerez } from "./services/jasonPerezService";
 import multer from "multer";
 import path from "path";
 import { promises as fs } from "fs";
@@ -454,14 +455,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const channelNames = assignedChannels.map(c => c.name);
 
-      // Send Jason AI welcome message to each assigned channel
+      // Send Jason Perez AI welcome message to each assigned channel  
       for (const channel of assignedChannels) {
-        const welcomeMessage = await jasonAI.generateChannelAssignmentMessage(
+        const welcomeMessage = await jasonPerez.generateWelcomeMessage(
           user.firstName || user.email || 'New Candidate',
           channel.name,
           {
             hasFloridaLicense: validatedData.hasFloridaLicense,
-            hasMultiStateLicense: validatedData.isMultiStateLicensed,
+            isMultiStateLicensed: validatedData.isMultiStateLicensed,
             states: validatedData.licensedStates
           }
         );
@@ -1773,6 +1774,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/direct-messages/:otherUserId", isAuthenticated, async (req, res) => {
     // Redirect to new endpoint with userId parameter
     return app._router.handle(Object.assign(req, { url: `/api/messenger/dm/messages/${req.params.otherUserId}` }), res, () => {});
+  });
+
+  // =========================
+  // JASON AI PERSONA ENDPOINTS
+  // =========================
+
+  // POST /api/messenger/ai/jason - Get Jason AI response
+  app.post("/api/messenger/ai/jason", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { message, channel, conversationHistory } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Generate Jason AI response
+      const response = await jasonPerez.generateResponse(
+        message,
+        conversationHistory || [],
+        {
+          userName: user.firstName || user.email,
+          channel: channel,
+          hasLicense: user.hasFloridaLicense,
+          licenseType: user.isMultiStateLicensed ? 'multi-state' : user.hasFloridaLicense ? 'florida' : undefined,
+          experienceLevel: user.experienceLevel
+        }
+      );
+
+      res.json(response);
+    } catch (error) {
+      console.error("[Jason AI] Error generating response:", error);
+      res.status(500).json({ error: "Failed to generate AI response" });
+    }
+  });
+
+  // POST /api/messenger/ai/jason/welcome - Generate welcome message
+  app.post("/api/messenger/ai/jason/welcome", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { channel } = req.body;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const welcomeMessage = await jasonPerez.generateWelcomeMessage(
+        user.firstName || user.email || 'New Candidate',
+        channel || 'general',
+        {
+          hasFloridaLicense: user.hasFloridaLicense,
+          isMultiStateLicensed: user.isMultiStateLicensed,
+          states: user.licensedStates
+        }
+      );
+
+      res.json({ message: welcomeMessage, isAiGenerated: true });
+    } catch (error) {
+      console.error("[Jason AI] Error generating welcome message:", error);
+      res.status(500).json({ error: "Failed to generate welcome message" });
+    }
+  });
+
+  // POST /api/messenger/ai/jason/resume-feedback - Generate resume feedback
+  app.post("/api/messenger/ai/jason/resume-feedback", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { resumeData } = req.body;
+      
+      if (!resumeData) {
+        return res.status(400).json({ error: "Resume data is required" });
+      }
+
+      const user = await storage.getUser(userId);
+      const feedback = await jasonPerez.generateResumeFeedback(
+        resumeData,
+        user?.firstName || user?.email
+      );
+
+      res.json({ message: feedback, isAiGenerated: true });
+    } catch (error) {
+      console.error("[Jason AI] Error generating resume feedback:", error);
+      res.status(500).json({ error: "Failed to generate resume feedback" });
+    }
+  });
+
+  // POST /api/messenger/ai/jason/career-guidance - Get career path guidance
+  app.post("/api/messenger/ai/jason/career-guidance", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { goals } = req.body;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const currentStatus = user.isMultiStateLicensed ? 'multi_state' :
+                           user.hasFloridaLicense ? 'fl_licensed' : 'non_licensed';
+
+      const guidance = await jasonPerez.generateCareerPathGuidance(currentStatus, goals);
+
+      res.json({ message: guidance, isAiGenerated: true });
+    } catch (error) {
+      console.error("[Jason AI] Error generating career guidance:", error);
+      res.status(500).json({ error: "Failed to generate career guidance" });
+    }
   });
 
   // =========================
