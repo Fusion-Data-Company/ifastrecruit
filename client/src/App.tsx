@@ -63,9 +63,23 @@ function OnboardingGuard({ children }: OnboardingGuardProps) {
     return <>{children}</>;
   }
 
-  // Admin users bypass onboarding
+  // Admin users - redirect to dashboard if on root or wrong pages
   if (isAdmin) {
+    // If admin is on root, messenger, or onboarding, redirect to dashboard
+    if (location === '/' || location === '/messenger' || location === '/onboarding') {
+      return <Redirect to="/dashboard" />;
+    }
     return <>{children}</>;
+  }
+
+  // Non-admin users - can't access admin pages
+  const adminPaths = ['/dashboard', '/candidates', '/interviews', '/airtop', '/elevenlabs'];
+  if (adminPaths.some(path => location.startsWith(path))) {
+    // Redirect non-admins to messenger or onboarding
+    if (status && !status.hasCompleted) {
+      return <Redirect to="/onboarding" />;
+    }
+    return <Redirect to="/messenger" />;
   }
 
   // User hasn't completed onboarding and isn't on onboarding page
@@ -75,6 +89,14 @@ function OnboardingGuard({ children }: OnboardingGuardProps) {
 
   // User has completed onboarding but is on onboarding page
   if (status && status.hasCompleted && location === "/onboarding") {
+    return <Redirect to="/messenger" />;
+  }
+
+  // Non-admin on root - redirect to messenger or onboarding
+  if (location === '/') {
+    if (status && !status.hasCompleted) {
+      return <Redirect to="/onboarding" />;
+    }
     return <Redirect to="/messenger" />;
   }
 
