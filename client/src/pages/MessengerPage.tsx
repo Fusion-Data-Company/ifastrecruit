@@ -31,7 +31,8 @@ import {
   Settings,
   Plus,
   Bot,
-  Sparkles
+  Sparkles,
+  Lock
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
@@ -539,6 +540,22 @@ export default function MessengerPage() {
 
   const accessibleChannels = getUserAccessibleChannels();
 
+  // Helper function to check if user can post in channel
+  const canPostInChannel = (channel: Channel): boolean => {
+    if (!user) return false;
+    if (user.isAdmin) return true; // Admins can post in all channels
+    
+    if (channel.tier === 'NON_LICENSED') {
+      return true; // Everyone can post in non-licensed channel
+    } else if (channel.tier === 'FL_LICENSED') {
+      return user.hasFloridaLicense === true; // Only FL-licensed and multi-state can post
+    } else if (channel.tier === 'MULTI_STATE') {
+      return user.isMultiStateLicensed === true; // Only multi-state can post
+    }
+    
+    return false;
+  };
+
   // Auto-select first accessible channel
   useEffect(() => {
     if (accessibleChannels.length > 0 && !selectedChannel && viewMode === 'channel') {
@@ -595,10 +612,10 @@ export default function MessengerPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0a0f1c]">
+    <div className="flex flex-col h-screen bg-[#0a0f1c] pb-16">
       <CybercoreBackground />
       
-      {/* Main Container */}
+      {/* Main Container - Added pb-16 for footer spacing */}
       <div className="flex flex-1 relative z-10 overflow-hidden">
         {/* Left Sidebar - Servers & Channels */}
         <div className="w-64 bg-black/30 backdrop-blur-sm border-r border-white/5 flex flex-col">
@@ -641,39 +658,49 @@ export default function MessengerPage() {
               
               {showChannels && (
                 <div className="mt-1 space-y-0.5">
-                  {(accessibleChannels || []).map(channel => (
-                    <button
-                      key={channel.id}
-                      onClick={() => {
-                        setSelectedChannel(channel);
-                        setViewMode('channel');
-                        setSelectedDMUser(null);
-                      }}
-                      className={cn(
-                        "w-full px-2 py-2 rounded text-sm text-left transition-all",
-                        "hover:bg-white/5",
-                        selectedChannel?.id === channel.id && viewMode === 'channel' 
-                          ? "bg-white/10 text-white" 
-                          : "text-gray-400"
-                      )}
-                      data-testid={`channel-${channel.id}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <Hash className="h-4 w-4 flex-shrink-0" />
-                          <span className="truncate">{channel.name}</span>
-                        </div>
-                        {channel.tier && (
-                          <div className="flex-shrink-0">
-                            <TierBadge tier={channel.tier} />
-                          </div>
+                  {(channels || []).map(channel => {
+                    const canPost = canPostInChannel(channel);
+                    return (
+                      <button
+                        key={channel.id}
+                        onClick={() => {
+                          setSelectedChannel(channel);
+                          setViewMode('channel');
+                          setSelectedDMUser(null);
+                        }}
+                        className={cn(
+                          "w-full px-2 py-2 rounded text-sm text-left transition-all",
+                          "hover:bg-white/5",
+                          selectedChannel?.id === channel.id && viewMode === 'channel' 
+                            ? "bg-white/10 text-white" 
+                            : canPost ? "text-gray-400" : "text-gray-600"
                         )}
-                      </div>
-                      {channel.description && selectedChannel?.id === channel.id && (
-                        <p className="text-xs text-gray-500 mt-1 pl-6">{channel.description}</p>
-                      )}
-                    </button>
-                  ))}
+                        data-testid={`channel-${channel.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {canPost ? (
+                              <Hash className="h-4 w-4 flex-shrink-0" />
+                            ) : (
+                              <Lock className="h-4 w-4 flex-shrink-0 text-gray-500" />
+                            )}
+                            <span className="truncate">{channel.name}</span>
+                            {!canPost && (
+                              <span className="text-xs text-gray-500">(View Only)</span>
+                            )}
+                          </div>
+                          {channel.tier && (
+                            <div className="flex-shrink-0">
+                              <TierBadge tier={channel.tier} />
+                            </div>
+                          )}
+                        </div>
+                        {channel.description && selectedChannel?.id === channel.id && (
+                          <p className="text-xs text-gray-500 mt-1 pl-6">{channel.description}</p>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

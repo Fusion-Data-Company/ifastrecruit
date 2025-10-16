@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MainUIAgent, SecondaryAgent, CenterAgent } from "@/components/ElevenLabsWidgets";
 import { FloatingCalendlyButton } from "@/components/FloatingCalendlyButton";
+import { HoverFooter } from "@/components/HoverFooter";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
 import Candidates from "@/pages/candidates";
@@ -139,6 +140,8 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        {/* HoverFooter - visible on all pages */}
+        <HoverFooter />
         {/* Floating Calendly button - visible for non-admin users based on settings */}
         <FloatingCalendlyButton />
       </TooltipProvider>

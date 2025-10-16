@@ -1719,9 +1719,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      // For now, return empty array since we're focusing on DMs
-      // In the future, this should return actual channels the user has access to
-      res.json([]);
+      // Return all channels - visibility is handled in frontend
+      const allChannels = await storage.getChannels();
+      res.json(allChannels);
     } catch (error) {
       console.error("[Messenger] Error fetching channels:", error);
       res.status(500).json({ error: "Failed to fetch channels" });
