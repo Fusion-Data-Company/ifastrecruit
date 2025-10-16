@@ -36,7 +36,14 @@ import {
   Sparkles,
   Lock,
   X,
-  Smile
+  Smile,
+  Pin,
+  Info,
+  Users,
+  Crown,
+  PinOff,
+  Calendar,
+  FileText
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
@@ -93,6 +100,10 @@ interface Message {
   parentMessageId?: string | null;
   threadCount?: number;
   lastThreadReply?: string | null;
+  // Pinning fields
+  isPinned?: boolean;
+  pinnedBy?: string;
+  pinnedAt?: string;
 }
 
 interface DirectMessage {
@@ -109,6 +120,10 @@ interface DirectMessage {
   parentMessageId?: string | null;
   threadCount?: number;
   lastThreadReply?: string | null;
+  // Pinning fields
+  isPinned?: boolean;
+  pinnedBy?: string;
+  pinnedAt?: string;
 }
 
 interface DMUser {
@@ -195,6 +210,9 @@ export default function MessengerPage() {
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Channel info panel state
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [infoPanelTab, setInfoPanelTab] = useState<'members' | 'pinned' | 'about'>('members');
 
   // Queries
   const { data: channels = [] } = useQuery<Channel[]>({
@@ -231,6 +249,22 @@ export default function MessengerPage() {
   const { data: userUploads = [] } = useQuery<any[]>({
     queryKey: ['/api/messenger/uploads'],
     enabled: !!user,
+  });
+
+  // Channel info queries
+  const { data: channelMembers = [] } = useQuery<any[]>({
+    queryKey: [`/api/messenger/channel/${selectedChannel?.id}/members`],
+    enabled: !!selectedChannel && showInfoPanel && infoPanelTab === 'members',
+  });
+
+  const { data: pinnedMessages = [] } = useQuery<Message[]>({
+    queryKey: [`/api/messenger/pinned/${selectedChannel?.id}`],
+    enabled: !!selectedChannel && viewMode === 'channel',
+  });
+
+  const { data: pinnedDMs = [] } = useQuery<DirectMessage[]>({
+    queryKey: [`/api/messenger/pinned/dm/${selectedDMUser?.id}`],
+    enabled: !!selectedDMUser && viewMode === 'dm',
   });
 
   // Thread queries
@@ -287,6 +321,23 @@ export default function MessengerPage() {
         }
         return updated;
       });
+    }
+  });
+
+  // Pin/Unpin mutation
+  const pinMessageMutation = useMutation({
+    mutationFn: async ({ messageId, messageType, action }: { messageId: string; messageType: 'channel' | 'dm'; action: 'pin' | 'unpin' }) => {
+      return apiRequest('/api/messenger/pin', {
+        method: 'POST',
+        body: { messageId, messageType, action }
+      });
+    },
+    onSuccess: () => {
+      // Refresh pinned messages and messages list
+      queryClient.invalidateQueries([`/api/messenger/pinned/${selectedChannel?.id}`]);
+      queryClient.invalidateQueries([`/api/messenger/pinned/dm/${selectedDMUser?.id}`]);
+      queryClient.invalidateQueries([`/api/channels/${selectedChannel?.id}/messages`]);
+      queryClient.invalidateQueries([`/api/messenger/dm/messages/${selectedDMUser?.id}`]);
     }
   });
 
@@ -1149,6 +1200,11 @@ export default function MessengerPage() {
     }
   };
 
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   const getUserDisplayName = (user: DMUser | null | undefined | any) => {
     if (!user) return 'Unknown User';
     if (user.firstName || user.lastName) {
@@ -1456,10 +1512,20 @@ export default function MessengerPage() {
               {viewMode === 'channel' && selectedChannel ? (
                 <>
                   <Hash className="h-5 w-5 text-gray-400" />
-                  <span className="text-white font-medium">{selectedChannel.name}</span>
+                  <button
+                    onClick={() => setShowInfoPanel(!showInfoPanel)}
+                    className="text-white font-medium hover:underline flex items-center gap-2"
+                  >
+                    {selectedChannel.name}
+                    {channelMembers.length > 0 && (
+                      <span className="text-xs text-gray-400">
+                        ({channelMembers.length} members)
+                      </span>
+                    )}
+                  </button>
                   {selectedChannel.tier && <TierBadge tier={selectedChannel.tier} />}
                   {selectedChannel.description && (
-                    <span className="text-sm text-gray-400 ml-2">
+                    <span className="text-sm text-gray-400 ml-2 hidden lg:inline">
                       {selectedChannel.description}
                     </span>
                   )}
@@ -1489,6 +1555,50 @@ export default function MessengerPage() {
                 <span className="text-gray-400">Select a channel or user</span>
               )}
             </div>
+            
+            {/* Header Actions */}
+            {(selectedChannel || selectedDMUser) && (
+              <div className="flex items-center gap-2">
+                {pinnedMessages.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setShowInfoPanel(true);
+                      setInfoPanelTab('pinned');
+                    }}
+                    className="text-gray-400 hover:text-gray-300 relative"
+                    title="View pinned messages"
+                    data-testid="view-pinned"
+                  >
+                    <Pin className="h-5 w-5" />
+                    <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                      {pinnedMessages.length}
+                    </span>
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowInfoPanel(true);
+                    setInfoPanelTab('members');
+                  }}
+                  className="text-gray-400 hover:text-gray-300"
+                  title="View members"
+                  data-testid="view-members"
+                >
+                  <Users className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() => setShowInfoPanel(!showInfoPanel)}
+                  className={cn(
+                    "text-gray-400 hover:text-gray-300",
+                    showInfoPanel && "text-white"
+                  )}
+                  title="Channel info"
+                  data-testid="toggle-info"
+                >
+                  <Info className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Messages */}
@@ -1535,6 +1645,12 @@ export default function MessengerPage() {
                               AI Mentor
                             </Badge>
                           )}
+                          {message.isPinned && (
+                            <Badge className="px-1 py-0 text-[10px] bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
+                              <Pin className="h-3 w-3" />
+                              Pinned
+                            </Badge>
+                          )}
                           <span className="text-xs text-gray-500">
                             {formatTime(message.createdAt)}
                           </span>
@@ -1542,24 +1658,43 @@ export default function MessengerPage() {
                             <span className="text-xs text-gray-500">(edited)</span>
                           )}
                           
-                          {isOwnMessage && (
-                            <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            {user?.isAdmin && (
                               <button
-                                onClick={() => handleEditMessage(message)}
-                                className="text-gray-400 hover:text-gray-300"
-                                data-testid={`edit-message-${message.id}`}
+                                onClick={() => pinMessageMutation.mutate({
+                                  messageId: message.id,
+                                  messageType: 'channel',
+                                  action: message.isPinned ? 'unpin' : 'pin'
+                                })}
+                                className={cn(
+                                  "text-gray-400 hover:text-yellow-400",
+                                  message.isPinned && "text-yellow-400"
+                                )}
+                                title={message.isPinned ? 'Unpin message' : 'Pin message'}
+                                data-testid={`pin-message-${message.id}`}
                               >
-                                <Edit2 className="h-3 w-3" />
+                                {message.isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                               </button>
-                              <button
-                                onClick={() => deleteMessageMutation.mutate(message.id)}
-                                className="text-gray-400 hover:text-red-400"
-                                data-testid={`delete-message-${message.id}`}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
-                          )}
+                            )}
+                            {isOwnMessage && (
+                              <>
+                                <button
+                                  onClick={() => handleEditMessage(message)}
+                                  className="text-gray-400 hover:text-gray-300"
+                                  data-testid={`edit-message-${message.id}`}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => deleteMessageMutation.mutate(message.id)}
+                                  className="text-gray-400 hover:text-red-400"
+                                  data-testid={`delete-message-${message.id}`}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                         
                         {editingMessageId === message.id ? (
@@ -2299,6 +2434,256 @@ export default function MessengerPage() {
             </>
           )}
         </div>
+
+        {/* Channel Info Panel */}
+        {showInfoPanel && (selectedChannel || selectedDMUser) && (
+          <div className="w-80 bg-black/30 backdrop-blur-sm border-l border-white/5 flex flex-col">
+            <div className="p-4 border-b border-white/5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-medium">Channel Info</h3>
+                <button
+                  onClick={() => setShowInfoPanel(false)}
+                  className="text-gray-400 hover:text-gray-300"
+                  data-testid="close-info-panel"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              {/* Tabs */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setInfoPanelTab('members')}
+                  className={cn(
+                    "flex-1 py-2 px-3 rounded text-sm font-medium transition-all",
+                    infoPanelTab === 'members'
+                      ? "bg-white/10 text-white"
+                      : "text-gray-400 hover:text-gray-300 hover:bg-white/5"
+                  )}
+                  data-testid="members-tab"
+                >
+                  <Users className="h-4 w-4 inline-block mr-1" />
+                  Members
+                </button>
+                <button
+                  onClick={() => setInfoPanelTab('pinned')}
+                  className={cn(
+                    "flex-1 py-2 px-3 rounded text-sm font-medium transition-all relative",
+                    infoPanelTab === 'pinned'
+                      ? "bg-white/10 text-white"
+                      : "text-gray-400 hover:text-gray-300 hover:bg-white/5"
+                  )}
+                  data-testid="pinned-tab"
+                >
+                  <Pin className="h-4 w-4 inline-block mr-1" />
+                  Pinned
+                  {pinnedMessages.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                      {pinnedMessages.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setInfoPanelTab('about')}
+                  className={cn(
+                    "flex-1 py-2 px-3 rounded text-sm font-medium transition-all",
+                    infoPanelTab === 'about'
+                      ? "bg-white/10 text-white"
+                      : "text-gray-400 hover:text-gray-300 hover:bg-white/5"
+                  )}
+                  data-testid="about-tab"
+                >
+                  <Info className="h-4 w-4 inline-block mr-1" />
+                  About
+                </button>
+              </div>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              {/* Members Tab */}
+              {infoPanelTab === 'members' && (
+                <div className="p-4 space-y-3">
+                  <div className="text-xs text-gray-400 mb-3">
+                    {channelMembers.length} members
+                  </div>
+                  {channelMembers.map((member: any) => (
+                    <div key={member.id} className="flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-all">
+                      <div className="relative">
+                        <Avatar className="h-10 w-10">
+                          {member.profileImageUrl ? (
+                            <AvatarImage src={member.profileImageUrl} />
+                          ) : (
+                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                              {getUserInitials(member)}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <Circle 
+                          className={cn(
+                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current",
+                            member.isOnline ? "text-green-500" : "text-gray-500"
+                          )}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-white truncate">
+                            {getUserDisplayName(member)}
+                          </p>
+                          {member.isAdmin && (
+                            <Crown className="h-3 w-3 text-yellow-400" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {member.isMultiStateLicensed && (
+                            <Badge className="px-1 py-0 text-[10px] bg-purple-500/20 text-purple-400">
+                              Multi-State
+                            </Badge>
+                          )}
+                          {member.hasFloridaLicense && !member.isMultiStateLicensed && (
+                            <Badge className="px-1 py-0 text-[10px] bg-amber-500/20 text-amber-400">
+                              FL
+                            </Badge>
+                          )}
+                          {!member.hasFloridaLicense && !member.isMultiStateLicensed && (
+                            <Badge className="px-1 py-0 text-[10px] bg-blue-500/20 text-blue-400">
+                              Non-Licensed
+                            </Badge>
+                          )}
+                        </div>
+                        {member.memberSince && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Joined {formatDate(member.memberSince)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Pinned Messages Tab */}
+              {infoPanelTab === 'pinned' && (
+                <div className="p-4 space-y-3">
+                  {pinnedMessages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Pin className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+                      <p className="text-gray-400">No pinned messages</p>
+                      <p className="text-gray-500 text-sm mt-1">
+                        Important messages will appear here
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-xs text-gray-400 mb-3">
+                        {pinnedMessages.length} pinned {pinnedMessages.length === 1 ? 'message' : 'messages'}
+                      </div>
+                      {pinnedMessages.map((message: Message) => (
+                        <div key={message.id} className="p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer">
+                          <div className="flex items-start gap-2 mb-2">
+                            <Avatar className="h-8 w-8 flex-shrink-0">
+                              {message.sender?.profileImageUrl ? (
+                                <AvatarImage src={message.sender.profileImageUrl} />
+                              ) : (
+                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-xs">
+                                  {getUserInitials(message.sender)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-white font-medium">
+                                  {getUserDisplayName(message.sender)}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {formatTime(message.pinnedAt || message.createdAt)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-300 mt-1 line-clamp-3">
+                                {message.content}
+                              </p>
+                            </div>
+                            {user?.isAdmin && (
+                              <button
+                                onClick={() => pinMessageMutation.mutate({
+                                  messageId: message.id,
+                                  messageType: 'channel',
+                                  action: 'unpin'
+                                })}
+                                className="text-gray-400 hover:text-red-400"
+                                title="Unpin message"
+                                data-testid={`unpin-${message.id}`}
+                              >
+                                <PinOff className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+              
+              {/* About Tab */}
+              {infoPanelTab === 'about' && selectedChannel && (
+                <div className="p-4 space-y-4">
+                  <div>
+                    <h4 className="text-xs text-gray-400 font-medium mb-2">CHANNEL NAME</h4>
+                    <p className="text-white flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-gray-400" />
+                      {selectedChannel.name}
+                    </p>
+                  </div>
+                  
+                  {selectedChannel.description && (
+                    <div>
+                      <h4 className="text-xs text-gray-400 font-medium mb-2">DESCRIPTION</h4>
+                      <p className="text-gray-300 text-sm">
+                        {selectedChannel.description}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <h4 className="text-xs text-gray-400 font-medium mb-2">ACCESS TIER</h4>
+                    <div className="flex items-center gap-2">
+                      <TierBadge tier={selectedChannel.tier} />
+                      <span className="text-sm text-gray-300">
+                        {tierConfig[selectedChannel.tier].label}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-xs text-gray-400 font-medium mb-2">MEMBERS</h4>
+                    <p className="text-white">
+                      {channelMembers.length} members
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-xs text-gray-400 font-medium mb-2">CHANNEL GUIDELINES</h4>
+                    <ul className="space-y-2 text-sm text-gray-300">
+                      <li className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <span>Keep conversations professional and respectful</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <span>Share knowledge and help fellow agents</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <span>Pin important announcements and resources</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        )}
       </div>
 
       <HoverFooter />

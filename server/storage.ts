@@ -1746,6 +1746,121 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result;
   }
+
+  // Message pinning methods
+  async pinMessage(messageId: string, userId: string): Promise<Message> {
+    const [pinned] = await db
+      .update(messages)
+      .set({
+        isPinned: true,
+        pinnedBy: userId,
+        pinnedAt: new Date()
+      })
+      .where(eq(messages.id, messageId))
+      .returning();
+    return pinned;
+  }
+
+  async unpinMessage(messageId: string): Promise<Message> {
+    const [unpinned] = await db
+      .update(messages)
+      .set({
+        isPinned: false,
+        pinnedBy: null,
+        pinnedAt: null
+      })
+      .where(eq(messages.id, messageId))
+      .returning();
+    return unpinned;
+  }
+
+  async pinDirectMessage(messageId: string, userId: string): Promise<DirectMessage> {
+    const [pinned] = await db
+      .update(directMessages)
+      .set({
+        isPinned: true,
+        pinnedBy: userId,
+        pinnedAt: new Date()
+      })
+      .where(eq(directMessages.id, messageId))
+      .returning();
+    return pinned;
+  }
+
+  async unpinDirectMessage(messageId: string): Promise<DirectMessage> {
+    const [unpinned] = await db
+      .update(directMessages)
+      .set({
+        isPinned: false,
+        pinnedBy: null,
+        pinnedAt: null
+      })
+      .where(eq(directMessages.id, messageId))
+      .returning();
+    return unpinned;
+  }
+
+  async getPinnedMessages(channelId: string): Promise<Message[]> {
+    const pinnedMessages = await db
+      .select({
+        message: messages,
+        sender: users
+      })
+      .from(messages)
+      .leftJoin(users, eq(messages.userId, users.id))
+      .where(and(
+        eq(messages.channelId, channelId),
+        eq(messages.isPinned, true)
+      ))
+      .orderBy(desc(messages.pinnedAt));
+    
+    return pinnedMessages.map(({ message, sender }) => ({
+      ...message,
+      sender: sender || undefined
+    }));
+  }
+
+  async getPinnedDirectMessages(userId1: string, userId2: string): Promise<DirectMessage[]> {
+    return await db
+      .select()
+      .from(directMessages)
+      .where(and(
+        eq(directMessages.isPinned, true),
+        sql`(sender_id = ${userId1} AND receiver_id = ${userId2}) OR (sender_id = ${userId2} AND receiver_id = ${userId1})`
+      ))
+      .orderBy(desc(directMessages.pinnedAt));
+  }
+
+  // Channel member methods
+  async getChannelMembers(channelId: string): Promise<User[]> {
+    const members = await db
+      .select({
+        user: users
+      })
+      .from(userChannels)
+      .innerJoin(users, eq(userChannels.userId, users.id))
+      .where(eq(userChannels.channelId, channelId))
+      .orderBy(users.firstName);
+    
+    return members.map(({ user }) => user);
+  }
+
+  async getChannelMemberDetails(channelId: string): Promise<(User & { memberSince?: Date })[]> {
+    const members = await db
+      .select({
+        user: users,
+        joinedAt: userChannels.joinedAt
+      })
+      .from(userChannels)
+      .innerJoin(users, eq(userChannels.userId, users.id))
+      .where(eq(userChannels.channelId, channelId))
+      .orderBy(users.firstName);
+    
+    return members.map(({ user, joinedAt }) => ({
+      ...user,
+      memberSince: joinedAt
+    }));
+  }
 }
 
 export const storage = new DatabaseStorage();

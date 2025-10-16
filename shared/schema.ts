@@ -313,6 +313,10 @@ export const messages = pgTable("messages", {
   parentMessageId: varchar("parent_message_id").references(() => messages.id),
   threadCount: integer("thread_count").default(0),
   lastThreadReply: timestamp("last_thread_reply"),
+  // Pinning fields
+  isPinned: boolean("is_pinned").default(false),
+  pinnedBy: varchar("pinned_by").references(() => users.id),
+  pinnedAt: timestamp("pinned_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -335,6 +339,10 @@ export const directMessages = pgTable("direct_messages", {
   parentMessageId: varchar("parent_message_id").references(() => directMessages.id),
   threadCount: integer("thread_count").default(0),
   lastThreadReply: timestamp("last_thread_reply"),
+  // Pinning fields
+  isPinned: boolean("is_pinned").default(false),
+  pinnedBy: varchar("pinned_by").references(() => users.id),
+  pinnedAt: timestamp("pinned_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -724,6 +724,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message pinning routes
+  app.post('/api/messenger/pin', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { messageId, messageType, action } = req.body;
+      const userId = req.user.claims.sub;
+
+      if (!messageId || !messageType || !action) {
+        return res.status(400).json({ error: 'messageId, messageType, and action are required' });
+      }
+
+      if (!['pin', 'unpin'].includes(action)) {
+        return res.status(400).json({ error: 'action must be "pin" or "unpin"' });
+      }
+
+      let result;
+      if (messageType === 'channel') {
+        result = action === 'pin' 
+          ? await storage.pinMessage(messageId, userId)
+          : await storage.unpinMessage(messageId);
+      } else if (messageType === 'dm') {
+        result = action === 'pin'
+          ? await storage.pinDirectMessage(messageId, userId)
+          : await storage.unpinDirectMessage(messageId);
+      } else {
+        return res.status(400).json({ error: 'messageType must be "channel" or "dm"' });
+      }
+
+      // Broadcast pin event via WebSocket
+      if (messengerWS.isInitialized()) {
+        messengerWS.broadcast({
+          type: 'message_pinned',
+          payload: {
+            messageId,
+            messageType,
+            action,
+            userId
+          }
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to pin/unpin message:', error);
+      res.status(500).json({ error: 'Failed to pin/unpin message' });
+    }
+  });
+
+  app.get('/api/messenger/pinned/:channelId', isAuthenticated, async (req: any, res) => {
+    try {
+      const pinnedMessages = await storage.getPinnedMessages(req.params.channelId);
+      res.json(pinnedMessages);
+    } catch (error) {
+      console.error('Failed to get pinned messages:', error);
+      res.status(500).json({ error: 'Failed to get pinned messages' });
+    }
+  });
+
+  app.get('/api/messenger/pinned/dm/:otherUserId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const pinnedMessages = await storage.getPinnedDirectMessages(userId, req.params.otherUserId);
+      res.json(pinnedMessages);
+    } catch (error) {
+      console.error('Failed to get pinned DMs:', error);
+      res.status(500).json({ error: 'Failed to get pinned DMs' });
+    }
+  });
+
+  // Channel member routes
+  app.get('/api/messenger/channel/:channelId/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const members = await storage.getChannelMemberDetails(req.params.channelId);
+      
+      // Add online status from WebSocket connections
+      const enhancedMembers = members.map(member => ({
+        ...member,
+        isOnline: messengerWS.isUserOnline(member.id),
+        lastSeenAt: member.lastSeenAt
+      }));
+      
+      res.json(enhancedMembers);
+    } catch (error) {
+      console.error('Failed to get channel members:', error);
+      res.status(500).json({ error: 'Failed to get channel members' });
+    }
+  });
+
   // ElevenLabs automation API endpoints
   app.get("/api/elevenlabs/automation/status", async (req, res) => {
     try {

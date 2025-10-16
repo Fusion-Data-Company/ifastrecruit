@@ -16,7 +16,7 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'typing_start' | 'typing_stop' | 'online_status' | 'read_receipt' | 'join_channel' | 'thread_reply' | 'thread_typing';
+  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'typing_start' | 'typing_stop' | 'online_status' | 'read_receipt' | 'join_channel' | 'thread_reply' | 'thread_typing' | 'message_pinned' | 'user_status_changed';
   payload: any;
 }
 
@@ -749,6 +749,28 @@ export class MessengerWebSocketService {
           client.send(messageStr);
         }
       });
+    });
+  }
+
+  public isInitialized(): boolean {
+    return this.wss !== null;
+  }
+
+  public isUserOnline(userId: string): boolean {
+    const userClients = this.clients.get(userId);
+    return userClients !== undefined && userClients.length > 0 && 
+           userClients.some(client => client.readyState === WebSocket.OPEN);
+  }
+
+  // Broadcast user status change event
+  public broadcastUserStatusChange(userId: string, status: 'online' | 'offline' | 'away') {
+    this.broadcast({
+      type: 'user_status_changed',
+      payload: {
+        userId,
+        status,
+        timestamp: new Date().toISOString()
+      }
     });
   }
 }
