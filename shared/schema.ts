@@ -264,7 +264,7 @@ export const users = pgTable("users", {
   hasFloridaLicense: boolean("has_florida_license").default(false),
   isMultiStateLicensed: boolean("is_multi_state_licensed").default(false),
   licensedStates: text("licensed_states").array().default(sql`ARRAY[]::text[]`),
-  showCalendlyButton: boolean("show_calendly_button").default(false),
+  showCalendlyButton: boolean("show_calendly_button").default(true),
   onlineStatus: text("online_status").default("offline"), // "online", "offline", "away"
   lastSeenAt: timestamp("last_seen_at"),
 });

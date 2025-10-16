@@ -4,6 +4,7 @@ import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MainUIAgent, SecondaryAgent, CenterAgent } from "@/components/ElevenLabsWidgets";
+import { FloatingCalendlyButton } from "@/components/FloatingCalendlyButton";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/pages/dashboard";
 import Candidates from "@/pages/candidates";
@@ -138,6 +139,8 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        {/* Floating Calendly button - visible for non-admin users based on settings */}
+        <FloatingCalendlyButton />
       </TooltipProvider>
     </QueryClientProvider>
   );
