@@ -1369,6 +1369,259 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =========================
+  // MESSENGER DM API ENDPOINTS
+  // =========================
+  
+  // GET /api/messenger/dm/users - List all users available for DM (admins see all, users see admins only)
+  app.get("/api/messenger/dm/users", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const dmUsers = await storage.getDMUsers(userId, currentUser.isAdmin);
+      
+      // Format users for frontend
+      const formattedUsers = dmUsers.map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        onlineStatus: user.onlineStatus || 'offline',
+        profileImageUrl: user.profileImageUrl,
+        hasFloridaLicense: user.hasFloridaLicense,
+        isMultiStateLicensed: user.isMultiStateLicensed
+      }));
+
+      res.json(formattedUsers);
+    } catch (error) {
+      console.error("[Messenger DM] Error fetching DM users:", error);
+      res.status(500).json({ error: "Failed to fetch DM users" });
+    }
+  });
+
+  // GET /api/messenger/dm/conversations - Get user's DM conversations
+  app.get("/api/messenger/dm/conversations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const conversations = await storage.getUserConversations(userId);
+      const unreadCounts = await storage.getUnreadCounts(userId);
+      
+      // Enrich conversations with user info and unread counts
+      const enrichedConversations = await Promise.all(
+        conversations.map(async (conv) => {
+          const otherUser = await storage.getUser(conv.userId);
+          return {
+            userId: conv.userId,
+            user: otherUser ? {
+              id: otherUser.id,
+              firstName: otherUser.firstName,
+              lastName: otherUser.lastName,
+              email: otherUser.email,
+              isAdmin: otherUser.isAdmin,
+              onlineStatus: otherUser.onlineStatus || 'offline',
+              profileImageUrl: otherUser.profileImageUrl,
+              hasFloridaLicense: otherUser.hasFloridaLicense,
+              isMultiStateLicensed: otherUser.isMultiStateLicensed
+            } : null,
+            lastMessage: conv.lastMessage,
+            unreadCount: unreadCounts[conv.userId] || 0
+          };
+        })
+      );
+      
+      res.json(enrichedConversations);
+    } catch (error) {
+      console.error("[Messenger DM] Error fetching DM conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // GET /api/messenger/dm/messages/:userId - Get messages between current user and another user
+  app.get("/api/messenger/dm/messages/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const currentUserId = (req.user as any)?.id;
+      if (!currentUserId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { userId: otherUserId } = req.params;
+      
+      // Get messages between users
+      const messages = await storage.getDMMessages(currentUserId, otherUserId);
+      
+      // Mark messages as read
+      await storage.markDMAsRead(currentUserId, otherUserId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("[Messenger DM] Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // POST /api/messenger/dm/send - Send a direct message
+  app.post("/api/messenger/dm/send", isAuthenticated, async (req, res) => {
+    try {
+      const senderId = (req.user as any)?.id;
+      if (!senderId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { recipientId, content, fileUrl, fileName } = req.body;
+      
+      if (!recipientId || !content) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Send the direct message
+      const message = await storage.sendDM(senderId, recipientId, content, fileUrl, fileName);
+      
+      // Emit WebSocket event for real-time delivery
+      messengerWS.broadcast({
+        type: 'dm_message',
+        payload: {
+          message,
+          senderId,
+          recipientId
+        }
+      });
+      
+      res.json(message);
+    } catch (error) {
+      console.error("[Messenger DM] Error sending message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // PUT /api/messenger/dm/read/:userId - Mark messages as read
+  app.put("/api/messenger/dm/read/:userId", isAuthenticated, async (req, res) => {
+    try {
+      const recipientId = (req.user as any)?.id;
+      if (!recipientId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { userId: senderId } = req.params;
+      
+      await storage.markDMAsRead(recipientId, senderId);
+      
+      // Emit WebSocket event for read receipt
+      messengerWS.broadcast({
+        type: 'mark_read',
+        payload: {
+          recipientId,
+          senderId
+        }
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Messenger DM] Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
+  // GET /api/messenger/dm/unread - Get unread message counts
+  app.get("/api/messenger/dm/unread", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const unreadCounts = await storage.getUnreadCounts(userId);
+      
+      // Calculate total unread count
+      const totalUnread = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
+      
+      res.json({
+        total: totalUnread,
+        bySender: unreadCounts
+      });
+    } catch (error) {
+      console.error("[Messenger DM] Error fetching unread counts:", error);
+      res.status(500).json({ error: "Failed to fetch unread counts" });
+    }
+  });
+
+  // GET /api/channels - Get list of channels for user  
+  app.get("/api/channels", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      // For now, return empty array since we're focusing on DMs
+      // In the future, this should return actual channels the user has access to
+      res.json([]);
+    } catch (error) {
+      console.error("[Messenger] Error fetching channels:", error);
+      res.status(500).json({ error: "Failed to fetch channels" });
+    }
+  });
+
+  // GET /api/online-users - Get list of online users
+  app.get("/api/online-users", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Get all users that are online
+      const allUsers = await storage.getDMUsers(userId, currentUser.isAdmin);
+      const onlineUsers = allUsers.filter(u => u.onlineStatus === 'online' || u.isOnline);
+      
+      res.json(onlineUsers.map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        onlineStatus: user.onlineStatus || (user.isOnline ? 'online' : 'offline'),
+        profileImageUrl: user.profileImageUrl
+      })));
+    } catch (error) {
+      console.error("[Messenger] Error fetching online users:", error);
+      res.status(500).json({ error: "Failed to fetch online users" });
+    }
+  });
+
+  // Legacy support for old endpoints (backward compatibility)
+  app.get("/api/direct-messages-users", isAuthenticated, async (req, res) => {
+    // Redirect to new endpoint
+    return app._router.handle(Object.assign(req, { url: '/api/messenger/dm/users' }), res, () => {});
+  });
+
+  app.get("/api/direct-messages/conversations", isAuthenticated, async (req, res) => {
+    // Redirect to new endpoint
+    return app._router.handle(Object.assign(req, { url: '/api/messenger/dm/conversations' }), res, () => {});
+  });
+
+  app.get("/api/direct-messages/:otherUserId", isAuthenticated, async (req, res) => {
+    // Redirect to new endpoint with userId parameter
+    return app._router.handle(Object.assign(req, { url: `/api/messenger/dm/messages/${req.params.otherUserId}` }), res, () => {});
+  });
+
+  // =========================
   // ELEVENLABS INTEGRATION API
   // =========================
   

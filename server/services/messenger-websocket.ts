@@ -219,22 +219,35 @@ export class MessengerWebSocketService {
     }
 
     try {
-      // SECURITY: Always use authenticated userId, never trust client payload
-      const messageWithAuthenticatedSender = {
-        ...payload,
-        senderId: ws.userId
-      };
+      // Use the new sendDM method instead of createDirectMessage
+      const directMessage = await storage.sendDM(
+        ws.userId,
+        payload.receiverId,
+        payload.content,
+        payload.fileUrl,
+        payload.fileName
+      );
 
-      const directMessage = await storage.createDirectMessage(messageWithAuthenticatedSender);
-
+      // Notify the recipient with unread count
+      const unreadCounts = await storage.getUnreadCounts(payload.receiverId);
       this.sendToUser(payload.receiverId, {
         type: 'new_direct_message',
-        payload: directMessage
+        payload: {
+          message: directMessage,
+          unreadCount: unreadCounts[ws.userId] || 1
+        }
       });
 
+      // Confirm to sender
       this.sendToUser(ws.userId, {
         type: 'direct_message_sent',
         payload: directMessage
+      });
+
+      // Play notification sound on recipient's client
+      this.sendToUser(payload.receiverId, {
+        type: 'notification_sound',
+        payload: { soundType: 'dm' }
       });
 
       console.log(`[Messenger WS] Direct message sent from ${ws.userId} to ${payload.receiverId}`);
@@ -278,9 +291,37 @@ export class MessengerWebSocketService {
     this.broadcastOnlineStatus(ws.userId, payload.isOnline);
   }
 
-  private async handleReadReceipt(ws: AuthenticatedWebSocket, payload: { messageId: string; channelId?: string }) {
+  private async handleReadReceipt(ws: AuthenticatedWebSocket, payload: { messageId?: string; channelId?: string; senderId?: string }) {
     if (!ws.isAuthenticated || !ws.userId) return;
 
+    // Handle DM read receipts
+    if (payload.senderId) {
+      await storage.markDMAsRead(ws.userId, payload.senderId);
+      
+      // Notify both users that messages were read
+      const readMessage = {
+        type: 'dm_read',
+        payload: {
+          recipientId: ws.userId,
+          senderId: payload.senderId
+        }
+      };
+
+      // Notify the sender that their messages were read
+      this.sendToUser(payload.senderId, readMessage);
+      
+      // Update unread counts for the recipient
+      const unreadCounts = await storage.getUnreadCounts(ws.userId);
+      this.sendToUser(ws.userId, {
+        type: 'unread_counts_updated',
+        payload: unreadCounts
+      });
+
+      console.log(`[Messenger WS] Marked DMs as read from ${payload.senderId} to ${ws.userId}`);
+      return;
+    }
+
+    // Handle channel read receipts
     const readMessage = {
       type: 'message_read',
       payload: {

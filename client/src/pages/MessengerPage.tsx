@@ -147,17 +147,17 @@ export default function MessengerPage() {
   });
 
   const { data: dmUsers = [] } = useQuery<DMUser[]>({
-    queryKey: ['/api/direct-messages-users'],
+    queryKey: ['/api/messenger/dm/users'],
     enabled: !!user,
   });
 
   const { data: dmConversations = [] } = useQuery<DMConversation[]>({
-    queryKey: ['/api/direct-messages/conversations'],
+    queryKey: ['/api/messenger/dm/conversations'],
     enabled: !!user,
   });
 
   const { data: directMessages = [] } = useQuery<DirectMessage[]>({
-    queryKey: [`/api/direct-messages/${selectedDMUser?.id}`],
+    queryKey: [`/api/messenger/dm/messages/${selectedDMUser?.id}`],
     enabled: !!selectedDMUser && viewMode === 'dm',
   });
 
@@ -185,21 +185,48 @@ export default function MessengerPage() {
     websocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       
-      if (data.type === 'new_message' && viewMode === 'channel' && data.payload.channelId === selectedChannel?.id) {
+      if (data.type === 'new_message' && viewMode === 'channel' && selectedChannel && data.payload.channelId === selectedChannel.id) {
         queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel.id}/messages`] });
       }
       
-      if ((data.type === 'new_direct_message' || data.type === 'direct_message_sent') && viewMode === 'dm') {
-        queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedDMUser?.id}`] });
-        queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
+      if (data.type === 'new_direct_message') {
+        // Invalidate queries to show new message and unread count
+        queryClient.invalidateQueries({ queryKey: [`/api/messenger/dm/messages/${data.payload.message?.senderId}`] });
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/conversations'] });
+        
+        // Show notification if not in the same conversation
+        if (viewMode !== 'dm' || selectedDMUser?.id !== data.payload.message?.senderId) {
+          // You could add a toast notification here
+        }
+      }
+      
+      if (data.type === 'direct_message_sent' && viewMode === 'dm') {
+        queryClient.invalidateQueries({ queryKey: [`/api/messenger/dm/messages/${selectedDMUser?.id}`] });
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/conversations'] });
       }
 
       if (data.type === 'message_edited' || data.type === 'message_deleted') {
         queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel?.id}/messages`] });
       }
 
-      if (data.type === 'user_status_change') {
+      if (data.type === 'user_status_change' || data.type === 'user_online_status') {
         queryClient.invalidateQueries({ queryKey: ['/api/online-users'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/direct-messages-users'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/users'] });
+      }
+      
+      if (data.type === 'notification_sound' && data.payload?.soundType === 'dm') {
+        // Play notification sound for new DM
+        const audio = new Audio('/sounds/notification.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(e => console.log('Could not play notification sound:', e));
+      }
+      
+      if (data.type === 'dm_read' || data.type === 'unread_counts_updated') {
+        // Update unread counts
+        queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/conversations'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/unread'] });
       }
     };
 
@@ -315,14 +342,11 @@ export default function MessengerPage() {
     formData.append('file', file);
     
     try {
-      const response = await apiRequest('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await apiRequest('/api/upload', 'POST', formData);
       
       const payload = {
         content: messageInput || `📎 ${file.name}`,
-        fileUrl: response.fileUrl,
+        fileUrl: (response as any).fileUrl,
         fileName: file.name
       };
       
@@ -425,15 +449,15 @@ export default function MessengerPage() {
     }
   };
 
-  const getUserDisplayName = (user: DMUser | undefined) => {
+  const getUserDisplayName = (user: DMUser | null | undefined | any) => {
     if (!user) return 'Unknown User';
     if (user.firstName || user.lastName) {
       return `${user.firstName || ''} ${user.lastName || ''}`.trim();
     }
-    return user.email.split('@')[0];
+    return user.email ? user.email.split('@')[0] : 'Unknown';
   };
 
-  const getUserInitials = (user: DMUser | undefined) => {
+  const getUserInitials = (user: DMUser | null | undefined | any) => {
     if (!user) return '?';
     const name = getUserDisplayName(user);
     const parts = name.split(' ');
@@ -567,9 +591,11 @@ export default function MessengerPage() {
                     <button
                       key={conversation.userId}
                       onClick={() => {
-                        setSelectedDMUser(conversation.user);
-                        setViewMode('dm');
-                        setSelectedChannel(null);
+                        if (conversation.user) {
+                          setSelectedDMUser(conversation.user);
+                          setViewMode('dm');
+                          setSelectedChannel(null);
+                        }
                       }}
                       className={cn(
                         "w-full px-2 py-2 rounded text-sm text-left transition-all",

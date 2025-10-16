@@ -928,6 +928,76 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(directMessages.createdAt));
   }
 
+  // Get DM users - admins see all, users see only admins  
+  async getDMUsers(userId: string, isAdmin: boolean): Promise<User[]> {
+    if (isAdmin) {
+      // Admins can message all users
+      return await db
+        .select()
+        .from(users)
+        .where(sql`${users.id} != ${userId}`)
+        .orderBy(users.firstName, users.lastName);
+    } else {
+      // Non-admins can only message admins
+      return await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            sql`${users.id} != ${userId}`,
+            eq(users.isAdmin, true)
+          )
+        )
+        .orderBy(users.firstName, users.lastName);
+    }
+  }
+
+  // Get DM messages between two users (alias for getDirectMessages)
+  async getDMMessages(userId1: string, userId2: string): Promise<DirectMessage[]> {
+    return this.getDirectMessages(userId1, userId2);
+  }
+
+  // Send a direct message
+  async sendDM(senderId: string, recipientId: string, content: string, fileUrl?: string, fileName?: string): Promise<DirectMessage> {
+    const [message] = await db.insert(directMessages).values({
+      senderId,
+      receiverId: recipientId,
+      content,
+      fileUrl,
+      fileName,
+      isRead: false
+    }).returning();
+    return message;
+  }
+
+  // Mark direct messages as read (alias with different parameter order)
+  async markDMAsRead(recipientId: string, senderId: string): Promise<void> {
+    return this.markDirectMessagesAsRead(recipientId, senderId);
+  }
+
+  // Get unread message counts per conversation
+  async getUnreadCounts(userId: string): Promise<{ [senderId: string]: number }> {
+    const unreadMessages = await db
+      .select({
+        senderId: directMessages.senderId,
+        count: sql<number>`COUNT(*)`.as('count')
+      })
+      .from(directMessages)
+      .where(
+        and(
+          eq(directMessages.receiverId, userId),
+          eq(directMessages.isRead, false)
+        )
+      )
+      .groupBy(directMessages.senderId);
+
+    const counts: { [senderId: string]: number } = {};
+    for (const msg of unreadMessages) {
+      counts[msg.senderId] = Number(msg.count);
+    }
+    return counts;
+  }
+
   async getUserConversations(userId: string): Promise<{userId: string, lastMessage: DirectMessage}[]> {
     const allMessages = await db
       .select()
