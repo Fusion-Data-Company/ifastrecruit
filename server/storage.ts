@@ -234,16 +234,24 @@ export class DatabaseStorage implements IStorage {
     if (userData.email) {
       const existingUserByEmail = await this.getUserByEmail(userData.email);
       if (existingUserByEmail) {
-        // Return the existing user if it's the same one, or update if different ID
+        // If email exists for the same user ID, update that user
         if (existingUserByEmail.id === userData.id) {
-          return existingUserByEmail;
+          const [updated] = await db
+            .update(users)
+            .set({
+              ...userData,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, userData.id))
+            .returning();
+          return updated;
         }
-        // Email exists for different user - update that user instead
+        // Email exists for different user - keep existing user's ID, just update other fields
+        const { id: newId, ...updateData } = userData; // Extract ID and don't use it
         const [updated] = await db
           .update(users)
           .set({
-            ...userData,
-            id: userData.id, // Update the ID too if needed
+            ...updateData,
             updatedAt: new Date(),
           })
           .where(eq(users.email, userData.email))
