@@ -295,6 +295,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Messenger API endpoints
+  app.get('/api/channels', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const channels = await storage.getUserChannels(userId);
+      const channelDetails = await Promise.all(
+        channels.map(uc => storage.getChannel(uc.channelId))
+      );
+      res.json(channelDetails.filter(Boolean));
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      res.status(500).json({ message: "Failed to fetch channels" });
+    }
+  });
+
+  app.get('/api/channels/:channelId/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { channelId } = req.params;
+      
+      const hasAccess = await storage.userHasChannelAccess(userId, channelId);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "No access to this channel" });
+      }
+
+      const messages = await storage.getChannelMessages(channelId, 100);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
   // ElevenLabs automation API endpoints
   app.get("/api/elevenlabs/automation/status", async (req, res) => {
     try {

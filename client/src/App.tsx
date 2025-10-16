@@ -11,6 +11,7 @@ import Interview from "@/pages/interview";
 import Booking from "@/pages/booking";
 import AirtopIntegration from "@/pages/AirtopIntegration";
 import ElevenLabsPage from "@/pages/elevenlabs";
+import MessengerPage from "@/pages/MessengerPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/booking/:token" component={Booking} />
       <Route path="/airtop" component={AirtopIntegration} />
       <Route path="/elevenlabs" component={ElevenLabsPage} />
+      <Route path="/messenger" component={MessengerPage} />
       <Route component={NotFound} />
     </Switch>
   );
