@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Send, Hash, User, ChevronRight, ChevronDown, MessageSquare, Info } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import iFastRecruitLogo from "@assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png";
 
 interface Channel {
   id: string;
@@ -423,20 +424,27 @@ export default function MessengerPage() {
           <div className={`flex-1 flex flex-col ${showProfilePanel ? '' : 'flex-1'}`}>
             {/* Header */}
             <div className="p-4 border-b border-cyan-400/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {viewMode === 'channel' ? (
-                  <>
-                    <Hash className="w-5 h-5 text-cyan-400" />
-                    <h3 className="text-lg font-semibold text-cyan-400">{selectedChannel?.name || 'Select a channel'}</h3>
-                  </>
-                ) : (
-                  <>
-                    <MessageSquare className="w-5 h-5 text-cyan-400" />
-                    <h3 className="text-lg font-semibold text-cyan-400">
-                      {selectedDMUser ? getUserDisplayName(selectedDMUser) : 'Select a conversation'}
-                    </h3>
-                  </>
-                )}
+              <div className="flex items-center gap-4">
+                <img 
+                  src={iFastRecruitLogo} 
+                  alt="iFast Recruit Logo" 
+                  className="h-8 w-auto object-contain opacity-80"
+                />
+                <div className="flex items-center gap-2">
+                  {viewMode === 'channel' ? (
+                    <>
+                      <Hash className="w-5 h-5 text-cyan-400" />
+                      <h3 className="text-lg font-semibold text-cyan-400">{selectedChannel?.name || 'Select a channel'}</h3>
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-5 h-5 text-cyan-400" />
+                      <h3 className="text-lg font-semibold text-cyan-400">
+                        {selectedDMUser ? getUserDisplayName(selectedDMUser) : 'Select a conversation'}
+                      </h3>
+                    </>
+                  )}
+                </div>
               </div>
               <Button
                 variant="ghost"

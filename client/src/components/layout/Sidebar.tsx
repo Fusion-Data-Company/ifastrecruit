@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import iFastRecruitLogo from "@assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png";
 
 export default function Sidebar() {
   const [location] = useLocation();
@@ -52,13 +53,11 @@ export default function Sidebar() {
       <div className="p-6">
         {/* Logo */}
         <div className="flex items-center space-x-3 mb-8">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <i className="fas fa-bolt text-primary-foreground text-lg"></i>
-          </div>
-          <div>
-            <h1 className="enterprise-heading text-xl text-foreground">iFast</h1>
-            <p className="text-muted-foreground text-sm">Broker</p>
-          </div>
+          <img 
+            src={iFastRecruitLogo} 
+            alt="iFast Recruit Logo" 
+            className="h-12 w-auto object-contain"
+          />
         </div>
 
         {/* Navigation */}

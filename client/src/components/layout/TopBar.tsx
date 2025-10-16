@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut } from "lucide-react";
 import NotificationSystem from "@/components/NotificationSystem";
+import iFastRecruitLogo from "@assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png";
 
 interface User {
   id: string;
@@ -35,8 +36,12 @@ export default function TopBar() {
 
   return (
     <div className="h-16 glass-panel border-b px-4 md:px-6 flex items-center justify-between md:justify-end pl-16 md:pl-6">
-      {/* Page title - shown on mobile */}
-      <h1 className="text-lg font-semibold text-foreground md:hidden">iFast Broker</h1>
+      {/* Logo - shown on mobile */}
+      <img 
+        src={iFastRecruitLogo} 
+        alt="iFast Recruit Logo" 
+        className="h-8 w-auto object-contain md:hidden"
+      />
       
       <div className="flex items-center space-x-2 md:space-x-4">
         <div className="glass-input px-2 md:px-3 py-1 rounded-lg flex items-center space-x-2">

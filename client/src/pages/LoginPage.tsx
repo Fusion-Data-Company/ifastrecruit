@@ -2,25 +2,26 @@ import { SignInPage, Testimonial } from "@/components/ui/sign-in";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import iFastRecruitLogo from "@assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png";
 
 const testimonials: Testimonial[] = [
   {
-    avatarSrc: "https://randomuser.me/api/portraits/women/57.jpg",
-    name: "Sarah Chen",
-    handle: "@sarahdigital",
-    text: "This platform revolutionized our recruiting process. The AI-powered insights are game-changing."
+    avatarSrc: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop",
+    name: "Jason Perez",
+    handle: "CEO & Founder",
+    text: "Leading the future of insurance recruitment with AI-powered automation and seamless broker onboarding."
   },
   {
-    avatarSrc: "https://randomuser.me/api/portraits/men/64.jpg",
-    name: "Marcus Johnson",
-    handle: "@marcustech",
-    text: "Seamless candidate tracking and the automation features save us hours every week."
+    avatarSrc: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop",
+    name: "Neil Schwabe",
+    handle: "Chief Operating Officer",
+    text: "Building scalable systems that transform how we connect with Florida's top insurance talent."
   },
   {
-    avatarSrc: "https://randomuser.me/api/portraits/men/32.jpg",
-    name: "David Martinez",
-    handle: "@davidcreates",
-    text: "The interview scheduling and ElevenLabs integration creates an exceptional experience."
+    avatarSrc: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&h=200&fit=crop",
+    name: "Sebastian Andersen",
+    handle: "VP of Strategic Growth",
+    text: "Expanding our network across multiple states to create the premier insurance broker platform."
   },
 ];
 
@@ -62,13 +63,20 @@ function LoginPage() {
       <section className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex flex-col gap-6">
-            <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight">
+            <div className="animate-element animate-delay-100 flex justify-center mb-4">
+              <img 
+                src={iFastRecruitLogo} 
+                alt="iFast Recruit Logo" 
+                className="h-20 w-auto object-contain"
+              />
+            </div>
+            <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight text-center">
               <span className="font-serif font-light text-foreground tracking-tighter">
-                Welcome to <span className="font-bold">iFast Recruiting</span>
+                Welcome to <span className="font-bold">iFast Recruit</span>
               </span>
             </h1>
-            <p className="animate-element animate-delay-200 text-muted-foreground">
-              Sign in with your Replit account to access the enterprise recruiting platform
+            <p className="animate-element animate-delay-200 text-muted-foreground text-center">
+              Sign in to access the enterprise insurance recruiting platform
             </p>
 
             <div className="animate-element animate-delay-300 space-y-6">
