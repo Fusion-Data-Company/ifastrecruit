@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import iFastRecruitLogo from "@assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png";
+import iFastRecruitHero from "@assets/10187C78-AFAE-44D3-AC48-CEDBE5FF44CC_1760647655713.png";
 
 const testimonials: Testimonial[] = [
   {
@@ -129,12 +130,19 @@ function LoginPage() {
 
       {/* Right column: hero image + testimonials */}
       <section className="hidden md:block flex-1 relative p-4">
-        <div
-          className="animate-slide-right animate-delay-300 absolute inset-4 rounded-3xl bg-cover bg-center"
-          style={{
-            backgroundImage: `url(https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=2160&q=80)`,
-          }}
-        ></div>
+        <div className="animate-slide-right animate-delay-300 absolute inset-4 rounded-3xl bg-black overflow-hidden">
+          {/* Dark background for the branded image */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-gray-900 to-black">
+            {/* Centered branded image above cards */}
+            <div className="flex items-center justify-center h-full pb-48">
+              <img 
+                src={iFastRecruitHero}
+                alt="iFast Recruit - The Future of Recruiting"
+                className="w-auto h-auto max-w-[80%] max-h-[50%] object-contain animate-fade-in"
+              />
+            </div>
+          </div>
+        </div>
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 px-8 w-full justify-center">
           {testimonials.map((testimonial, index) => (
             <div
