@@ -14,6 +14,7 @@ import AirtopIntegration from "@/pages/AirtopIntegration";
 import ElevenLabsPage from "@/pages/elevenlabs";
 import MessengerPage from "@/pages/MessengerPage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import DevMessengerPage from "@/pages/DevMessengerPage";
 import NotFound from "@/pages/not-found";
 
 interface OnboardingGuardProps {
@@ -61,6 +62,13 @@ function OnboardingGuard({ children }: OnboardingGuardProps) {
 }
 
 function Router() {
+  const [location] = useLocation();
+  
+  // Special handling for dev/messenger route - bypass all guards
+  if (location === '/dev/messenger') {
+    return <DevMessengerPage />;
+  }
+  
   return (
     <OnboardingGuard>
       <Switch>

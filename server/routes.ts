@@ -65,8 +65,8 @@ import { cacheManager } from "./services/cache";
 import { dbOptimizer } from "./services/database-optimization";
 import { observabilityService } from "./services/observability";
 import { db } from "./db";
-import { users } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { users, channels } from "@shared/schema";
+import { sql, eq } from "drizzle-orm";
 import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment.config";
 import { apifyService } from "./services/apify-client";
 import { elevenlabsIntegration } from "./integrations/elevenlabs";
@@ -146,6 +146,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", async (req, res) => {
     res.json({ ok: true, timestamp: new Date().toISOString() });
   });
+
+  // ===== DEVELOPMENT BYPASS ROUTES - DO NOT USE IN PRODUCTION =====
+  // Development bypass route for messenger - NO AUTHENTICATION REQUIRED
+  app.get('/api/dev/messenger/user', async (req, res) => {
+    console.log('[DEV BYPASS] Returning mock user for dev messenger');
+    
+    try {
+      // Look for an existing admin user with the dev email
+      const devEmail = 'rob@fusiondataco.com';
+      let mockUser = await storage.getUserByEmail(devEmail);
+      
+      if (!mockUser) {
+        // Create a new mock user if none exists with this email
+        const mockUserId = 'dev-user-rob-' + Date.now(); // Unique ID to avoid conflicts
+        mockUser = await db.insert(users).values({
+          id: mockUserId,
+          email: devEmail,
+          firstName: 'Rob',
+          lastName: 'Developer',
+          isAdmin: true,
+          hasFloridaLicense: true,
+          isMultiStateLicensed: true,
+          licensedStates: ['FL', 'CA', 'TX', 'NY', 'GA', 'NC', 'VA'],
+          onboardingCompleted: true,
+          onlineStatus: 'online',
+          profileImageUrl: null,
+          phone: '555-0100',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }).returning().then(rows => rows[0]);
+        
+        console.log('[DEV BYPASS] Created mock user:', mockUser.email);
+      } else {
+        // Update existing user to ensure they have the right permissions
+        mockUser = await db.update(users)
+          .set({
+            isAdmin: true,
+            hasFloridaLicense: true,
+            isMultiStateLicensed: true,
+            licensedStates: ['FL', 'CA', 'TX', 'NY', 'GA', 'NC', 'VA'],
+            onboardingCompleted: true,
+            onlineStatus: 'online',
+            updatedAt: new Date()
+          })
+          .where(eq(users.email, devEmail))
+          .returning()
+          .then(rows => rows[0]);
+          
+        console.log('[DEV BYPASS] Using existing user:', mockUser.email);
+      }
+      
+      // Ensure this user is in the required channels
+      const allChannels = await db.select().from(channels);
+      for (const channel of allChannels) {
+        try {
+          await storage.joinChannel(mockUser.id, channel.id);
+          console.log(`[DEV BYPASS] Added user to channel: ${channel.name}`);
+        } catch (e) {
+          // Channel membership might already exist
+        }
+      }
+      
+      res.json(mockUser);
+    } catch (error) {
+      console.error('[DEV BYPASS] Error creating/fetching mock user:', error);
+      res.status(500).json({ message: 'Failed to create dev user', error: String(error) });
+    }
+  });
+
+  // Dev bypass for onboarding status - always returns completed
+  app.get('/api/dev/messenger/onboarding/status', async (req, res) => {
+    console.log('[DEV BYPASS] Returning completed onboarding status');
+    res.json({
+      hasCompleted: true,
+      currentLicensingInfo: {
+        hasFloridaLicense: true,
+        isMultiStateLicensed: true,
+        licensedStates: ['FL', 'CA', 'TX', 'NY', 'GA', 'NC', 'VA']
+      }
+    });
+  });
+
+  // Dev bypass versions of all messenger-related routes (NO AUTH)
+  app.get('/api/dev/messenger/channels', async (req, res) => {
+    try {
+      // Get the dev user first
+      const devUser = await storage.getUserByEmail('rob@fusiondataco.com');
+      if (!devUser) {
+        return res.status(404).json({ message: 'Dev user not found. Access /dev/messenger first.' });
+      }
+      const channels = await storage.getUserChannels(devUser.id);
+      const channelDetails = await Promise.all(
+        channels.map(uc => storage.getChannel(uc.channelId))
+      );
+      res.json(channelDetails.filter(Boolean));
+    } catch (error) {
+      console.error("[DEV BYPASS] Error fetching channels:", error);
+      res.status(500).json({ message: "Failed to fetch channels" });
+    }
+  });
+
+  app.get('/api/dev/messenger/channels/:channelId/messages', async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      const messages = await storage.getChannelMessages(channelId, 100);
+      res.json(messages);
+    } catch (error) {
+      console.error("[DEV BYPASS] Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.get('/api/dev/messenger/direct-messages/conversations', async (req, res) => {
+    try {
+      const devUser = await storage.getUserByEmail('rob@fusiondataco.com');
+      if (!devUser) {
+        return res.status(404).json({ message: 'Dev user not found. Access /dev/messenger first.' });
+      }
+      const conversations = await storage.getUserConversations(devUser.id);
+      
+      const enrichedConversations = await Promise.all(
+        conversations.map(async (conv) => {
+          const otherUser = await storage.getUser(conv.userId);
+          return {
+            userId: conv.userId,
+            user: otherUser ? {
+              id: otherUser.id,
+              firstName: otherUser.firstName,
+              lastName: otherUser.lastName,
+              email: otherUser.email,
+              isAdmin: otherUser.isAdmin,
+              onlineStatus: otherUser.onlineStatus
+            } : null,
+            lastMessage: conv.lastMessage
+          };
+        })
+      );
+      
+      res.json(enrichedConversations);
+    } catch (error) {
+      console.error("[DEV BYPASS] Error fetching DM conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get('/api/dev/messenger/direct-messages-users', async (req, res) => {
+    try {
+      const devUser = await storage.getUserByEmail('rob@fusiondataco.com');
+      if (!devUser) {
+        return res.status(404).json({ message: 'Dev user not found. Access /dev/messenger first.' });
+      }
+      const allUsers = await db.select().from(users).where(sql`${users.id} != ${devUser.id}`);
+      
+      res.json(allUsers.map(u => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        isAdmin: u.isAdmin,
+        onlineStatus: u.onlineStatus,
+        profileImageUrl: u.profileImageUrl
+      })));
+    } catch (error) {
+      console.error("[DEV BYPASS] Error fetching DM users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.get('/api/dev/messenger/direct-messages/:otherUserId', async (req, res) => {
+    try {
+      const devUser = await storage.getUserByEmail('rob@fusiondataco.com');
+      if (!devUser) {
+        return res.status(404).json({ message: 'Dev user not found. Access /dev/messenger first.' });
+      }
+      const { otherUserId } = req.params;
+      const messages = await storage.getDirectMessages(devUser.id, otherUserId);
+      await storage.markDirectMessagesAsRead(devUser.id, otherUserId);
+      res.json(messages);
+    } catch (error) {
+      console.error("[DEV BYPASS] Error fetching direct messages:", error);
+      res.status(500).json({ message: "Failed to fetch direct messages" });
+    }
+  });
+  // ===== END DEVELOPMENT BYPASS ROUTES =====
 
   // Replit Auth user endpoint
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
