@@ -73,6 +73,10 @@ import { syncMonitoringRouter } from "./routes/sync-monitoring";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
 import cors from "cors";
+import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { messengerWS } from "./services/messenger-websocket";
+import { jasonAI } from "./services/jason-ai-persona";
+import multer from "multer";
 
 // Validation schemas
 const tokenSchema = z.object({
@@ -90,6 +94,9 @@ function generateSecureToken(): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Setup Replit Auth FIRST (before other middleware)
+  await setupAuth(app);
   
   // Apply security middleware globally
   app.use(securityHeaders);
@@ -109,6 +116,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.NODE_ENV === "production") {
     wss = new WebSocketServer({ server: httpServer });
   }
+  
+  // Initialize messenger WebSocket service
+  messengerWS.initialize(httpServer);
   
   // Setup SSE for real-time updates
   setupSSE(app);
@@ -132,6 +142,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check
   app.get("/api/health", async (req, res) => {
     res.json({ ok: true, timestamp: new Date().toISOString() });
+  });
+
+  // Replit Auth user endpoint
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Onboarding endpoint with channel assignment
+  const upload = multer({ dest: 'uploads/' });
+  app.post('/api/onboarding/complete', isAuthenticated, upload.fields([
+    { name: 'resume', maxCount: 1 },
+    { name: 'license', maxCount: 1 }
+  ]), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { hasFloridaLicense, hasMultiStateLicense, selectedStates } = req.body;
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+      // Save onboarding response
+      await storage.createOnboardingResponse({
+        userId,
+        hasFloridaLicense: hasFloridaLicense === 'true',
+        hasMultiStateLicense: hasMultiStateLicense === 'true',
+        licensedStates: selectedStates ? JSON.parse(selectedStates) : []
+      });
+
+      // Determine channel assignment based on licensing
+      let channelNames: string[] = ['Onboarding'];
+      
+      if (hasFloridaLicense === 'true') {
+        if (hasMultiStateLicense === 'true') {
+          channelNames.push('Multi-State Licensed');
+        } else {
+          channelNames.push('Florida Licensed Brokers');
+        }
+      } else {
+        channelNames.push('Non-Licensed Candidates');
+      }
+
+      // Get all channels
+      const allChannels = await storage.getChannels();
+      
+      // Assign user to appropriate channels
+      for (const channelName of channelNames) {
+        const channel = allChannels.find(c => c.name === channelName);
+        if (channel) {
+          // Check if already joined
+          const userChannels = await storage.getUserChannels(userId);
+          const alreadyJoined = userChannels.some(uc => uc.channelId === channel.id);
+          
+          if (!alreadyJoined) {
+            await storage.joinChannel(userId, channel.id);
+            await storage.updateChannelAccess(userId, channel.id, true);
+          }
+
+          // Send Jason AI welcome message to the channel
+          const welcomeMessage = await jasonAI.generateChannelAssignmentMessage(
+            user.name || 'New Candidate',
+            channelName,
+            {
+              hasFloridaLicense: hasFloridaLicense === 'true',
+              hasMultiStateLicense: hasMultiStateLicense === 'true',
+              states: selectedStates ? JSON.parse(selectedStates) : []
+            }
+          );
+
+          // Create the welcome message
+          await storage.createMessage({
+            channelId: channel.id,
+            senderId: 'system', // Jason AI
+            content: welcomeMessage
+          });
+        }
+      }
+
+      // Handle file uploads with resume parsing
+      if (files?.resume) {
+        const resumeFile = files.resume[0];
+        
+        // Parse resume if it's a PDF
+        let resumeData = null;
+        if (resumeFile.mimetype === 'application/pdf') {
+          try {
+            const { resumeParser } = await import('./services/resume-parser');
+            resumeData = await resumeParser.parseResume(resumeFile.path);
+            
+            // Update user profile with parsed data
+            if (resumeData.email || resumeData.phone) {
+              await storage.updateUserProfile(userId, {
+                email: resumeData.email,
+                phone: resumeData.phone
+              });
+            }
+          } catch (parseError) {
+            console.error('[Onboarding] Resume parsing failed:', parseError);
+          }
+        }
+        
+        await storage.createFileUpload({
+          userId,
+          filename: resumeFile.originalname,
+          filepath: resumeFile.path,
+          fileType: 'resume',
+          fileSize: resumeFile.size,
+          metadata: resumeData ? {
+            parsedName: resumeData.name,
+            parsedEmail: resumeData.email,
+            parsedPhone: resumeData.phone,
+            experience: resumeData.experience,
+            education: resumeData.education,
+            licenses: resumeData.licenses
+          } : null
+        });
+      }
+
+      if (files?.license) {
+        const licenseFile = files.license[0];
+        await storage.createFileUpload({
+          userId,
+          filename: licenseFile.originalname,
+          filepath: licenseFile.path,
+          fileType: 'license',
+          fileSize: licenseFile.size
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        channels: channelNames,
+        message: "Onboarding completed successfully!" 
+      });
+
+      console.log(`[Onboarding] User ${userId} assigned to channels: ${channelNames.join(', ')}`);
+      
+    } catch (error) {
+      console.error("[Onboarding] Error:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
+    }
   });
 
   // ElevenLabs automation API endpoints

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, unique, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, unique, real, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -234,10 +234,93 @@ export const apifyRuns = pgTable("apify_runs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Replit Auth users table (replacing old auth system)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  // Messenger-specific fields
+  isAdmin: boolean("is_admin").default(false),
+  hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
+  hasFloridaLicense: boolean("has_florida_license").default(false),
+  isMultiStateLicensed: boolean("is_multi_state_licensed").default(false),
+  licensedStates: text("licensed_states").array().default(sql`ARRAY[]::text[]`),
+  showCalendlyButton: boolean("show_calendly_button").default(false),
+  onlineStatus: text("online_status").default("offline"), // "online", "offline", "away"
+  lastSeenAt: timestamp("last_seen_at"),
+});
+
+// Messenger channels
+export const channels = pgTable("channels", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // "onboarding", "non_licensed", "fl_licensed", "multi_state"
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Channel membership and access
+export const userChannels = pgTable("user_channels", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  channelId: varchar("channel_id").notNull().references(() => channels.id),
+  canAccess: boolean("can_access").default(true),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+// Messages in channels
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  channelId: varchar("channel_id").notNull().references(() => channels.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  isAiGenerated: boolean("is_ai_generated").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Direct messages between users and admins
+export const directMessages = pgTable("direct_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderId: varchar("sender_id").notNull().references(() => users.id),
+  receiverId: varchar("receiver_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// File uploads
+export const fileUploads = pgTable("file_uploads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileSize: integer("file_size"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+});
+
+// Onboarding questionnaire responses
+export const onboardingResponses = pgTable("onboarding_responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id),
+  hasFloridaLicense: boolean("has_florida_license"),
+  isMultiStateLicensed: boolean("is_multi_state_licensed"),
+  licensedStates: text("licensed_states").array().default(sql`ARRAY[]::text[]`),
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
 });
 
 export const workflowRules = pgTable("workflow_rules", {
@@ -431,3 +514,29 @@ export type InsertElevenLabsTracking = z.infer<typeof insertElevenLabsTrackingSc
 export type InsertPlatformConversation = z.infer<typeof insertPlatformConversationSchema>;
 export type InsertConversationContext = z.infer<typeof insertConversationContextSchema>;
 export type InsertConversationMemory = z.infer<typeof insertConversationMemorySchema>;
+
+// Messenger insert schemas
+export const insertChannelSchema = createInsertSchema(channels).omit({ id: true, createdAt: true });
+export const insertUserChannelSchema = createInsertSchema(userChannels).omit({ id: true, joinedAt: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
+export const insertDirectMessageSchema = createInsertSchema(directMessages).omit({ id: true, createdAt: true });
+export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({ id: true, uploadedAt: true });
+export const insertOnboardingResponseSchema = createInsertSchema(onboardingResponses).omit({ id: true, completedAt: true });
+
+// Messenger types
+export type Channel = typeof channels.$inferSelect;
+export type UserChannel = typeof userChannels.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type DirectMessage = typeof directMessages.$inferSelect;
+export type FileUpload = typeof fileUploads.$inferSelect;
+export type OnboardingResponse = typeof onboardingResponses.$inferSelect;
+
+export type InsertChannel = z.infer<typeof insertChannelSchema>;
+export type InsertUserChannel = z.infer<typeof insertUserChannelSchema>;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
+export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
+export type InsertOnboardingResponse = z.infer<typeof insertOnboardingResponseSchema>;
+
+// Replit Auth types
+export type UpsertUser = typeof users.$inferInsert;

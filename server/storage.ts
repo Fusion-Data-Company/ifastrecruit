@@ -7,6 +7,12 @@ import {
   apifyRuns, 
   auditLogs,
   users,
+  channels,
+  userChannels,
+  messages,
+  directMessages,
+  fileUploads,
+  onboardingResponses,
   workflowRules,
   elevenLabsTracking,
   platformConversations,
@@ -20,6 +26,13 @@ import {
   type ApifyRun,
   type AuditLog,
   type User,
+  type UpsertUser,
+  type Channel,
+  type UserChannel,
+  type Message,
+  type DirectMessage,
+  type FileUpload,
+  type OnboardingResponse,
   type WorkflowRule,
   type ElevenLabsTracking,
   type PlatformConversation,
@@ -33,6 +46,12 @@ import {
   type InsertApifyRun,
   type InsertAuditLog,
   type InsertUser,
+  type InsertChannel,
+  type InsertUserChannel,
+  type InsertMessage,
+  type InsertDirectMessage,
+  type InsertFileUpload,
+  type InsertOnboardingResponse,
   type InsertWorkflowRule,
   type InsertElevenLabsTracking,
   type InsertPlatformConversation,
@@ -44,10 +63,15 @@ import { eq, desc, count, sql, and } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
-  // User methods
+  // Replit Auth User methods (REQUIRED for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Additional user methods
+  getUserByEmail(email: string): Promise<User | undefined>;
+  updateUser(id: string, updates: Partial<User>): Promise<User>;
+  updateUserProfile(id: string, updates: { email?: string; phone?: string }): Promise<User>;
+  setUserAdmin(id: string, isAdmin: boolean): Promise<User>;
 
   // Campaign methods
   getCampaigns(): Promise<Campaign[]>;
@@ -141,6 +165,38 @@ export interface IStorage {
   deleteConversationMemory(id: string): Promise<void>;
   incrementMemoryUsage(id: string): Promise<ConversationMemory>;
 
+  // Messenger methods
+  // Channel methods
+  getChannels(): Promise<Channel[]>;
+  getChannel(id: string): Promise<Channel | undefined>;
+  createChannel(channel: InsertChannel): Promise<Channel>;
+  
+  // User Channel methods (membership)
+  getUserChannels(userId: string): Promise<UserChannel[]>;
+  getChannelMembers(channelId: string): Promise<UserChannel[]>;
+  joinChannel(userId: string, channelId: string): Promise<UserChannel>;
+  updateChannelAccess(userId: string, channelId: string, canAccess: boolean): Promise<UserChannel>;
+  userHasChannelAccess(userId: string, channelId: string): Promise<boolean>;
+  updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void>;
+  
+  // Message methods
+  getChannelMessages(channelId: string, limit?: number): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  
+  // Direct message methods
+  getDirectMessages(userId: string, otherUserId: string): Promise<DirectMessage[]>;
+  getUserConversations(userId: string): Promise<{userId: string, lastMessage: DirectMessage}[]>;
+  createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
+  markDirectMessagesAsRead(userId: string, senderId: string): Promise<void>;
+  
+  // File upload methods
+  getUserFiles(userId: string): Promise<FileUpload[]>;
+  createFileUpload(upload: InsertFileUpload): Promise<FileUpload>;
+  
+  // Onboarding methods
+  getOnboardingResponse(userId: string): Promise<OnboardingResponse | undefined>;
+  createOnboardingResponse(response: InsertOnboardingResponse): Promise<OnboardingResponse>;
+  
   // Utility methods
   saveICSFile(content: string): Promise<string>;
 }
@@ -148,19 +204,48 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   private tokenStore = new Map<string, string>(); // token -> candidateId mapping
 
+  // Replit Auth User methods (REQUIRED for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Additional user methods
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
+  }
+
+  async updateUserProfile(id: string, updates: { email?: string; phone?: string }): Promise<User> {
+    return await this.updateUser(id, updates);
+  }
+
+  async setUserAdmin(id: string, isAdmin: boolean): Promise<User> {
+    return await this.updateUser(id, { isAdmin });
   }
 
   async getCampaigns(): Promise<Campaign[]> {
@@ -648,19 +733,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchConversationMemory(agentId: string, searchTerms: string[], memoryTypes?: string[]): Promise<ConversationMemory[]> {
-    let query = db
-      .select()
-      .from(conversationMemory)
-      .where(and(eq(conversationMemory.agentId, agentId), eq(conversationMemory.isActive, true)));
+    const conditions = [
+      eq(conversationMemory.agentId, agentId),
+      eq(conversationMemory.isActive, true)
+    ];
 
     // Add memory type filtering if provided
     if (memoryTypes && memoryTypes.length > 0) {
-      // Note: In a real implementation, you'd want to use proper IN clause syntax
-      // For now, we'll filter on the first type
-      query = query.where(eq(conversationMemory.memoryType, memoryTypes[0]));
+      conditions.push(eq(conversationMemory.memoryType, memoryTypes[0]));
     }
 
-    const results = await query
+    const results = await db
+      .select()
+      .from(conversationMemory)
+      .where(and(...conditions))
       .orderBy(desc(conversationMemory.confidence), desc(conversationMemory.lastUsedAt))
       .limit(50);
 
@@ -668,7 +754,8 @@ export class DatabaseStorage implements IStorage {
     // In production, you might want to use full-text search capabilities
     if (searchTerms.length > 0) {
       return results.filter(memory => {
-        const searchableText = `${memory.memoryKey} ${JSON.stringify(memory.memoryValue)} ${memory.tags.join(' ')}`.toLowerCase();
+        const tags = memory.tags ?? [];
+        const searchableText = `${memory.memoryKey} ${JSON.stringify(memory.memoryValue)} ${tags.join(' ')}`.toLowerCase();
         return searchTerms.some(term => searchableText.includes(term.toLowerCase()));
       });
     }
@@ -724,6 +811,152 @@ export class DatabaseStorage implements IStorage {
       .where(eq(conversationMemory.id, id))
       .returning();
     return updated;
+  }
+
+  // === MESSENGER METHODS ===
+  
+  // Channel methods
+  async getChannels(): Promise<Channel[]> {
+    return await db.select().from(channels).orderBy(channels.createdAt);
+  }
+
+  async getChannel(id: string): Promise<Channel | undefined> {
+    const [channel] = await db.select().from(channels).where(eq(channels.id, id));
+    return channel || undefined;
+  }
+
+  async createChannel(channel: InsertChannel): Promise<Channel> {
+    const [created] = await db.insert(channels).values(channel).returning();
+    return created;
+  }
+
+  // User Channel methods (membership)
+  async getUserChannels(userId: string): Promise<UserChannel[]> {
+    return await db.select().from(userChannels).where(eq(userChannels.userId, userId));
+  }
+
+  async joinChannel(userId: string, channelId: string): Promise<UserChannel> {
+    const [joined] = await db.insert(userChannels).values({ userId, channelId }).returning();
+    return joined;
+  }
+
+  async updateChannelAccess(userId: string, channelId: string, canAccess: boolean): Promise<UserChannel> {
+    const [updated] = await db
+      .update(userChannels)
+      .set({ canAccess })
+      .where(and(eq(userChannels.userId, userId), eq(userChannels.channelId, channelId)))
+      .returning();
+    return updated;
+  }
+
+  async getChannelMembers(channelId: string): Promise<UserChannel[]> {
+    return await db.select().from(userChannels).where(eq(userChannels.channelId, channelId));
+  }
+
+  async userHasChannelAccess(userId: string, channelId: string): Promise<boolean> {
+    const [membership] = await db
+      .select()
+      .from(userChannels)
+      .where(and(eq(userChannels.userId, userId), eq(userChannels.channelId, channelId)));
+    return membership?.canAccess ?? false;
+  }
+
+  async updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void> {
+    await db
+      .update(users)
+      .set({ isOnline, lastSeenAt: new Date() })
+      .where(eq(users.id, userId));
+  }
+
+  // Message methods
+  async getChannelMessages(channelId: string, limit = 100): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.channelId, channelId))
+      .orderBy(desc(messages.createdAt))
+      .limit(limit);
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [created] = await db.insert(messages).values(message).returning();
+    return created;
+  }
+
+  // Direct message methods
+  async getDirectMessages(userId: string, otherUserId: string): Promise<DirectMessage[]> {
+    return await db
+      .select()
+      .from(directMessages)
+      .where(
+        and(
+          sql`(${directMessages.senderId} = ${userId} AND ${directMessages.receiverId} = ${otherUserId}) OR (${directMessages.senderId} = ${otherUserId} AND ${directMessages.receiverId} = ${userId})`
+        )
+      )
+      .orderBy(desc(directMessages.createdAt));
+  }
+
+  async getUserConversations(userId: string): Promise<{userId: string, lastMessage: DirectMessage}[]> {
+    const allMessages = await db
+      .select()
+      .from(directMessages)
+      .where(
+        sql`${directMessages.senderId} = ${userId} OR ${directMessages.receiverId} = ${userId}`
+      )
+      .orderBy(desc(directMessages.createdAt));
+
+    const conversationMap = new Map<string, DirectMessage>();
+    
+    for (const message of allMessages) {
+      const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
+      if (!conversationMap.has(otherUserId)) {
+        conversationMap.set(otherUserId, message);
+      }
+    }
+
+    return Array.from(conversationMap.entries()).map(([userId, lastMessage]) => ({
+      userId,
+      lastMessage
+    }));
+  }
+
+  async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
+    const [created] = await db.insert(directMessages).values(message).returning();
+    return created;
+  }
+
+  async markDirectMessagesAsRead(userId: string, senderId: string): Promise<void> {
+    await db
+      .update(directMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(directMessages.receiverId, userId),
+          eq(directMessages.senderId, senderId),
+          eq(directMessages.isRead, false)
+        )
+      );
+  }
+
+  // File upload methods
+  async getUserFiles(userId: string): Promise<FileUpload[]> {
+    return await db.select().from(fileUploads).where(eq(fileUploads.userId, userId)).orderBy(desc(fileUploads.uploadedAt));
+  }
+
+  async createFileUpload(upload: InsertFileUpload): Promise<FileUpload> {
+    const [created] = await db.insert(fileUploads).values(upload).returning();
+    return created;
+  }
+
+  // Onboarding methods
+  async getOnboardingResponse(userId: string): Promise<OnboardingResponse | undefined> {
+    const [response] = await db.select().from(onboardingResponses).where(eq(onboardingResponses.userId, userId));
+    return response || undefined;
+  }
+
+  async createOnboardingResponse(response: InsertOnboardingResponse): Promise<OnboardingResponse> {
+    const [created] = await db.insert(onboardingResponses).values(response).returning();
+    return created;
   }
 }
 
