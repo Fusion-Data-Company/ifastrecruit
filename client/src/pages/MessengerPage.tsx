@@ -4,6 +4,7 @@ import { CybercoreBackground } from '@/components/CybercoreBackground';
 import { FloatingConsultButton } from '@/components/FloatingConsultButton';
 import { HoverFooter } from '@/components/HoverFooter';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { SearchModal } from '@/components/SearchModal';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -215,6 +216,8 @@ export default function MessengerPage() {
   // Channel info panel state
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [infoPanelTab, setInfoPanelTab] = useState<'members' | 'pinned' | 'about'>('members');
+  // Search modal state
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   // Check onboarding status
   const { data: onboardingStatus } = useQuery({
@@ -622,6 +625,39 @@ export default function MessengerPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [channelMessages, directMessages]);
+
+  // Keyboard shortcut handler for search (Ctrl+K or Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearchModal(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Handle navigation from search results
+  const handleSearchNavigate = useCallback((channelId?: string, messageId?: string, userId?: string) => {
+    if (channelId && messageId) {
+      // Navigate to channel message
+      const channel = channels.find(c => c.id === channelId);
+      if (channel) {
+        setViewMode('channel');
+        setSelectedChannel(channel);
+        // TODO: Scroll to specific message if needed
+      }
+    } else if (userId) {
+      // Navigate to DM conversation
+      const dmUser = dmUsers.find(u => u.id === userId);
+      if (dmUser) {
+        setViewMode('dm');
+        setSelectedDMUser(dmUser);
+      }
+    }
+  }, [channels, dmUsers]);
 
   // Mutations
   const sendChannelMessageMutation = useMutation({
@@ -1572,9 +1608,23 @@ export default function MessengerPage() {
             </div>
             
             {/* Header Actions */}
-            {(selectedChannel || selectedDMUser) && (
-              <div className="flex items-center gap-2">
-                {pinnedMessages.length > 0 && (
+            <div className="flex items-center gap-2">
+              {/* Global Search Button */}
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="text-gray-400 hover:text-gray-300 flex items-center gap-2"
+                title="Search (Ctrl+K)"
+                data-testid="search-button"
+              >
+                <Search className="h-5 w-5" />
+                <kbd className="hidden sm:inline-flex items-center gap-1 rounded bg-white/10 px-2 py-0.5 text-xs font-medium text-gray-400">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </button>
+              
+              {(selectedChannel || selectedDMUser) && (
+                <>
+                  {pinnedMessages.length > 0 && (
                   <button
                     onClick={() => {
                       setShowInfoPanel(true);
@@ -1612,8 +1662,9 @@ export default function MessengerPage() {
                 >
                   <Info className="h-5 w-5" />
                 </button>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Messages */}
@@ -2718,6 +2769,13 @@ export default function MessengerPage() {
           }}
         />
       )}
+      
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        onNavigateToMessage={handleSearchNavigate}
+      />
     </div>
   );
 }

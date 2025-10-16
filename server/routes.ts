@@ -271,6 +271,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dev bypass versions of all messenger-related routes (NO AUTH)
   
+  // Dev bypass search endpoint (comprehensive search)
+  app.get('/api/dev/messenger/search', async (req, res) => {
+    try {
+      const { q: query, type = 'all', limit = 20, offset = 0 } = req.query;
+      
+      if (!query || typeof query !== 'string') {
+        return res.json({ messages: [], files: [], users: [], total: { messages: 0, files: 0, users: 0 } });
+      }
+      
+      // Parse filters from query params
+      const filters: any = {
+        limit: Number(limit),
+        offset: Number(offset)
+      };
+      
+      if (req.query.channelId) filters.channelId = req.query.channelId as string;
+      if (req.query.senderId) filters.senderId = req.query.senderId as string;
+      if (req.query.dateFrom) filters.dateFrom = new Date(req.query.dateFrom as string);
+      if (req.query.dateTo) filters.dateTo = new Date(req.query.dateTo as string);
+      if (req.query.hasFile === 'true') filters.hasFile = true;
+      
+      const result: any = {};
+      
+      // Search based on type
+      if (type === 'all' || type === 'messages') {
+        const messagesResult = await storage.searchMessages(query, filters);
+        result.messages = messagesResult.messages;
+        result.messagesTotal = messagesResult.total;
+      }
+      
+      if (type === 'all' || type === 'files') {
+        const filesResult = await storage.searchFiles(query, filters);
+        result.files = filesResult.files;
+        result.filesTotal = filesResult.total;
+      }
+      
+      if (type === 'all' || type === 'users') {
+        const users = await storage.searchUsersForMessenger(query, 10);
+        result.users = users;
+        result.usersTotal = users.length;
+      }
+      
+      // Format response
+      res.json({
+        messages: result.messages || [],
+        files: result.files || [],
+        users: result.users || [],
+        total: {
+          messages: result.messagesTotal || 0,
+          files: result.filesTotal || 0,
+          users: result.usersTotal || 0
+        }
+      });
+    } catch (error) {
+      console.error('[DEV BYPASS] Error searching:', error);
+      res.status(500).json({ message: 'Failed to search' });
+    }
+  });
+  
   // Dev bypass user search for @mentions
   app.get('/api/dev/messenger/users/search', async (req, res) => {
     try {

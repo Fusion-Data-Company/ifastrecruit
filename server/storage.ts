@@ -207,6 +207,26 @@ export interface IStorage {
   upsertConversationMemory(memory: InsertConversationMemory): Promise<{ memory: ConversationMemory; action: 'created' | 'updated' }>;
   deleteConversationMemory(id: string): Promise<void>;
   incrementMemoryUsage(id: string): Promise<ConversationMemory>;
+  
+  // Search methods
+  searchMessages(query: string, filters?: {
+    channelId?: string;
+    senderId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    hasFile?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ messages: (Message | DirectMessage)[], total: number }>;
+  searchFiles(query: string, filters?: {
+    channelId?: string;
+    senderId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ files: FileUpload[], total: number }>;
+  searchUsersForMessenger(query: string, limit?: number): Promise<User[]>;
 
   // Messenger methods
   // Channel methods
@@ -1947,6 +1967,305 @@ export class DatabaseStorage implements IStorage {
       ...user,
       memberSince: joinedAt
     }));
+  }
+
+  // Search method implementations
+  async searchMessages(query: string, filters?: {
+    channelId?: string;
+    senderId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    hasFile?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ messages: (Message | DirectMessage)[], total: number }> {
+    const limit = filters?.limit || 20;
+    const offset = filters?.offset || 0;
+    
+    // Parse search operators from query
+    let cleanQuery = query;
+    let fromUser: string | null = null;
+    let inChannel: string | null = null;
+    let hasFile: boolean = filters?.hasFile || false;
+    let hasLink = false;
+    
+    // Extract search operators
+    const fromMatch = query.match(/from:@?(\S+)/);
+    if (fromMatch) {
+      fromUser = fromMatch[1];
+      cleanQuery = cleanQuery.replace(fromMatch[0], '').trim();
+    }
+    
+    const inMatch = query.match(/in:#?(\S+)/);
+    if (inMatch) {
+      inChannel = inMatch[1];
+      cleanQuery = cleanQuery.replace(inMatch[0], '').trim();
+    }
+    
+    if (query.includes('has:file')) {
+      hasFile = true;
+      cleanQuery = cleanQuery.replace(/has:file/g, '').trim();
+    }
+    
+    if (query.includes('has:link')) {
+      hasLink = true;
+      cleanQuery = cleanQuery.replace(/has:link/g, '').trim();
+    }
+    
+    // Build conditions for channel messages
+    const channelConditions = [];
+    if (cleanQuery) {
+      channelConditions.push(
+        sql`(LOWER(${messages.content}) LIKE LOWER('%' || ${cleanQuery} || '%') OR 
+             LOWER(${messages.formattedContent}) LIKE LOWER('%' || ${cleanQuery} || '%'))`
+      );
+    }
+    if (filters?.channelId || inChannel) {
+      const targetChannel = filters?.channelId || inChannel;
+      channelConditions.push(eq(messages.channelId, targetChannel!));
+    }
+    if (filters?.senderId || fromUser) {
+      const targetSender = filters?.senderId || fromUser;
+      channelConditions.push(eq(messages.userId, targetSender!));
+    }
+    if (hasFile) {
+      channelConditions.push(sql`${messages.fileUrl} IS NOT NULL`);
+    }
+    if (hasLink) {
+      channelConditions.push(
+        sql`(${messages.content} LIKE '%http%' OR ${messages.formattedContent} LIKE '%http%')`
+      );
+    }
+    if (filters?.dateFrom) {
+      channelConditions.push(sql`${messages.createdAt} >= ${filters.dateFrom}`);
+    }
+    if (filters?.dateTo) {
+      channelConditions.push(sql`${messages.createdAt} <= ${filters.dateTo}`);
+    }
+    
+    // Build conditions for direct messages
+    const dmConditions = [];
+    if (cleanQuery) {
+      dmConditions.push(
+        sql`(LOWER(${directMessages.content}) LIKE LOWER('%' || ${cleanQuery} || '%') OR 
+             LOWER(${directMessages.formattedContent}) LIKE LOWER('%' || ${cleanQuery} || '%'))`
+      );
+    }
+    if (filters?.senderId || fromUser) {
+      const targetSender = filters?.senderId || fromUser;
+      dmConditions.push(eq(directMessages.senderId, targetSender!));
+    }
+    if (hasFile) {
+      dmConditions.push(sql`${directMessages.fileUrl} IS NOT NULL`);
+    }
+    if (hasLink) {
+      dmConditions.push(
+        sql`(${directMessages.content} LIKE '%http%' OR ${directMessages.formattedContent} LIKE '%http%')`
+      );
+    }
+    if (filters?.dateFrom) {
+      dmConditions.push(sql`${directMessages.createdAt} >= ${filters.dateFrom}`);
+    }
+    if (filters?.dateTo) {
+      dmConditions.push(sql`${directMessages.createdAt} <= ${filters.dateTo}`);
+    }
+    
+    // Search channel messages (only if not explicitly searching in DMs)
+    let channelMessages: any[] = [];
+    let channelTotal = 0;
+    
+    if (!inChannel || inChannel !== 'dm') {
+      const channelQuery = db
+        .select({
+          message: messages,
+          sender: users
+        })
+        .from(messages)
+        .leftJoin(users, eq(messages.userId, users.id));
+      
+      if (channelConditions.length > 0) {
+        channelQuery.where(and(...channelConditions));
+      }
+      
+      channelMessages = await channelQuery
+        .orderBy(desc(messages.createdAt))
+        .limit(limit)
+        .offset(offset);
+      
+      // Get total count
+      const [channelCountResult] = await db
+        .select({ count: count() })
+        .from(messages)
+        .where(channelConditions.length > 0 ? and(...channelConditions) : undefined);
+      
+      channelTotal = channelCountResult?.count || 0;
+    }
+    
+    // Search direct messages (only if not explicitly searching in channels)
+    let dmMessages: any[] = [];
+    let dmTotal = 0;
+    
+    if (!inChannel || inChannel === 'dm') {
+      const dmQuery = db
+        .select({
+          message: directMessages,
+          sender: users
+        })
+        .from(directMessages)
+        .leftJoin(users, eq(directMessages.senderId, users.id));
+      
+      if (dmConditions.length > 0) {
+        dmQuery.where(and(...dmConditions));
+      }
+      
+      dmMessages = await dmQuery
+        .orderBy(desc(directMessages.createdAt))
+        .limit(limit)
+        .offset(offset);
+      
+      // Get total count
+      const [dmCountResult] = await db
+        .select({ count: count() })
+        .from(directMessages)
+        .where(dmConditions.length > 0 ? and(...dmConditions) : undefined);
+      
+      dmTotal = dmCountResult?.count || 0;
+    }
+    
+    // Combine and format results
+    const allMessages = [
+      ...channelMessages.map(({ message, sender }) => ({
+        ...message,
+        sender: sender || undefined,
+        type: 'channel' as const
+      })),
+      ...dmMessages.map(({ message, sender }) => ({
+        ...message,
+        sender: sender || undefined,
+        type: 'dm' as const
+      }))
+    ];
+    
+    // Sort by date and apply limit
+    allMessages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const paginatedMessages = allMessages.slice(0, limit);
+    
+    return {
+      messages: paginatedMessages,
+      total: channelTotal + dmTotal
+    };
+  }
+  
+  async searchFiles(query: string, filters?: {
+    channelId?: string;
+    senderId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ files: FileUpload[], total: number }> {
+    const limit = filters?.limit || 20;
+    const offset = filters?.offset || 0;
+    
+    // Build search conditions
+    const conditions = [];
+    
+    if (query) {
+      conditions.push(
+        sql`(LOWER(${fileUploads.fileName}) LIKE LOWER('%' || ${query} || '%') OR 
+             LOWER(${fileUploads.fileType}) LIKE LOWER('%' || ${query} || '%'))`
+      );
+    }
+    
+    if (filters?.senderId) {
+      conditions.push(eq(fileUploads.userId, filters.senderId));
+    }
+    
+    if (filters?.dateFrom) {
+      conditions.push(sql`${fileUploads.uploadedAt} >= ${filters.dateFrom}`);
+    }
+    
+    if (filters?.dateTo) {
+      conditions.push(sql`${fileUploads.uploadedAt} <= ${filters.dateTo}`);
+    }
+    
+    // If channelId is provided, filter by messages in that channel
+    if (filters?.channelId) {
+      // Get message IDs from the channel
+      const channelMessageIds = await db
+        .select({ id: messages.id })
+        .from(messages)
+        .where(
+          and(
+            eq(messages.channelId, filters.channelId),
+            sql`${messages.fileUrl} IS NOT NULL`
+          )
+        );
+      
+      const messageIds = channelMessageIds.map(m => m.id);
+      if (messageIds.length > 0) {
+        conditions.push(sql`${fileUploads.linkedToMessageId} IN (${sql.join(messageIds, sql`, `)})`);
+      } else {
+        // No files in this channel
+        return { files: [], total: 0 };
+      }
+    }
+    
+    // Execute search query
+    const filesQuery = db
+      .select()
+      .from(fileUploads);
+    
+    if (conditions.length > 0) {
+      filesQuery.where(and(...conditions));
+    }
+    
+    const files = await filesQuery
+      .orderBy(desc(fileUploads.uploadedAt))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get total count
+    const countQuery = db
+      .select({ count: count() })
+      .from(fileUploads);
+    
+    if (conditions.length > 0) {
+      countQuery.where(and(...conditions));
+    }
+    
+    const [countResult] = await countQuery;
+    const total = countResult?.count || 0;
+    
+    return {
+      files,
+      total
+    };
+  }
+  
+  async searchUsersForMessenger(query: string, limit: number = 10): Promise<User[]> {
+    if (!query) {
+      return [];
+    }
+    
+    const searchPattern = `%${query}%`;
+    
+    // Search for users by name or email
+    const results = await db
+      .select()
+      .from(users)
+      .where(
+        sql`(
+          LOWER(${users.firstName}) LIKE LOWER(${searchPattern}) OR
+          LOWER(${users.lastName}) LIKE LOWER(${searchPattern}) OR
+          LOWER(${users.email}) LIKE LOWER(${searchPattern}) OR
+          LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE LOWER(${searchPattern})
+        )`
+      )
+      .orderBy(users.firstName, users.lastName)
+      .limit(limit);
+    
+    return results;
   }
 }
 
