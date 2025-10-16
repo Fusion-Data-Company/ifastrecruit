@@ -10,11 +10,33 @@ import WorkflowEngine from "@/components/WorkflowEngine";
 import SystemMonitoring from "@/components/SystemMonitoring";
 import AuditLogs from "@/components/AuditLogs";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 type TabType = "grid" | "pipeline" | "calendar" | "analytics" | "workflow" | "monitoring" | "audit";
 
 export default function Dashboard() {
+  const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("analytics");
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <div className="text-xl text-foreground">Please log in to access the dashboard</div>
+        <Button asChild>
+          <a href="/api/login">Log in with Replit</a>
+        </Button>
+      </div>
+    );
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {

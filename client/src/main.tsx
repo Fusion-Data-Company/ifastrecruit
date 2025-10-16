@@ -37,9 +37,38 @@ function handleBenignError(event: ErrorEvent | PromiseRejectionEvent) {
   return false
 }
 
-// Register global error handlers before rendering
-// TEMPORARILY COMMENTED OUT: These conflict with Replit runtime error overlay
-// window.addEventListener('error', handleBenignError, true)
-// window.addEventListener('unhandledrejection', handleBenignError, true)
+// Register global error handlers BEFORE rendering to catch early errors
+window.addEventListener('error', (event) => {
+  // Suppress 401 errors from unauthenticated users
+  const message = event.message || '';
+  if (message.includes('401') || message.includes('Unauthorized')) {
+    console.debug('🔇 Suppressing 401 error from unauthenticated user');
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return true;
+  }
+  return handleBenignError(event);
+}, true);
+
+window.addEventListener('unhandledrejection', (event) => {
+  // Suppress 401 errors from unauthenticated users
+  const reason = String(event.reason || '');
+  if (reason.includes('401') || reason.includes('Unauthorized')) {
+    console.debug('🔇 Suppressing 401 promise rejection from unauthenticated user');
+    event.preventDefault();
+    return true;
+  }
+  return handleBenignError(event);
+}, true);
+
+// Add a catch-all error boundary for React
+window.onerror = function(message, source, lineno, colno, error) {
+  const errorMessage = String(message || error?.message || '');
+  if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+    console.debug('🔇 Suppressing 401 error via window.onerror');
+    return true; // Prevent default handling
+  }
+  return false; // Allow normal error handling
+};
 
 createRoot(document.getElementById("root")!).render(<App />);
