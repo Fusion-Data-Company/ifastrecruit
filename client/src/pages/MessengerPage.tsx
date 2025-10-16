@@ -131,6 +131,10 @@ export default function MessengerPage() {
   const [editContent, setEditContent] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showParsedResumeModal, setShowParsedResumeModal] = useState(false);
+  const [selectedResume, setSelectedResume] = useState<any>(null);
+  const [userFiles, setUserFiles] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -165,6 +169,11 @@ export default function MessengerPage() {
     queryKey: ['/api/online-users'],
     enabled: !!user,
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: userUploads = [] } = useQuery<any[]>({
+    queryKey: ['/api/messenger/uploads'],
+    enabled: !!user,
   });
 
   // WebSocket connection
@@ -227,6 +236,27 @@ export default function MessengerPage() {
         queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
         queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/conversations'] });
         queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/unread'] });
+      }
+
+      // File upload events
+      if (data.type === 'file_uploaded') {
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/uploads'] });
+        if (data.payload.file.isResume) {
+          // Show notification that resume is being parsed
+          console.log('Resume uploaded, parsing in progress...');
+        }
+      }
+
+      if (data.type === 'resume_parsed') {
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/uploads'] });
+        // Update the file in userFiles state with parsed data
+        setUserFiles(prevFiles => 
+          prevFiles.map(f => 
+            f.id === data.payload.fileId 
+              ? { ...f, parsedData: data.payload.parsedData, parseStatus: 'parsed' }
+              : f
+          )
+        );
       }
     };
 
@@ -342,12 +372,13 @@ export default function MessengerPage() {
     formData.append('file', file);
     
     try {
-      const response = await apiRequest('/api/upload', 'POST', formData);
+      const response = await apiRequest('/api/messenger/upload', 'POST', formData);
       
       const payload = {
         content: messageInput || `📎 ${file.name}`,
         fileUrl: (response as any).fileUrl,
-        fileName: file.name
+        fileName: file.name,
+        fileId: (response as any).fileId
       };
       
       if (viewMode === 'channel') {
@@ -532,7 +563,7 @@ export default function MessengerPage() {
               
               {showChannels && (
                 <div className="mt-1 space-y-0.5">
-                  {accessibleChannels.map(channel => (
+                  {(accessibleChannels || []).map(channel => (
                     <button
                       key={channel.id}
                       onClick={() => {
@@ -587,7 +618,7 @@ export default function MessengerPage() {
               
               {showDMs && (
                 <div className="mt-1 space-y-0.5">
-                  {dmConversations.map(conversation => (
+                  {(dmConversations || []).map(conversation => (
                     <button
                       key={conversation.userId}
                       onClick={() => {
@@ -648,8 +679,8 @@ export default function MessengerPage() {
                   ))}
                   
                   {/* Show other users for starting new conversations */}
-                  {dmUsers
-                    .filter(u => u.id !== user?.id && !dmConversations.some(c => c.userId === u.id))
+                  {(dmUsers || [])
+                    .filter(u => u.id !== user?.id && !(dmConversations || []).some(c => c.userId === u.id))
                     .map(dmUser => (
                       <button
                         key={dmUser.id}
@@ -1026,7 +1057,7 @@ export default function MessengerPage() {
           
           <ScrollArea className="flex-1 p-3">
             <div className="space-y-2">
-              {onlineUsers
+              {(onlineUsers || [])
                 .filter(u => u.onlineStatus === 'online')
                 .map(onlineUser => (
                   <button
@@ -1077,7 +1108,7 @@ export default function MessengerPage() {
                 ))
               }
               
-              {onlineUsers.filter(u => u.onlineStatus === 'online').length === 0 && (
+              {(onlineUsers || []).filter(u => u.onlineStatus === 'online').length === 0 && (
                 <p className="text-gray-500 text-sm text-center py-4">
                   No users online
                 </p>
@@ -1088,7 +1119,7 @@ export default function MessengerPage() {
             <div className="mt-6">
               <h4 className="text-xs text-gray-400 font-medium mb-2">OFFLINE</h4>
               <div className="space-y-2">
-                {onlineUsers
+                {(onlineUsers || [])
                   .filter(u => u.onlineStatus !== 'online')
                   .map(offlineUser => (
                     <button

@@ -6,6 +6,7 @@ export interface ResumeData {
   name?: string;
   email?: string;
   phone?: string;
+  skills?: string[];
   experience?: string[];
   education?: string[];
   licenses?: string[];
@@ -24,12 +25,35 @@ export class ResumeParserService {
         name: this.extractName(fullText),
         email: this.extractEmail(fullText),
         phone: this.extractPhone(fullText),
+        skills: this.extractSkills(fullText),
         experience: this.extractExperience(fullText),
         education: this.extractEducation(fullText),
         licenses: this.extractLicenses(fullText),
       };
     } catch (error) {
       console.error('Error parsing resume:', error);
+      throw new Error('Failed to parse resume');
+    }
+  }
+
+  async parseResumeFromBuffer(buffer: Buffer): Promise<ResumeData> {
+    try {
+      const data = await (pdfParse as any).default(buffer);
+      
+      const fullText = data.text;
+      
+      return {
+        fullText,
+        name: this.extractName(fullText),
+        email: this.extractEmail(fullText),
+        phone: this.extractPhone(fullText),
+        skills: this.extractSkills(fullText),
+        experience: this.extractExperience(fullText),
+        education: this.extractEducation(fullText),
+        licenses: this.extractLicenses(fullText),
+      };
+    } catch (error) {
+      console.error('Error parsing resume from buffer:', error);
       throw new Error('Failed to parse resume');
     }
   }
@@ -103,6 +127,60 @@ export class ResumeParserService {
     }
     
     return licenses;
+  }
+
+  private extractSkills(text: string): string[] {
+    const skillKeywords = ['skills', 'technologies', 'proficient', 'expertise', 'competencies', 'technical skills', 'soft skills'];
+    const skills: string[] = [];
+    
+    // Common programming/technical skills to look for
+    const commonSkills = [
+      'JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'C#', 'React', 'Angular', 'Vue', 'Node.js',
+      'SQL', 'MongoDB', 'PostgreSQL', 'MySQL', 'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes',
+      'Git', 'CI/CD', 'Agile', 'Scrum', 'REST', 'API', 'HTML', 'CSS', 'Sass', 'Bootstrap',
+      'Excel', 'PowerPoint', 'Word', 'Outlook', 'Salesforce', 'HubSpot', 'Zendesk',
+      'Project Management', 'Leadership', 'Communication', 'Problem Solving', 'Team Management',
+      'Customer Service', 'Sales', 'Marketing', 'Analytics', 'Data Analysis'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    
+    // First, try to find a dedicated skills section
+    for (const keyword of skillKeywords) {
+      const index = lowerText.indexOf(keyword);
+      if (index !== -1) {
+        const section = text.substring(index, Math.min(index + 500, text.length));
+        const lines = section.split('\n').filter(line => line.trim());
+        
+        // Extract skills from the next few lines after the keyword
+        if (lines.length > 1) {
+          for (let i = 1; i < Math.min(lines.length, 6); i++) {
+            const line = lines[i];
+            // Split by common delimiters
+            const potentialSkills = line.split(/[,;•·|]/).map(s => s.trim());
+            for (const skill of potentialSkills) {
+              if (skill && skill.length > 2 && skill.length < 50 && !skills.includes(skill)) {
+                skills.push(skill);
+              }
+            }
+          }
+        }
+        
+        if (skills.length > 0) {
+          break;
+        }
+      }
+    }
+    
+    // Also scan the entire text for common skills
+    for (const skill of commonSkills) {
+      if (text.includes(skill) && !skills.some(s => s.toLowerCase() === skill.toLowerCase())) {
+        skills.push(skill);
+      }
+    }
+    
+    // Limit to max 20 skills
+    return skills.slice(0, 20);
   }
 }
 

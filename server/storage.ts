@@ -192,6 +192,10 @@ export interface IStorage {
   // File upload methods
   getUserFiles(userId: string): Promise<FileUpload[]>;
   createFileUpload(upload: InsertFileUpload): Promise<FileUpload>;
+  saveFileUpload(userId: string, fileName: string, fileType: string, fileUrl: string, fileSize: number, isResume: boolean): Promise<FileUpload>;
+  updateParsedData(fileId: string, parsedData: any, status: 'parsed' | 'failed'): Promise<FileUpload>;
+  getFileUpload(fileId: string): Promise<FileUpload | undefined>;
+  getUserUploads(userId: string): Promise<FileUpload[]>;
   
   // Onboarding methods
   getOnboardingResponse(userId: string): Promise<OnboardingResponse | undefined>;
@@ -1048,6 +1052,41 @@ export class DatabaseStorage implements IStorage {
   async createFileUpload(upload: InsertFileUpload): Promise<FileUpload> {
     const [created] = await db.insert(fileUploads).values(upload).returning();
     return created;
+  }
+
+  async saveFileUpload(userId: string, fileName: string, fileType: string, fileUrl: string, fileSize: number, isResume: boolean): Promise<FileUpload> {
+    return await this.createFileUpload({
+      userId,
+      fileName,
+      fileType,
+      fileUrl,
+      fileSize,
+      isResume,
+      parseStatus: isResume ? 'pending' : undefined
+    });
+  }
+
+  async updateParsedData(fileId: string, parsedData: any, status: 'parsed' | 'failed'): Promise<FileUpload> {
+    const [updated] = await db
+      .update(fileUploads)
+      .set({
+        parsedData,
+        parseStatus: status,
+        parsedAt: status === 'parsed' ? new Date() : undefined,
+        parseError: status === 'failed' ? 'Failed to parse resume' : undefined
+      })
+      .where(eq(fileUploads.id, fileId))
+      .returning();
+    return updated;
+  }
+
+  async getFileUpload(fileId: string): Promise<FileUpload | undefined> {
+    const [file] = await db.select().from(fileUploads).where(eq(fileUploads.id, fileId));
+    return file || undefined;
+  }
+
+  async getUserUploads(userId: string): Promise<FileUpload[]> {
+    return await this.getUserFiles(userId);
   }
 
   // Onboarding methods

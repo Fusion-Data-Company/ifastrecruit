@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
@@ -80,6 +80,41 @@ import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
 import { messengerWS } from "./services/messenger-websocket";
 import { jasonAI } from "./services/jason-ai-persona";
 import multer from "multer";
+import path from "path";
+import { promises as fs } from "fs";
+import { resumeParser } from "./services/resume-parser";
+
+// Configure multer for file uploads
+const uploadStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    await fs.mkdir(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const sanitizedOriginalName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9-_]/g, '_');
+    cb(null, `${sanitizedOriginalName}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage: uploadStorage,
+  limits: { 
+    fileSize: 10 * 1024 * 1024, // 10MB max
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.txt', '.png', '.jpg', '.jpeg', '.gif'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`File type not supported. Allowed types: ${allowedTypes.join(', ')}`));
+    }
+  }
+});
 
 // Validation schemas
 const tokenSchema = z.object({
@@ -1555,6 +1590,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch unread counts" });
     }
   });
+
+  // ===== FILE UPLOAD ROUTES =====
+  
+  // POST /api/messenger/upload - Handle file uploads with resume parsing
+  app.post("/api/messenger/upload", isAuthenticated, uploadRateLimit, upload.single('file'), async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const file = req.file;
+      const ext = path.extname(file.originalname).toLowerCase();
+      const isResume = ['.pdf', '.doc', '.docx'].includes(ext);
+      
+      // Generate public URL for the file
+      const fileUrl = `/uploads/${file.filename}`;
+      
+      // Save file metadata to database
+      const fileUpload = await storage.saveFileUpload(
+        userId,
+        file.originalname,
+        file.mimetype,
+        fileUrl,
+        file.size,
+        isResume
+      );
+
+      // If it's a resume, parse it asynchronously
+      if (isResume && ext === '.pdf') {
+        try {
+          const resumeData = await resumeParser.parseResume(file.path);
+          
+          // Update the file with parsed data
+          await storage.updateParsedData(fileUpload.id, resumeData, 'parsed');
+          
+          // Emit WebSocket event for resume parsed
+          messengerWS.broadcast({
+            type: 'resume_parsed',
+            payload: {
+              fileId: fileUpload.id,
+              userId,
+              parsedData: resumeData
+            }
+          });
+        } catch (parseError) {
+          console.error('[File Upload] Resume parsing failed:', parseError);
+          await storage.updateParsedData(fileUpload.id, null, 'failed');
+        }
+      }
+
+      // Emit WebSocket event for file uploaded
+      messengerWS.broadcast({
+        type: 'file_uploaded',
+        payload: {
+          file: fileUpload,
+          userId
+        }
+      });
+
+      res.json({
+        success: true,
+        file: fileUpload
+      });
+    } catch (error) {
+      console.error("[File Upload] Error uploading file:", error);
+      res.status(500).json({ error: "Failed to upload file" });
+    }
+  });
+
+  // GET /api/messenger/uploads - Get user's uploaded files
+  app.get("/api/messenger/uploads", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const uploads = await storage.getUserUploads(userId);
+      res.json(uploads);
+    } catch (error) {
+      console.error("[File Upload] Error fetching uploads:", error);
+      res.status(500).json({ error: "Failed to fetch uploads" });
+    }
+  });
+
+  // GET /api/messenger/upload/:fileId - Get specific file upload details
+  app.get("/api/messenger/upload/:fileId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { fileId } = req.params;
+      const file = await storage.getFileUpload(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      // Check if user has access to this file
+      if (file.userId !== userId && !(req.user as any)?.isAdmin) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(file);
+    } catch (error) {
+      console.error("[File Upload] Error fetching file:", error);
+      res.status(500).json({ error: "Failed to fetch file" });
+    }
+  });
+
+  // Static route to serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // GET /api/channels - Get list of channels for user  
   app.get("/api/channels", isAuthenticated, async (req, res) => {
