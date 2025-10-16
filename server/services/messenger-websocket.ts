@@ -16,13 +16,15 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'online_status' | 'read_receipt' | 'join_channel' | 'thread_reply' | 'thread_typing';
+  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'typing_start' | 'typing_stop' | 'online_status' | 'read_receipt' | 'join_channel' | 'thread_reply' | 'thread_typing';
   payload: any;
 }
 
 export class MessengerWebSocketService {
   private wss: WebSocketServer | null = null;
   private clients: Map<string, AuthenticatedWebSocket[]> = new Map();
+  // Track typing state: key is "channel:<channelId>" or "dm:<userId>-<userId>", value is Map of userId to timeout
+  private typingUsers: Map<string, Map<string, NodeJS.Timeout>> = new Map();
 
   initialize(server: Server) {
     this.wss = new WebSocketServer({ 
@@ -136,6 +138,14 @@ export class MessengerWebSocketService {
       
       case 'typing':
         await this.handleTypingIndicator(ws, message.payload);
+        break;
+      
+      case 'typing_start':
+        await this.handleTypingStart(ws, message.payload);
+        break;
+      
+      case 'typing_stop':
+        await this.handleTypingStop(ws, message.payload);
         break;
       
       case 'online_status':
@@ -290,6 +300,152 @@ export class MessengerWebSocketService {
     } else if (payload.recipientId) {
       this.sendToUser(payload.recipientId, typingMessage);
     }
+  }
+
+  private async handleTypingStart(ws: AuthenticatedWebSocket, payload: { 
+    channelId?: string; 
+    recipientId?: string;
+    messageType: 'channel' | 'dm' | 'thread';
+    parentMessageId?: string; // for thread typing
+  }) {
+    if (!ws.isAuthenticated || !ws.userId) return;
+
+    let key: string;
+    let targetUsers: string[] = [];
+
+    if (payload.messageType === 'channel' && payload.channelId) {
+      key = `channel:${payload.channelId}`;
+      const channelMembers = await storage.getChannelMembers(payload.channelId);
+      targetUsers = channelMembers.map(m => m.userId).filter(id => id !== ws.userId);
+    } else if (payload.messageType === 'dm' && payload.recipientId) {
+      // Sort user IDs to ensure consistent key regardless of who's typing
+      const sortedIds = [ws.userId, payload.recipientId].sort();
+      key = `dm:${sortedIds[0]}-${sortedIds[1]}`;
+      targetUsers = [payload.recipientId];
+    } else if (payload.messageType === 'thread' && payload.parentMessageId) {
+      key = `thread:${payload.parentMessageId}`;
+      // Thread typing will be handled similarly to existing handleThreadTyping
+      return this.handleThreadTyping(ws, { 
+        parentMessageId: payload.parentMessageId, 
+        isDirectMessage: payload.recipientId !== undefined 
+      });
+    } else {
+      return;
+    }
+
+    // Get or create typing map for this context
+    if (!this.typingUsers.has(key)) {
+      this.typingUsers.set(key, new Map());
+    }
+    const contextTypingUsers = this.typingUsers.get(key)!;
+
+    // Clear any existing timeout for this user
+    const existingTimeout = contextTypingUsers.get(ws.userId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Set auto-stop timeout (3 seconds)
+    const timeout = setTimeout(() => {
+      this.clearUserTyping(ws.userId, key, targetUsers, payload.messageType);
+    }, 3000);
+
+    // Track typing user with timeout
+    contextTypingUsers.set(ws.userId, timeout);
+
+    // Get all currently typing users (including the new one)
+    const typingUserIds = Array.from(contextTypingUsers.keys());
+
+    // Broadcast typing_start to relevant users
+    targetUsers.forEach(userId => {
+      this.sendToUser(userId, {
+        type: 'typing_start',
+        payload: {
+          typingUsers: typingUserIds,
+          channelId: payload.channelId,
+          recipientId: payload.recipientId,
+          messageType: payload.messageType
+        }
+      });
+    });
+  }
+
+  private async handleTypingStop(ws: AuthenticatedWebSocket, payload: { 
+    channelId?: string; 
+    recipientId?: string;
+    messageType: 'channel' | 'dm' | 'thread';
+    parentMessageId?: string;
+  }) {
+    if (!ws.isAuthenticated || !ws.userId) return;
+
+    let key: string;
+    let targetUsers: string[] = [];
+
+    if (payload.messageType === 'channel' && payload.channelId) {
+      key = `channel:${payload.channelId}`;
+      const channelMembers = await storage.getChannelMembers(payload.channelId);
+      targetUsers = channelMembers.map(m => m.userId).filter(id => id !== ws.userId);
+    } else if (payload.messageType === 'dm' && payload.recipientId) {
+      const sortedIds = [ws.userId, payload.recipientId].sort();
+      key = `dm:${sortedIds[0]}-${sortedIds[1]}`;
+      targetUsers = [payload.recipientId];
+    } else if (payload.messageType === 'thread' && payload.parentMessageId) {
+      key = `thread:${payload.parentMessageId}`;
+      // Handle thread typing stop
+      // We'll broadcast a stop event for thread typing
+      return; // For now, let the timeout handle it
+    } else {
+      return;
+    }
+
+    this.clearUserTyping(ws.userId, key, targetUsers, payload.messageType);
+  }
+
+  private clearUserTyping(userId: string, key: string, targetUsers: string[], messageType: string) {
+    const contextTypingUsers = this.typingUsers.get(key);
+    if (!contextTypingUsers) return;
+
+    // Clear timeout and remove user from typing list
+    const timeout = contextTypingUsers.get(userId);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    contextTypingUsers.delete(userId);
+
+    // If no more users typing, remove the context entirely
+    if (contextTypingUsers.size === 0) {
+      this.typingUsers.delete(key);
+    }
+
+    // Get remaining typing users
+    const typingUserIds = contextTypingUsers.size > 0 
+      ? Array.from(contextTypingUsers.keys())
+      : [];
+
+    // Parse key to determine context
+    let channelId: string | undefined;
+    let recipientId: string | undefined;
+    
+    if (key.startsWith('channel:')) {
+      channelId = key.substring(8);
+    } else if (key.startsWith('dm:')) {
+      // For DM, we need to figure out the recipient from the target users
+      recipientId = targetUsers[0]; // In DM context, there's only one target
+    }
+
+    // Broadcast typing_stop to relevant users
+    targetUsers.forEach(targetUserId => {
+      this.sendToUser(targetUserId, {
+        type: 'typing_stop',
+        payload: {
+          typingUsers: typingUserIds,
+          channelId,
+          recipientId,
+          messageType,
+          stoppedUserId: userId
+        }
+      });
+    });
   }
 
   private async handleOnlineStatus(ws: AuthenticatedWebSocket, payload: { isOnline: boolean }) {
@@ -523,9 +679,40 @@ export class MessengerWebSocketService {
           this.clients.delete(ws.userId);
           storage.updateUserOnlineStatus(ws.userId, false);
           this.broadcastOnlineStatus(ws.userId, false);
+          
+          // Clear typing states for disconnected user
+          this.clearAllUserTypingStates(ws.userId);
         }
       }
       console.log(`[Messenger WS] User ${ws.userId} disconnected`);
+    }
+  }
+
+  private async clearAllUserTypingStates(userId: string) {
+    // Iterate through all typing contexts and remove this user
+    for (const [key, typingUsersMap] of this.typingUsers.entries()) {
+      if (typingUsersMap.has(userId)) {
+        // Get target users to notify based on context
+        let targetUsers: string[] = [];
+        
+        if (key.startsWith('channel:')) {
+          const channelId = key.substring(8);
+          try {
+            const channelMembers = await storage.getChannelMembers(channelId);
+            targetUsers = channelMembers.map(m => m.userId).filter(id => id !== userId);
+          } catch (e) {
+            console.error('[Messenger WS] Error getting channel members:', e);
+          }
+        } else if (key.startsWith('dm:')) {
+          const ids = key.substring(3).split('-');
+          targetUsers = ids.filter(id => id !== userId);
+        }
+        
+        // Clear typing state for this user in this context
+        const messageType = key.startsWith('channel:') ? 'channel' : 
+                          key.startsWith('dm:') ? 'dm' : 'thread';
+        this.clearUserTyping(userId, key, targetUsers, messageType);
+      }
     }
   }
 

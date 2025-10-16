@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { CybercoreBackground } from '@/components/CybercoreBackground';
 import { FloatingConsultButton } from '@/components/FloatingConsultButton';
@@ -180,6 +180,11 @@ export default function MessengerPage() {
   const [mentionStartPosition, setMentionStartPosition] = useState<number | null>(null);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const [mentionUsers, setMentionUsers] = useState<any[]>([]);
+  // Typing indicator state
+  const [typingUsers, setTypingUsers] = useState<{ [context: string]: string[] }>({});
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTypingRef = useRef<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -444,6 +449,87 @@ export default function MessengerPage() {
           return updated;
         });
       }
+      
+      // Typing indicator events
+      if (data.type === 'typing_start') {
+        const { typingUsers: newTypingUsers, channelId, recipientId, messageType } = data.payload;
+        
+        // Generate context key for tracking typing state
+        let contextKey: string;
+        if (messageType === 'channel' && channelId) {
+          contextKey = `channel:${channelId}`;
+        } else if (messageType === 'dm') {
+          // For DMs, create a sorted key to ensure consistency
+          const sortedIds = [user.id, recipientId].filter(Boolean).sort();
+          contextKey = `dm:${sortedIds.join('-')}`;
+        } else {
+          contextKey = 'unknown';
+        }
+        
+        setTypingUsers(prev => ({
+          ...prev,
+          [contextKey]: newTypingUsers.filter((id: string) => id !== user.id) // Don't show own typing
+        }));
+      }
+      
+      if (data.type === 'typing_stop') {
+        const { typingUsers: newTypingUsers, channelId, recipientId, messageType } = data.payload;
+        
+        // Generate context key for tracking typing state
+        let contextKey: string;
+        if (messageType === 'channel' && channelId) {
+          contextKey = `channel:${channelId}`;
+        } else if (messageType === 'dm') {
+          const sortedIds = [user.id, recipientId].filter(Boolean).sort();
+          contextKey = `dm:${sortedIds.join('-')}`;
+        } else {
+          contextKey = 'unknown';
+        }
+        
+        if (newTypingUsers.length === 0) {
+          // Remove typing state if no one is typing
+          setTypingUsers(prev => {
+            const updated = { ...prev };
+            delete updated[contextKey];
+            return updated;
+          });
+        } else {
+          setTypingUsers(prev => ({
+            ...prev,
+            [contextKey]: newTypingUsers.filter((id: string) => id !== user.id)
+          }));
+        }
+      }
+      
+      if (data.type === 'thread_typing') {
+        const { userId: typingUserId, parentMessageId, isDirectMessage } = data.payload;
+        const contextKey = `thread:${parentMessageId}`;
+        
+        setTypingUsers(prev => {
+          const currentUsers = prev[contextKey] || [];
+          if (!currentUsers.includes(typingUserId) && typingUserId !== user.id) {
+            return {
+              ...prev,
+              [contextKey]: [...currentUsers, typingUserId]
+            };
+          }
+          return prev;
+        });
+        
+        // Auto-clear after 3 seconds
+        setTimeout(() => {
+          setTypingUsers(prev => {
+            const updated = { ...prev };
+            if (updated[contextKey]) {
+              updated[contextKey] = updated[contextKey].filter((id: string) => id !== typingUserId);
+              if (updated[contextKey].length === 0) {
+                delete updated[contextKey];
+              }
+            }
+            return updated;
+          });
+        }, 3000);
+      }
     };
 
     websocket.onerror = (error) => {
@@ -707,8 +793,92 @@ export default function MessengerPage() {
     }
   }, [handleFileUpload]);
 
+  // Typing indicator functions
+  const sendTypingStart = useCallback(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    const now = Date.now();
+    // Don't send if we sent one recently (within 2 seconds)
+    if (now - lastTypingRef.current < 2000) return;
+    
+    lastTypingRef.current = now;
+    
+    if (viewMode === 'channel' && selectedChannel) {
+      ws.send(JSON.stringify({
+        type: 'typing_start',
+        payload: {
+          channelId: selectedChannel.id,
+          messageType: 'channel'
+        }
+      }));
+    } else if (viewMode === 'dm' && selectedDMUser) {
+      ws.send(JSON.stringify({
+        type: 'typing_start',
+        payload: {
+          recipientId: selectedDMUser.id,
+          messageType: 'dm'
+        }
+      }));
+    }
+    
+    setIsTyping(true);
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set auto-stop timeout (3 seconds)
+    typingTimeoutRef.current = setTimeout(() => {
+      sendTypingStop();
+    }, 3000);
+  }, [ws, viewMode, selectedChannel, selectedDMUser]);
+  
+  const sendTypingStop = useCallback(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!isTyping) return;
+    
+    if (viewMode === 'channel' && selectedChannel) {
+      ws.send(JSON.stringify({
+        type: 'typing_stop',
+        payload: {
+          channelId: selectedChannel.id,
+          messageType: 'channel'
+        }
+      }));
+    } else if (viewMode === 'dm' && selectedDMUser) {
+      ws.send(JSON.stringify({
+        type: 'typing_stop',
+        payload: {
+          recipientId: selectedDMUser.id,
+          messageType: 'dm'
+        }
+      }));
+    }
+    
+    setIsTyping(false);
+    
+    // Clear timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, [ws, isTyping, viewMode, selectedChannel, selectedDMUser]);
+  
+  // Clear typing on channel/DM change
+  useEffect(() => {
+    return () => {
+      if (isTyping) {
+        sendTypingStop();
+      }
+    };
+  }, [selectedChannel, selectedDMUser, viewMode]);
+
   const handleSendMessage = () => {
     if (!messageInput.trim() && !uploadingFile) return;
+    
+    // Stop typing when sending message
+    sendTypingStop();
     
     // If in Ask Jason mode, send to AI instead
     if (askJasonMode && messageInput.trim()) {
@@ -827,6 +997,16 @@ export default function MessengerPage() {
     const cursorPosition = e.target.selectionStart || 0;
     
     setMessageInput(value);
+    
+    // Detect typing and send typing indicator
+    if (value.trim() && !isTyping) {
+      sendTypingStart();
+    } else if (!value.trim() && isTyping) {
+      sendTypingStop();
+    } else if (value.trim() && isTyping) {
+      // Refresh the typing timeout
+      sendTypingStart();
+    }
     
     // Check for @ character
     const lastAtSymbol = value.lastIndexOf('@', cursorPosition - 1);
@@ -1639,6 +1819,57 @@ export default function MessengerPage() {
             <div ref={messagesEndRef} />
           </ScrollArea>
 
+          {/* Typing Indicator */}
+          {(() => {
+            // Determine current context for typing indicator
+            let contextKey: string;
+            let typingUserIds: string[] = [];
+            
+            if (viewMode === 'channel' && selectedChannel) {
+              contextKey = `channel:${selectedChannel.id}`;
+              typingUserIds = typingUsers[contextKey] || [];
+            } else if (viewMode === 'dm' && selectedDMUser) {
+              const sortedIds = [user?.id, selectedDMUser.id].filter(Boolean).sort();
+              contextKey = `dm:${sortedIds.join('-')}`;
+              typingUserIds = typingUsers[contextKey] || [];
+            }
+            
+            if (typingUserIds && typingUserIds.length > 0) {
+              const typingUsernames = typingUserIds.map(id => {
+                const typingUser = dmUsers.find(u => u.id === id) || 
+                                  dmConversations.find(c => c.userId === id)?.user;
+                if (typingUser) {
+                  return typingUser.firstName || typingUser.email?.split('@')[0] || 'Someone';
+                }
+                return 'Someone';
+              });
+              
+              let typingText: string;
+              if (typingUsernames.length === 1) {
+                typingText = `${typingUsernames[0]} is typing`;
+              } else if (typingUsernames.length === 2) {
+                typingText = `${typingUsernames[0]} and ${typingUsernames[1]} are typing`;
+              } else if (typingUsernames.length === 3) {
+                typingText = `${typingUsernames[0]}, ${typingUsernames[1]}, and ${typingUsernames[2]} are typing`;
+              } else {
+                typingText = `${typingUsernames[0]}, ${typingUsernames[1]}, and ${typingUsernames.length - 2} others are typing`;
+              }
+              
+              return (
+                <div className="px-4 pb-2 flex items-center gap-2 text-sm text-gray-400 italic">
+                  <span>{typingText}</span>
+                  <span className="typing-indicator">
+                    <span className="typing-dot"></span>
+                    <span className="typing-dot"></span>
+                    <span className="typing-dot"></span>
+                  </span>
+                </div>
+              );
+            }
+            
+            return null;
+          })()}
+
           {/* Message Input */}
           <div className="p-4 border-t border-white/5">
             <div className="flex gap-2">
@@ -1842,12 +2073,62 @@ export default function MessengerPage() {
                 <div ref={threadEndRef} />
               </ScrollArea>
               
+              {/* Thread Typing Indicator */}
+              {selectedThread && (() => {
+                const contextKey = `thread:${selectedThread.id}`;
+                const threadTypingUsers = typingUsers[contextKey] || [];
+                
+                if (threadTypingUsers.length > 0) {
+                  const typingUsernames = threadTypingUsers.map(id => {
+                    const typingUser = dmUsers.find(u => u.id === id) || 
+                                      dmConversations.find(c => c.userId === id)?.user;
+                    if (typingUser) {
+                      return typingUser.firstName || typingUser.email?.split('@')[0] || 'Someone';
+                    }
+                    return 'Someone';
+                  });
+                  
+                  let typingText: string;
+                  if (typingUsernames.length === 1) {
+                    typingText = `${typingUsernames[0]} is typing`;
+                  } else {
+                    typingText = `${typingUsernames[0]} and ${typingUsernames[1]} are typing`;
+                  }
+                  
+                  return (
+                    <div className="px-4 pb-2 flex items-center gap-2 text-sm text-gray-400 italic">
+                      <span>{typingText}</span>
+                      <span className="typing-indicator">
+                        <span className="typing-dot"></span>
+                        <span className="typing-dot"></span>
+                        <span className="typing-dot"></span>
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
               {/* Thread Reply Input */}
               <div className="p-4 border-t border-white/5">
                 <div className="flex gap-2">
                   <Input
                     value={threadInput}
-                    onChange={(e) => setThreadInput(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setThreadInput(value);
+                      
+                      // Send thread typing indicator
+                      if (value.trim() && selectedThread && ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                          type: 'thread_typing',
+                          payload: {
+                            parentMessageId: selectedThread.id,
+                            isDirectMessage: viewMode === 'dm'
+                          }
+                        }));
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
