@@ -69,11 +69,13 @@ async function upsertUser(claims: any) {
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    isAdmin: isAdmin, // Pass admin status directly
   });
 
-  // Set admin status if email is in admin list
+  // Ensure admin status is set if email is in admin list
   if (isAdmin && !user.isAdmin) {
-    await storage.setUserAdmin(user.id, true);
+    const updatedUser = await storage.setUserAdmin(user.id, true);
+    return updatedUser;
   }
 
   return user;
