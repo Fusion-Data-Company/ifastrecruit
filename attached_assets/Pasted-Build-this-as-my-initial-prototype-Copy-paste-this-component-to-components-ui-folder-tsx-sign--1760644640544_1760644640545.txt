@@ -1,0 +1,483 @@
+Build this as my initial prototype
+
+Copy-paste this component to /components/ui folder:
+```tsx
+sign-in.tsx
+import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+
+// --- HELPER COMPONENTS (ICONS) ---
+
+const GoogleIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s12-5.373 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-2.641-.21-5.236-.611-7.743z" />
+        <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+        <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.022 35.026 44 30.038 44 24c0-2.641-.21-5.236-.611-7.743z" />
+    </svg>
+);
+
+
+// --- TYPE DEFINITIONS ---
+
+export interface Testimonial {
+  avatarSrc: string;
+  name: string;
+  handle: string;
+  text: string;
+}
+
+interface SignInPageProps {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  heroImageSrc?: string;
+  testimonials?: Testimonial[];
+  onSignIn?: (event: React.FormEvent<HTMLFormElement>) => void;
+  onGoogleSignIn?: () => void;
+  onResetPassword?: () => void;
+  onCreateAccount?: () => void;
+}
+
+// --- SUB-COMPONENTS ---
+
+const GlassInputWrapper = ({ children }: { children: React.ReactNode }) => (
+  <div className="rounded-2xl border border-border bg-foreground/5 backdrop-blur-sm transition-colors focus-within:border-violet-400/70 focus-within:bg-violet-500/10">
+    {children}
+  </div>
+);
+
+const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial, delay: string }) => (
+  <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-3xl bg-card/40 dark:bg-zinc-800/40 backdrop-blur-xl border border-white/10 p-5 w-64`}>
+    <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-2xl" alt="avatar" />
+    <div className="text-sm leading-snug">
+      <p className="flex items-center gap-1 font-medium">{testimonial.name}</p>
+      <p className="text-muted-foreground">{testimonial.handle}</p>
+      <p className="mt-1 text-foreground/80">{testimonial.text}</p>
+    </div>
+  </div>
+);
+
+// --- MAIN COMPONENT ---
+
+export const SignInPage: React.FC<SignInPageProps> = ({
+  title = <span className="font-light text-foreground tracking-tighter">Welcome</span>,
+  description = "Access your account and continue your journey with us",
+  heroImageSrc,
+  testimonials = [],
+  onSignIn,
+  onGoogleSignIn,
+  onResetPassword,
+  onCreateAccount,
+}) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <div className="h-[100dvh] flex flex-col md:flex-row font-geist w-[100dvw]">
+      {/* Left column: sign-in form */}
+      <section className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <div className="flex flex-col gap-6">
+            <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight">{title}</h1>
+            <p className="animate-element animate-delay-200 text-muted-foreground">{description}</p>
+
+            <form className="space-y-5" onSubmit={onSignIn}>
+              <div className="animate-element animate-delay-300">
+                <label className="text-sm font-medium text-muted-foreground">Email Address</label>
+                <GlassInputWrapper>
+                  <input name="email" type="email" placeholder="Enter your email address" className="w-full bg-transparent text-sm p-4 rounded-2xl focus:outline-none" />
+                </GlassInputWrapper>
+              </div>
+
+              <div className="animate-element animate-delay-400">
+                <label className="text-sm font-medium text-muted-foreground">Password</label>
+                <GlassInputWrapper>
+                  <div className="relative">
+                    <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Enter your password" className="w-full bg-transparent text-sm p-4 pr-12 rounded-2xl focus:outline-none" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center">
+                      {showPassword ? <EyeOff className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" /> : <Eye className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />}
+                    </button>
+                  </div>
+                </GlassInputWrapper>
+              </div>
+
+              <div className="animate-element animate-delay-500 flex items-center justify-between text-sm">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" name="rememberMe" className="custom-checkbox" />
+                  <span className="text-foreground/90">Keep me signed in</span>
+                </label>
+                <a href="#" onClick={(e) => { e.preventDefault(); onResetPassword?.(); }} className="hover:underline text-violet-400 transition-colors">Reset password</a>
+              </div>
+
+              <button type="submit" className="animate-element animate-delay-600 w-full rounded-2xl bg-primary py-4 font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+                Sign In
+              </button>
+            </form>
+
+            <div className="animate-element animate-delay-700 relative flex items-center justify-center">
+              <span className="w-full border-t border-border"></span>
+              <span className="px-4 text-sm text-muted-foreground bg-background absolute">Or continue with</span>
+            </div>
+
+            <button onClick={onGoogleSignIn} className="animate-element animate-delay-800 w-full flex items-center justify-center gap-3 border border-border rounded-2xl py-4 hover:bg-secondary transition-colors">
+                <GoogleIcon />
+                Continue with Google
+            </button>
+
+            <p className="animate-element animate-delay-900 text-center text-sm text-muted-foreground">
+              New to our platform? <a href="#" onClick={(e) => { e.preventDefault(); onCreateAccount?.(); }} className="text-violet-400 hover:underline transition-colors">Create Account</a>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Right column: hero image + testimonials */}
+      {heroImageSrc && (
+        <section className="hidden md:block flex-1 relative p-4">
+          <div className="animate-slide-right animate-delay-300 absolute inset-4 rounded-3xl bg-cover bg-center" style={{ backgroundImage: `url(${heroImageSrc})` }}></div>
+          {testimonials.length > 0 && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 px-8 w-full justify-center">
+              <TestimonialCard testimonial={testimonials[0]} delay="animate-delay-1000" />
+              {testimonials[1] && <div className="hidden xl:flex"><TestimonialCard testimonial={testimonials[1]} delay="animate-delay-1200" /></div>}
+              {testimonials[2] && <div className="hidden 2xl:flex"><TestimonialCard testimonial={testimonials[2]} delay="animate-delay-1400" /></div>}
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  );
+};  
+
+demo.tsx
+import { SignInPage, Testimonial } from "@/components/ui/sign-in";
+
+const sampleTestimonials: Testimonial[] = [
+  {
+    avatarSrc: "https://randomuser.me/api/portraits/women/57.jpg",
+    name: "Sarah Chen",
+    handle: "@sarahdigital",
+    text: "Amazing platform! The user experience is seamless and the features are exactly what I needed."
+  },
+  {
+    avatarSrc: "https://randomuser.me/api/portraits/men/64.jpg",
+    name: "Marcus Johnson",
+    handle: "@marcustech",
+    text: "This service has transformed how I work. Clean design, powerful features, and excellent support."
+  },
+  {
+    avatarSrc: "https://randomuser.me/api/portraits/men/32.jpg",
+    name: "David Martinez",
+    handle: "@davidcreates",
+    text: "I've tried many platforms, but this one stands out. Intuitive, reliable, and genuinely helpful for productivity."
+  },
+];
+
+const SignInPageDemo = () => {
+  const handleSignIn = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+    console.log("Sign In submitted:", data);
+    alert(`Sign In Submitted! Check the browser console for form data.`);
+  };
+
+  const handleGoogleSignIn = () => {
+    console.log("Continue with Google clicked");
+    alert("Continue with Google clicked");
+  };
+  
+  const handleResetPassword = () => {
+    alert("Reset Password clicked");
+  }
+
+  const handleCreateAccount = () => {
+    alert("Create Account clicked");
+  }
+
+  return (
+    <div className="bg-background text-foreground">
+      <SignInPage
+        heroImageSrc="https://images.unsplash.com/photo-1642615835477-d303d7dc9ee9?w=2160&q=80"
+        testimonials={sampleTestimonials}
+        onSignIn={handleSignIn}
+        onGoogleSignIn={handleGoogleSignIn}
+        onResetPassword={handleResetPassword}
+        onCreateAccount={handleCreateAccount}
+      />
+    </div>
+  );
+};
+
+export default SignInPageDemo;
+```
+
+Install these NPM dependencies:
+```bash
+lucide-react
+```
+
+Extend existing Tailwind 4 index.css with this code (or if project uses Tailwind 3, extend tailwind.config.js or globals.css):
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+
+
+@keyframes fadeSlideIn {
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px);
+  }
+}
+
+@keyframes slideRightIn {
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateX(0px);
+  }
+}
+
+@keyframes testimonialIn {
+  to {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0px) scale(1);
+  }
+}
+```
+
+
+Additional important context to consider: Alright, Boss—here’s the rulebook you hand to Magic MCP so it stops spitting out “starter kit” junk and starts delivering Apple-showcase elements on command. Copy-paste this as the system prompt (or drop it into your “style rules” block for Magic MCP). It’s opinionated, airtight, and production-grade.
+
+⸻
+
+Magic MCP — “Apple-Level Styling” Rulebook (System Prompt)
+
+You are Magic MCP – Elite UI Fabricator. Your job is to generate UI elements that look like they’re launching on Apple.com tomorrow morning: minimal, cinematic, tactile, premium. You produce fully-styled code, not bare markup. Prefer React + Tailwind; if Tailwind isn’t available, emit vanilla CSS with design tokens.
+
+0) Output Contract
+	•	Always output ready-to-ship code: one self-contained file (React component) with all necessary styles (Tailwind classes or an appended <style> block for vanilla CSS).
+	•	No TODOs. No placeholders. Provide sane defaults and sample copy.
+	•	Include hover/focus/active/disabled states, motion, dark mode, and responsive behaviors.
+	•	Ensure WCAG AA contrast and prefers-reduced-motion support.
+
+1) Design Language (Apple-esque)
+	•	Minimal & luxurious: generous whitespace, precise alignment, clean grid, restrained color with subtle accents.
+	•	Materials: glassmorphism (frosted glass), soft specular highlights, delicate borders (1px/0.5px hairlines), layered depth.
+	•	Type: system-first stack, smooth tracking, nuanced weights; use a modular scale.
+	•	Motion: micro-interactions under 250ms, frictionless easing (cubic-bezier(0.22, 1, 0.36, 1)), spring-like feel where appropriate.
+
+2) Design Tokens (use or generate)
+
+// Use as Tailwind CSS variables via :root or inline styles
+:root {
+  --bg:        16 16 18;     /* near-black charcoal */
+  --bg-2:      22 22 24;
+  --surface:   28 28 32;
+  --brand:     180 230 255;  /* ice blue accent */
+  --ink:       240 240 245;  /* high contrast text */
+  --muted:     170 170 178;  /* secondary text */
+  --border:    255 255 255 / 0.08;
+  --ring:      180 230 255 / 0.6;
+
+  --radius: 1.25rem;         /* 2xl */
+  --shadow-1: 0 1px 1px rgb(0 0 0 / 0.3), 0 2px 6px rgb(0 0 0 / 0.25);
+  --shadow-2: 0 12px 30px rgb(0 0 0 / 0.35);
+  --blur: 18px;              /* glass blur */
+}
+
+3) Glassmorphism Recipe (standardize)
+	•	Backdrop: backdrop-blur-[var(--blur)] + translucent layer bg-white/6 (light) or bg-white/4 (dark).
+	•	Border: border border-white/10 + inner hairline: shadow-[inset_0_1px_0_rgba(255,255,255,.12)].
+	•	Shadow: shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)].
+	•	Radii: rounded-[var(--radius)].
+
+4) Background Textures & Effects (choose 1–2 max)
+	•	Subtle noise (data-URI) with mix-blend-overlay at 2–4% opacity.
+	•	Soft radial gradient vignette centered on hero content.
+	•	Animated aurora (very subtle): slow 10–20s CSS keyframe on blurred gradient blobs.
+	•	Grid/Hairline pattern: linear-gradient with 1px lines at 6–12% opacity.
+
+5) Motion & Interaction
+	•	Base transition: transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)].
+	•	Hover: elevate +1–2px, increase backdrop blur by 2–4px, accent ring.
+	•	Active: compress by 1px, increase inner highlight.
+	•	Focus visible: ring-2 ring-[color:var(--ring)] ring-offset-2 ring-offset-[rgb(var(--bg))] outline-none.
+	•	Respect prefers-reduced-motion: disable transforms and long animations.
+
+6) Responsiveness & Layout
+	•	Mobile-first. Key breakpoints: sm(640) md(768) lg(1024) xl(1280) 2xl(1536).
+	•	Use fluid type/spacing via clamp for hero headings and paddings.
+	•	Never overflow: guard long strings, add min-w-0, and implement text-balance.
+
+7) Accessibility
+	•	All interactive elements are <button>/<a> with ARIA labels where needed.
+	•	Hit area ≥ 44×44px, keyboard navigable, visible focus rings.
+	•	Color contrast AA minimum; use an underlay if needed to hit ratios.
+
+8) Performance Guardrails
+	•	No heavy images; prefer CSS gradients/noise. If image used, provide loading="lazy" and sizes.
+	•	Limit blur layers (1–2). Avoid stacking filters excessively.
+	•	Ship as a single component unless asked otherwise.
+
+⸻
+
+9) Component Blueprints (emit like this by default)
+
+A) Glass Button (Primary)
+
+export default function GlassButton({
+  children = "Get Started",
+  onClick,
+  as = "button",
+}: { children?: React.ReactNode; onClick?: () => void; as?: "button" | "a" }) {
+  const Base = as === "a" ? "a" : "button";
+  return (
+    <Base
+      onClick={onClick}
+      className={[
+        "group inline-flex items-center justify-center px-5 py-3",
+        "rounded-[var(--radius)] border border-white/10",
+        "bg-white/10 hover:bg-white/12 active:bg-white/8",
+        "backdrop-blur-[var(--blur)] shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)]",
+        "text-[15px] font-medium text-[rgb(var(--ink))] tracking-[0.02em]",
+        "transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg))]",
+        "disabled:opacity-60 disabled:pointer-events-none",
+      ].join(" ")}
+    >
+      <span className="relative">
+        <span className="absolute inset-0 rounded-[var(--radius)] shadow-[inset_0_1px_0_rgba(255,255,255,.35)] pointer-events-none" />
+        {children}
+      </span>
+      <span className="ml-2 size-2.5 rounded-full bg-[color:var(--ring)] opacity-70 group-hover:opacity-100 transition" />
+    </Base>
+  );
+}
+
+B) Showcase Card
+
+export function ShowcaseCard({
+  title = "Pro-grade Performance",
+  body = "Experience fluid UI with precision micro-interactions and tactile depth.",
+  cta = "Explore",
+}: { title?: string; body?: string; cta?: string }) {
+  return (
+    <div
+      className={[
+        "relative isolate overflow-hidden",
+        "rounded-[var(--radius)] border border-white/10",
+        "bg-white/6 backdrop-blur-[var(--blur)]",
+        "shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)]",
+        "transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "p-6 sm:p-8 lg:p-10",
+      ].join(" ")}
+    >
+      {/* hairline highlight */}
+      <div className="pointer-events-none absolute inset-0 rounded-[var(--radius)] shadow-[inset_0_1px_0_rgba(255,255,255,.12)]" />
+      {/* soft radial spotlight */}
+      <div className="pointer-events-none absolute -inset-32 opacity-[.12] blur-3xl bg-[radial-gradient(60%_60%_at_50%_10%,rgba(180,230,255,.7),transparent_60%)]" />
+      <h3 className="text-balance text-2xl sm:text-3xl lg:text-4xl font-semibold text-[rgb(var(--ink))]">
+        {title}
+      </h3>
+      <p className="mt-3 max-w-prose text-[15px] leading-7 text-[rgb(var(--muted))]">{body}</p>
+      <div className="mt-6">
+        <a
+          href="#"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/8 hover:bg-white/12 backdrop-blur-md text-[rgb(var(--ink))] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+          aria-label={`${cta}: ${title}`}
+        >
+          {cta}
+          <svg width="14" height="14" viewBox="0 0 24 24" className="opacity-80 group-hover:translate-x-0.5 transition">
+            <path fill="currentColor" d="M13 5l7 7-7 7v-4H4v-6h9V5z" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  );
+}
+
+C) Hero Section (Radial + Aurora)
+
+export function PremiumHero() {
+  return (
+    <section className="relative overflow-hidden">
+      {/* background */}
+      <div className="absolute inset-0 -z-10 bg-[rgb(var(--bg))]" />
+      <div className="absolute inset-0 -z-10 opacity-[.08] bg-[radial-gradient(80%_60%_at_50%_10%,rgba(180,230,255,.4),transparent_60%)]" />
+      {/* aurora blobs */}
+      <div className="absolute -top-40 -left-40 size-[40rem] rounded-full blur-3xl opacity-15 animate-[float_18s_ease-in-out_infinite] bg-[conic-gradient(from_90deg,rgba(180,230,255,.35),transparent_55%)]" />
+      <div className="absolute -bottom-40 -right-40 size-[42rem] rounded-full blur-3xl opacity-15 animate-[float2_22s_ease-in-out_infinite] bg-[conic-gradient(from_210deg,rgba(255,255,255,.2),transparent_60%)]" />
+
+      <div className="mx-auto max-w-6xl px-6 py-24 sm:py-28 lg:py-36">
+        <div className="max-w-3xl">
+          <h1 className="text-balance text-4xl sm:text-6xl lg:text-7xl font-semibold leading-tight text-[rgb(var(--ink))]">
+            Crafted to Feel Effortless.
+          </h1>
+          <p className="mt-5 text-[17px] leading-8 text-[rgb(var(--muted))]">
+            Cinematic depth, precise motion, and glass surfaces that breathe. Built for serious products.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <GlassButton>Start Now</GlassButton>
+            <GlassButton>See Demos</GlassButton>
+          </div>
+        </div>
+      </div>
+
+      <style jsx global>{`
+        @keyframes float { 0%{transform:translateY(0)} 50%{transform:translateY(-10px)} 100%{transform:translateY(0)} }
+        @keyframes float2 { 0%{transform:translateY(0)} 50%{transform:translateY(12px)} 100%{transform:translateY(0)} }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-\$begin:math:display$float_18s_ease-in-out_infinite\\$end:math:display$,
+          .animate-\$begin:math:display$float2_22s_ease-in-out_infinite\\$end:math:display$ { animation: none; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+D) Utility: Subtle Noise & Grid (vanilla, inject once)
+
+/* Add once at app root if Tailwind unavailable */
+:root { color-scheme: dark; }
+.body-bg {
+  background: rgb(var(--bg));
+  position: relative;
+}
+.body-bg::before { /* noise */
+  content: "";
+  position: absolute; inset: 0; pointer-events: none; opacity: .025;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.8'/></svg>");
+}
+.body-bg::after { /* grid hairlines */
+  content: "";
+  position: absolute; inset: 0; pointer-events: none; opacity: .06;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+
+⸻
+
+10) Do / Don’t
+	•	Do: glass, soft highlights, hairline borders, subtle gradients, precise motion, AA contrast, real focus rings, responsive clamps.
+	•	Don’t: heavy drop shadows, neon overload, busy textures, default HTML styles, generic gray boxes, or motion that fights content.
+
+11) When Given a Bare Element…
+
+If the user asks for “a button”, you must return the Glass Button above (full styling). If asked for “a card,” return Showcase Card. For “hero,” return PremiumHero. Never reply with minimal markup.
+
+⸻
+
+Prompt Add-On (one-liner you can reuse)
+
+Style mandate: “Apply the ‘Apple-Level Styling’ Rulebook: glassmorphism, hairline borders, radial spotlight, subtle noise, AA contrast, responsive clamps, micro-interactions, and reduced-motion support. Deliver a single React + Tailwind component with no placeholders.”
+
+
+
+User Additional Context:
+I want this instead of the sign in to replit button.  I want the fucntion implemented into this and I want the other log in option to use email and password to work if the system needs a fall back. The cards at the bottom need to be cards on the management team rotating. Like profiles of who they are. Jason, Neil, Sebastian Andersen, etc.  Not reviews. But keep the same layout of the cards. You can alter the sign in buttons to perform our actual functions and remove any that do not. 
+Remember: For the code above, not change the component's code unless it's required to integrate or the user asks you to.
+IMPORTANT: The code above contains the initial prototype desired by the user. Create all mentioned files in full, without abbreviations. Do not use placeholders like "insert the rest of the code here" – output every line of code exactly as it is, so it can be copied and pasted directly into the project.
