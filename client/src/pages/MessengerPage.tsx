@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RichTextEditor } from '@/components/RichTextEditor';
+import { MessageRenderer } from '@/components/MessageRenderer';
 import { 
   Send, 
   Hash, 
@@ -71,6 +73,7 @@ interface Message {
   senderId: string;
   userId: string;
   content: string;
+  formattedContent?: string | null;
   createdAt: string;
   updatedAt?: string;
   fileUrl?: string;
@@ -97,6 +100,7 @@ interface DirectMessage {
   senderId: string;
   receiverId: string;
   content: string;
+  formattedContent?: string | null;
   isRead: boolean;
   createdAt: string;
   fileUrl?: string;
@@ -152,6 +156,7 @@ export default function MessengerPage() {
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [selectedDMUser, setSelectedDMUser] = useState<DMUser | null>(null);
   const [messageInput, setMessageInput] = useState('');
+  const [messageFormattedContent, setMessageFormattedContent] = useState('');
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [showChannels, setShowChannels] = useState(true);
   const [showDMs, setShowDMs] = useState(true);
@@ -578,25 +583,24 @@ export default function MessengerPage() {
   });
 
   const sendDirectMessageMutation = useMutation({
-    mutationFn: async (payload: { content: string; fileUrl?: string; fileName?: string }) => {
+    mutationFn: async (payload: { content: string; formattedContent?: string; fileUrl?: string; fileName?: string }) => {
       if (!selectedDMUser || !user) return;
 
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'direct_message',
-          payload: {
-            receiverId: selectedDMUser.id,
-            ...payload
-          }
-        }));
-      }
+      return apiRequest(`/api/messenger/dm/send`, {
+        method: 'POST',
+        body: {
+          recipientId: selectedDMUser.id,
+          ...payload
+        }
+      });
     },
     onSuccess: () => {
       setMessageInput('');
+      setMessageFormattedContent('');
       setUploadingFile(false);
       if (selectedDMUser) {
-        queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedDMUser.id}`] });
-        queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
+        queryClient.invalidateQueries({ queryKey: [`/api/messenger/dm/messages/${selectedDMUser.id}`] });
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/conversations'] });
       }
     }
   });
@@ -885,13 +889,17 @@ export default function MessengerPage() {
       setJasonLoading(true);
       askJasonMutation.mutate(messageInput);
       setMessageInput('');
+      setMessageFormattedContent('');
       return;
     }
     
     if (viewMode === 'channel') {
       sendChannelMessageMutation.mutate({ content: messageInput });
     } else {
-      sendDirectMessageMutation.mutate({ content: messageInput });
+      sendDirectMessageMutation.mutate({ 
+        content: messageInput,
+        formattedContent: messageFormattedContent || undefined
+      });
     }
   };
 
@@ -1589,9 +1597,11 @@ export default function MessengerPage() {
                           </div>
                         ) : (
                           <>
-                            <p className="text-gray-300 mt-1 break-words">
-                              {renderMessageWithMentions(message.content)}
-                            </p>
+                            <MessageRenderer
+                              content={message.content}
+                              formattedContent={message.formattedContent}
+                              className="text-gray-300 mt-1"
+                            />
                             {message.fileUrl && (
                               <a
                                 href={message.fileUrl}
@@ -1732,9 +1742,11 @@ export default function MessengerPage() {
                             ? "bg-primary/20 text-white" 
                             : "bg-white/10 text-gray-300"
                         )}>
-                          <p className="break-words">
-                            {renderMessageWithMentions(message.content)}
-                          </p>
+                          <MessageRenderer
+                            content={message.content}
+                            formattedContent={message.formattedContent}
+                            className="break-words"
+                          />
                           {message.fileUrl && (
                             <a
                               href={message.fileUrl}
@@ -1953,26 +1965,53 @@ export default function MessengerPage() {
                 </div>
               )}
               
-              <Input
-                ref={inputRef}
-                value={messageInput}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDownWithMentions}
-                placeholder={
-                  uploadingFile 
-                    ? "Uploading file..." 
-                    : askJasonMode
-                      ? "Ask Jason for advice about insurance, licensing, or career growth..."
-                    : viewMode === 'channel' && selectedChannel 
-                      ? `Message #${selectedChannel.name}` 
-                      : selectedDMUser 
-                        ? `Message ${getUserDisplayName(selectedDMUser)}`
-                        : "Select a channel or user"
-                }
-                disabled={uploadingFile || (!selectedChannel && !selectedDMUser)}
-                className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
-                data-testid="message-input"
-              />
+              <div className="flex-1 bg-white/5 rounded-md border border-white/10">
+                <RichTextEditor
+                  value={messageInput}
+                  formattedValue={messageFormattedContent}
+                  onChange={(value, formatted) => {
+                    setMessageInput(value);
+                    setMessageFormattedContent(formatted);
+                    // Detect typing and send typing indicator
+                    if (value.trim() && !isTyping) {
+                      sendTypingStart();
+                    } else if (!value.trim() && isTyping) {
+                      sendTypingStop();
+                    } else if (value.trim() && isTyping) {
+                      // Refresh the typing timeout
+                      sendTypingStart();
+                    }
+                  }}
+                  onSubmit={handleSendMessage}
+                  placeholder={
+                    uploadingFile 
+                      ? "Uploading file..." 
+                      : askJasonMode
+                        ? "Ask Jason for advice about insurance, licensing, or career growth..."
+                      : viewMode === 'channel' && selectedChannel 
+                        ? `Message #${selectedChannel.name}` 
+                        : selectedDMUser 
+                          ? `Message ${getUserDisplayName(selectedDMUser)}`
+                          : "Select a channel or user"
+                  }
+                  disabled={uploadingFile || (!selectedChannel && !selectedDMUser)}
+                  mentions={mentionUsers}
+                  onMentionSearch={(search) => {
+                    setMentionSearch(search);
+                    // Trigger user search
+                    if (search.trim()) {
+                      searchUsersMutation.mutate(search);
+                    }
+                  }}
+                  showAttachment={!askJasonMode}
+                  onAttachmentClick={() => fileInputRef.current?.click()}
+                  showEmoji={true}
+                  onEmojiClick={() => {
+                    // Could integrate an emoji picker here
+                    console.log('Emoji picker clicked');
+                  }}
+                />
+              </div>
               
               <Button
                 onClick={handleSendMessage}

@@ -301,6 +301,7 @@ export const messages = pgTable("messages", {
   channelId: varchar("channel_id").notNull().references(() => channels.id),
   userId: varchar("user_id").notNull().references(() => users.id),
   content: text("content"),
+  formattedContent: text("formatted_content"), // Rich text content (HTML/Markdown)
   messageType: messageTypeEnum("message_type").default("text"),
   attachmentId: varchar("attachment_id"), // Reference to fileUploads table
   isAiGenerated: boolean("is_ai_generated").default(false),
@@ -321,6 +322,7 @@ export const directMessages = pgTable("direct_messages", {
   senderId: varchar("sender_id").notNull().references(() => users.id),
   receiverId: varchar("receiver_id").notNull().references(() => users.id),
   content: text("content"),
+  formattedContent: text("formatted_content"), // Rich text content (HTML/Markdown)
   messageType: messageTypeEnum("message_type").default("text"),
   attachmentId: varchar("attachment_id"), // Reference to fileUploads table
   isRead: boolean("is_read").default(false),

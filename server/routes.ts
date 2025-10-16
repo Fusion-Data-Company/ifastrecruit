@@ -1750,14 +1750,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const { recipientId, content, fileUrl, fileName } = req.body;
+      const { recipientId, content, formattedContent, fileUrl, fileName } = req.body;
       
       if (!recipientId || !content) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Send the direct message
-      const message = await storage.sendDM(senderId, recipientId, content, fileUrl, fileName);
+      // Send the direct message with formatted content
+      const message = await storage.sendDM(senderId, recipientId, content, fileUrl, fileName, formattedContent);
       
       // Emit WebSocket event for real-time delivery
       messengerWS.broadcast({
@@ -2391,6 +2391,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("[Jason AI] Error generating career guidance:", error);
       res.status(500).json({ error: "Failed to generate career guidance" });
+    }
+  });
+
+  // =========================
+  // LINK PREVIEW API
+  // =========================
+
+  // POST /api/link-preview - Extract link metadata
+  app.post("/api/link-preview", isAuthenticated, async (req, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ error: "URL is required" });
+      }
+
+      // Validate URL format
+      try {
+        new URL(url);
+      } catch {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Use open-graph-scraper to extract metadata
+      const ogs = require('open-graph-scraper');
+      const options = { 
+        url,
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      };
+      
+      const { error, result } = await ogs(options);
+      
+      if (error) {
+        console.error('[Link Preview] Error fetching metadata:', error);
+        // Return basic URL info even if scraping fails
+        const domain = new URL(url).hostname;
+        return res.json({
+          url,
+          title: domain,
+          siteName: domain,
+          favicon: `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+        });
+      }
+
+      // Extract relevant metadata
+      const previewData = {
+        url,
+        title: result.ogTitle || result.dcTitle || result.twitterTitle || new URL(url).hostname,
+        description: result.ogDescription || result.dcDescription || result.twitterDescription,
+        image: result.ogImage?.url || result.ogImage?.[0]?.url || result.twitterImage?.url,
+        siteName: result.ogSiteName || new URL(url).hostname,
+        favicon: result.favicon || `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`
+      };
+
+      res.json(previewData);
+    } catch (error) {
+      console.error("[Link Preview] Error:", error);
+      res.status(500).json({ error: "Failed to fetch link preview" });
     }
   });
 

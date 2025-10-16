@@ -1141,10 +1141,12 @@ export class DatabaseStorage implements IStorage {
       ? await this.extractMentionedUserIds(message.content, message.channelId)
       : [];
     
-    // Create message with mentioned user IDs
+    // Create message with mentioned user IDs and formatted content
     const messageWithMentions = {
       ...message,
-      mentionedUserIds
+      mentionedUserIds,
+      // Ensure formattedContent is included if provided
+      formattedContent: (message as any).formattedContent || null
     };
     
     const [created] = await db.insert(messages).values(messageWithMentions).returning();
@@ -1244,11 +1246,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Send a direct message
-  async sendDM(senderId: string, recipientId: string, content: string, fileUrl?: string, fileName?: string): Promise<DirectMessage> {
+  async sendDM(senderId: string, recipientId: string, content: string, fileUrl?: string, fileName?: string, formattedContent?: string): Promise<DirectMessage> {
     const [message] = await db.insert(directMessages).values({
       senderId,
       receiverId: recipientId,
       content,
+      formattedContent: formattedContent || null,
       fileUrl,
       fileName,
       isRead: false
@@ -1314,10 +1317,12 @@ export class DatabaseStorage implements IStorage {
       ? await this.extractMentionedUserIds(message.content)
       : [];
     
-    // Create message with mentioned user IDs
+    // Create message with mentioned user IDs and formatted content
     const messageWithMentions = {
       ...message,
-      mentionedUserIds
+      mentionedUserIds,
+      // Ensure formattedContent is included if provided
+      formattedContent: (message as any).formattedContent || null
     };
     
     const [created] = await db.insert(directMessages).values(messageWithMentions).returning();
