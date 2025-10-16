@@ -10,6 +10,7 @@ export default function Sidebar() {
 
   const navigationItems = [
     { path: "/", label: "Dashboard", icon: "fas fa-chart-line" },
+    { path: "/messenger", label: "Messenger", icon: "fas fa-comments" },
     { path: "/candidates", label: "Candidates", icon: "fas fa-users" },
     { path: "/interviews", label: "Interviews", icon: "fas fa-calendar-alt" },
     { path: "/airtop", label: "Airtop Integration", icon: "fas fa-desktop" },

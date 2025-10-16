@@ -63,10 +63,11 @@ function OnboardingGuard({ children }: OnboardingGuardProps) {
     return <>{children}</>;
   }
 
-  // Admin users - redirect to dashboard if on root or wrong pages
+  // Admin users - redirect to dashboard if on root or onboarding
   if (isAdmin) {
-    // If admin is on root, messenger, or onboarding, redirect to dashboard
-    if (location === '/' || location === '/messenger' || location === '/onboarding') {
+    // If admin is on root or onboarding, redirect to dashboard
+    // Admins CAN access messenger
+    if (location === '/' || location === '/onboarding') {
       return <Redirect to="/dashboard" />;
     }
     return <>{children}</>;
