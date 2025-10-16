@@ -11,6 +11,11 @@ export const pipelineStageEnum = pgEnum("pipeline_stage", [
 ]);
 export const bookingStatusEnum = pgEnum("booking_status", ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"]);
 
+// Messenger Enums
+export const channelTierEnum = pgEnum("channel_tier", ["NON_LICENSED", "FL_LICENSED", "MULTI_STATE"]);
+export const messageTypeEnum = pgEnum("message_type", ["text", "file", "system"]);
+export const fileStatusEnum = pgEnum("file_status", ["pending", "processing", "parsed", "failed"]);
+
 // Tables
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -264,13 +269,17 @@ export const users = pgTable("users", {
   lastSeenAt: timestamp("last_seen_at"),
 });
 
-// Messenger channels
+// Messenger channels with three-tier structure
 export const channels = pgTable("channels", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  type: text("type").notNull(), // "onboarding", "non_licensed", "fl_licensed", "multi_state"
+  tier: channelTierEnum("tier").notNull(), // NON_LICENSED, FL_LICENSED, MULTI_STATE
   description: text("description"),
+  badgeIcon: text("badge_icon"), // Icon for the channel badge (e.g., "shield", "star", "globe")
+  badgeColor: text("badge_color"), // Color for the channel badge (e.g., "blue", "gold", "purple")
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Channel membership and access
@@ -287,8 +296,12 @@ export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   channelId: varchar("channel_id").notNull().references(() => channels.id),
   userId: varchar("user_id").notNull().references(() => users.id),
-  content: text("content").notNull(),
+  content: text("content"),
+  messageType: messageTypeEnum("message_type").default("text"),
+  attachmentId: varchar("attachment_id"), // Reference to fileUploads table
   isAiGenerated: boolean("is_ai_generated").default(false),
+  isEdited: boolean("is_edited").default(false),
+  editedAt: timestamp("edited_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -297,12 +310,17 @@ export const directMessages = pgTable("direct_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   senderId: varchar("sender_id").notNull().references(() => users.id),
   receiverId: varchar("receiver_id").notNull().references(() => users.id),
-  content: text("content").notNull(),
+  content: text("content"),
+  messageType: messageTypeEnum("message_type").default("text"),
+  attachmentId: varchar("attachment_id"), // Reference to fileUploads table
   isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  isEdited: boolean("is_edited").default(false),
+  editedAt: timestamp("edited_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// File uploads
+// File uploads and resume storage
 export const fileUploads = pgTable("file_uploads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -310,6 +328,15 @@ export const fileUploads = pgTable("file_uploads", {
   fileType: text("file_type").notNull(),
   fileUrl: text("file_url").notNull(),
   fileSize: integer("file_size"),
+  thumbnailUrl: text("thumbnail_url"),
+  
+  // Resume parsing fields
+  isResume: boolean("is_resume").default(false),
+  parseStatus: fileStatusEnum("parse_status").default("pending"),
+  parsedData: jsonb("parsed_data"), // Extracted resume data
+  parsedAt: timestamp("parsed_at"),
+  parseError: text("parse_error"),
+  
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
@@ -411,6 +438,7 @@ export const conversationContextUniqueConstraint = unique("conversation_context_
 
 export const conversationMemoryUniqueConstraint = unique("conversation_memory_unique")
   .on(conversationMemory.agentId, conversationMemory.memoryKey, conversationMemory.memoryType);
+
 
 // Relations
 export const campaignsRelations = relations(campaigns, ({ many }) => ({
