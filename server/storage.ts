@@ -990,13 +990,24 @@ export class DatabaseStorage implements IStorage {
       licensedStates: responses.licensedStates
     });
 
-    // Create onboarding response record
-    await this.createOnboardingResponse({
-      userId,
-      hasFloridaLicense: responses.hasFloridaLicense,
-      isMultiStateLicensed: responses.isMultiStateLicensed,
-      licensedStates: responses.licensedStates
-    });
+    // Upsert onboarding response record (handles retries/duplicates gracefully)
+    await db
+      .insert(onboardingResponses)
+      .values({
+        userId,
+        hasFloridaLicense: responses.hasFloridaLicense,
+        isMultiStateLicensed: responses.isMultiStateLicensed,
+        licensedStates: responses.licensedStates
+      })
+      .onConflictDoUpdate({
+        target: onboardingResponses.userId,
+        set: {
+          hasFloridaLicense: responses.hasFloridaLicense,
+          isMultiStateLicensed: responses.isMultiStateLicensed,
+          licensedStates: responses.licensedStates,
+          completedAt: new Date()
+        }
+      });
 
     // Determine channel types based on licensing
     let channelTypes: string[] = [];
