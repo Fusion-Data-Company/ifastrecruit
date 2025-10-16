@@ -20,6 +20,9 @@ import {
   platformConversations,
   conversationContext,
   conversationMemory,
+  jasonSettings,
+  jasonTemplates,
+  jasonChannelBehaviors,
   type Campaign,
   type Candidate, 
   type Interview,
@@ -42,6 +45,9 @@ import {
   type PlatformConversation,
   type ConversationContext,
   type ConversationMemory,
+  type JasonSetting,
+  type JasonTemplate,
+  type JasonChannelBehavior,
   type InsertCampaign,
   type InsertCandidate,
   type InsertInterview,
@@ -62,7 +68,10 @@ import {
   type InsertElevenLabsTracking,
   type InsertPlatformConversation,
   type InsertConversationContext,
-  type InsertConversationMemory
+  type InsertConversationMemory,
+  type InsertJasonSetting,
+  type InsertJasonTemplate,
+  type InsertJasonChannelBehavior
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, and } from "drizzle-orm";
@@ -142,6 +151,24 @@ export interface IStorage {
   // KPI methods
   getKPIs(): Promise<any>;
   getAdminStats(): Promise<any>;
+
+  // Jason AI Settings methods
+  getJasonSettings(): Promise<JasonSetting[]>;
+  getJasonSetting(key: string): Promise<JasonSetting | undefined>;
+  updateJasonSetting(key: string, value: any, updatedBy?: string): Promise<JasonSetting>;
+  createJasonSetting(setting: InsertJasonSetting): Promise<JasonSetting>;
+  
+  // Jason AI Template methods
+  getJasonTemplates(channelTier?: string): Promise<JasonTemplate[]>;
+  getJasonTemplate(id: string): Promise<JasonTemplate | undefined>;
+  createJasonTemplate(template: InsertJasonTemplate): Promise<JasonTemplate>;
+  updateJasonTemplate(id: string, updates: Partial<JasonTemplate>): Promise<JasonTemplate>;
+  deleteJasonTemplate(id: string): Promise<void>;
+  
+  // Jason AI Channel Behavior methods
+  getJasonChannelBehaviors(): Promise<JasonChannelBehavior[]>;
+  getJasonChannelBehavior(channelId: string): Promise<JasonChannelBehavior | undefined>;
+  upsertJasonChannelBehavior(channelId: string, behavior: InsertJasonChannelBehavior): Promise<JasonChannelBehavior>;
 
   // ElevenLabs Tracking methods
   getElevenLabsTracking(agentId: string): Promise<ElevenLabsTracking | undefined>;
@@ -1608,6 +1635,111 @@ export class DatabaseStorage implements IStorage {
     }
 
     return assignedChannels;
+  }
+
+  // Jason AI Settings methods
+  async getJasonSettings(): Promise<JasonSetting[]> {
+    return await db.select().from(jasonSettings).orderBy(jasonSettings.category, jasonSettings.settingKey);
+  }
+
+  async getJasonSetting(key: string): Promise<JasonSetting | undefined> {
+    const [setting] = await db.select().from(jasonSettings).where(eq(jasonSettings.settingKey, key));
+    return setting || undefined;
+  }
+
+  async updateJasonSetting(key: string, value: any, updatedBy?: string): Promise<JasonSetting> {
+    // First try to update existing setting
+    const existing = await this.getJasonSetting(key);
+    if (existing) {
+      const [updated] = await db
+        .update(jasonSettings)
+        .set({ 
+          settingValue: value, 
+          updatedBy, 
+          updatedAt: new Date() 
+        })
+        .where(eq(jasonSettings.settingKey, key))
+        .returning();
+      return updated;
+    }
+    // If doesn't exist, create it
+    return await this.createJasonSetting({ 
+      settingKey: key, 
+      settingValue: value,
+      category: 'general',
+      updatedBy 
+    });
+  }
+
+  async createJasonSetting(setting: InsertJasonSetting): Promise<JasonSetting> {
+    const [created] = await db.insert(jasonSettings).values(setting).returning();
+    return created;
+  }
+
+  // Jason AI Template methods
+  async getJasonTemplates(channelTier?: string): Promise<JasonTemplate[]> {
+    if (channelTier) {
+      return await db
+        .select()
+        .from(jasonTemplates)
+        .where(eq(jasonTemplates.channelTier as any, channelTier))
+        .orderBy(jasonTemplates.templateType, jasonTemplates.templateName);
+    }
+    return await db
+      .select()
+      .from(jasonTemplates)
+      .orderBy(jasonTemplates.templateType, jasonTemplates.templateName);
+  }
+
+  async getJasonTemplate(id: string): Promise<JasonTemplate | undefined> {
+    const [template] = await db.select().from(jasonTemplates).where(eq(jasonTemplates.id, id));
+    return template || undefined;
+  }
+
+  async createJasonTemplate(template: InsertJasonTemplate): Promise<JasonTemplate> {
+    const [created] = await db.insert(jasonTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateJasonTemplate(id: string, updates: Partial<JasonTemplate>): Promise<JasonTemplate> {
+    const [updated] = await db
+      .update(jasonTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(jasonTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteJasonTemplate(id: string): Promise<void> {
+    await db.delete(jasonTemplates).where(eq(jasonTemplates.id, id));
+  }
+
+  // Jason AI Channel Behavior methods
+  async getJasonChannelBehaviors(): Promise<JasonChannelBehavior[]> {
+    return await db.select().from(jasonChannelBehaviors).orderBy(jasonChannelBehaviors.channelId);
+  }
+
+  async getJasonChannelBehavior(channelId: string): Promise<JasonChannelBehavior | undefined> {
+    const [behavior] = await db
+      .select()
+      .from(jasonChannelBehaviors)
+      .where(eq(jasonChannelBehaviors.channelId, channelId));
+    return behavior || undefined;
+  }
+
+  async upsertJasonChannelBehavior(channelId: string, behavior: InsertJasonChannelBehavior): Promise<JasonChannelBehavior> {
+    const [result] = await db
+      .insert(jasonChannelBehaviors)
+      .values({ ...behavior, channelId })
+      .onConflictDoUpdate({
+        target: jasonChannelBehaviors.channelId,
+        set: {
+          ...behavior,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+    return result;
   }
 }
 

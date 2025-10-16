@@ -17,13 +17,20 @@ interface ResumeData {
   customerServiceExperience?: boolean;
 }
 
+import { storage } from '../storage';
+import type { JasonSetting, JasonTemplate } from '@shared/schema';
+
 export class JasonPerezService {
   private readonly openAIKey: string;
   private readonly openRouterKey: string;
   private readonly useOpenAI: boolean;
   private readonly baseURL: string;
+  private settings: Map<string, any> = new Map();
+  private templates: JasonTemplate[] = [];
+  private lastSettingsRefresh: number = 0;
+  private readonly SETTINGS_CACHE_TTL = 60000; // Refresh settings every minute
   
-  private readonly systemPrompt = `You are Jason Perez, a successful insurance broker mentor and founder of The Insurance School, Florida's Oldest & Largest Private Insurance Education Provider supporting over 9,000 Brokers throughout Florida.
+  private defaultSystemPrompt = `You are Jason Perez, a successful insurance broker mentor and founder of The Insurance School, Florida's Oldest & Largest Private Insurance Education Provider supporting over 9,000 Brokers throughout Florida.
 
 CORE PERSONALITY TRAITS:
 - Warm, enthusiastic, and approachable with greetings like "Hey there!" or "Welcome!"
@@ -81,6 +88,110 @@ Remember: You're a mentor who genuinely wants to see every candidate succeed. Be
       this.baseURL = ''; // Initialize with empty string when no API keys are present
       console.warn('[Jason AI] No API keys configured - AI responses will be disabled');
     }
+
+    // Load initial settings
+    this.refreshSettings();
+  }
+
+  private async refreshSettings(): Promise<void> {
+    try {
+      const now = Date.now();
+      if (now - this.lastSettingsRefresh < this.SETTINGS_CACHE_TTL) {
+        return; // Use cached settings
+      }
+
+      // Load settings from database
+      const settings = await storage.getJasonSettings();
+      this.settings.clear();
+      for (const setting of settings) {
+        this.settings.set(setting.settingKey, setting.settingValue);
+      }
+
+      // Load templates from database
+      this.templates = await storage.getJasonTemplates();
+
+      this.lastSettingsRefresh = now;
+      console.log('[Jason AI] Settings refreshed from database');
+    } catch (error) {
+      console.error('[Jason AI] Error refreshing settings:', error);
+      // Continue with default settings if database fails
+    }
+  }
+
+  private async getSystemPrompt(): Promise<string> {
+    await this.refreshSettings();
+    
+    const systemPromptSetting = this.settings.get('systemPrompt');
+    if (systemPromptSetting) {
+      return systemPromptSetting as string;
+    }
+
+    // Build dynamic system prompt based on personality settings
+    const personality = this.settings.get('personality') || {
+      professional: true,
+      encouraging: true,
+      technical: false,
+      casual: false
+    };
+
+    const speakingStyle = this.settings.get('speakingStyle') || {
+      formality: 50,
+      enthusiasm: 70,
+      detailLevel: 60
+    };
+
+    const background = this.settings.get('background') || '';
+
+    let prompt = this.defaultSystemPrompt;
+
+    // Add personality modifiers
+    const traits: string[] = [];
+    if (personality.professional) traits.push('professional');
+    if (personality.encouraging) traits.push('encouraging and supportive');
+    if (personality.technical) traits.push('technically knowledgeable');
+    if (personality.casual) traits.push('casual and friendly');
+
+    if (traits.length > 0) {
+      prompt += `\n\nYour personality is ${traits.join(', ')}.`;
+    }
+
+    // Add speaking style modifiers
+    if (speakingStyle.formality > 70) {
+      prompt += '\nMaintain a formal and professional tone.';
+    } else if (speakingStyle.formality < 30) {
+      prompt += '\nUse a casual and conversational tone.';
+    }
+
+    if (speakingStyle.enthusiasm > 70) {
+      prompt += '\nBe very enthusiastic and energetic.';
+    } else if (speakingStyle.enthusiasm < 30) {
+      prompt += '\nMaintain a calm and measured tone.';
+    }
+
+    if (speakingStyle.detailLevel > 70) {
+      prompt += '\nProvide detailed and comprehensive responses.';
+    } else if (speakingStyle.detailLevel < 30) {
+      prompt += '\nKeep responses brief and to the point.';
+    }
+
+    if (background) {
+      prompt += `\n\nBackground: ${background}`;
+    }
+
+    return prompt;
+  }
+
+  private async getTemplate(type: string, channelTier?: string): Promise<string | null> {
+    await this.refreshSettings();
+    
+    // Find matching template
+    const template = this.templates.find(t => 
+      t.templateType === type && 
+      (t.channelTier === channelTier || !t.channelTier) &&
+      t.isActive
+    );
+
+    return template?.template || null;
   }
 
   private async callLLM(messages: any[]): Promise<string> {
@@ -135,8 +246,8 @@ Remember: You're a mentor who genuinely wants to see every candidate succeed. Be
     }
 
     try {
-      // Build context-aware system prompt
-      let enhancedSystemPrompt = this.systemPrompt;
+      // Get dynamic system prompt from settings
+      let enhancedSystemPrompt = await this.getSystemPrompt();
       
       if (context?.channel) {
         enhancedSystemPrompt += `\n\nThe user is in the "${context.channel}" channel. Tailor your response appropriately.`;

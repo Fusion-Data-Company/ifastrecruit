@@ -16,6 +16,10 @@ export const channelTierEnum = pgEnum("channel_tier", ["NON_LICENSED", "FL_LICEN
 export const messageTypeEnum = pgEnum("message_type", ["text", "file", "system"]);
 export const fileStatusEnum = pgEnum("file_status", ["pending", "processing", "parsed", "failed"]);
 
+// Jason AI Enums
+export const templateTypeEnum = pgEnum("template_type", ["welcome", "qa", "resume", "career", "general"]);
+export const responseFrequencyEnum = pgEnum("response_frequency", ["always", "sometimes", "only_when_mentioned", "never"]);
+
 // Tables
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -469,12 +473,58 @@ export const conversationMemory = pgTable("conversation_memory", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// === JASON AI CONFIGURATION TABLES ===
+
+// Jason AI Settings - stores all configuration for Jason AI persona
+export const jasonSettings = pgTable("jason_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  settingKey: text("setting_key").notNull().unique(), // Unique setting identifier
+  settingValue: jsonb("setting_value").notNull(), // JSON value for flexibility
+  category: text("category").notNull(), // "persona", "behavior", "response", etc.
+  description: text("description"), // Human-readable description
+  updatedBy: varchar("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Jason AI Templates - response templates for common scenarios
+export const jasonTemplates = pgTable("jason_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateName: text("template_name").notNull(),
+  templateType: templateTypeEnum("template_type").notNull(),
+  channelTier: channelTierEnum("channel_tier"), // Optional: specific to a channel tier
+  template: text("template").notNull(), // The actual template text
+  variables: text("variables").array().default(sql`ARRAY[]::text[]`), // Variables used in template
+  isActive: boolean("is_active").default(true),
+  usageCount: integer("usage_count").default(0),
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Jason AI Channel Behaviors - channel-specific behavior settings
+export const jasonChannelBehaviors = pgTable("jason_channel_behaviors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  channelId: varchar("channel_id").notNull().references(() => channels.id),
+  isActive: boolean("is_active").default(true),
+  responseFrequency: responseFrequencyEnum("response_frequency").notNull().default("sometimes"),
+  autoResponseTriggers: jsonb("auto_response_triggers"), // JSON array of triggers
+  specificSettings: jsonb("specific_settings"), // Channel-specific configuration
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Add unique constraints for key-based lookups
 export const conversationContextUniqueConstraint = unique("conversation_context_unique")
   .on(conversationContext.platformConversationId, conversationContext.contextKey, conversationContext.contextType);
 
 export const conversationMemoryUniqueConstraint = unique("conversation_memory_unique")
   .on(conversationMemory.agentId, conversationMemory.memoryKey, conversationMemory.memoryType);
+
+export const jasonChannelBehaviorUniqueConstraint = unique("jason_channel_behavior_unique")
+  .on(jasonChannelBehaviors.channelId);
 
 
 // Relations
@@ -547,6 +597,11 @@ export const insertPlatformConversationSchema = createInsertSchema(platformConve
 export const insertConversationContextSchema = createInsertSchema(conversationContext).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertConversationMemorySchema = createInsertSchema(conversationMemory).omit({ id: true, createdAt: true, updatedAt: true });
 
+// Jason AI insert schemas
+export const insertJasonSettingSchema = createInsertSchema(jasonSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertJasonTemplateSchema = createInsertSchema(jasonTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertJasonChannelBehaviorSchema = createInsertSchema(jasonChannelBehaviors).omit({ id: true, createdAt: true, updatedAt: true });
+
 // Types
 export type Campaign = typeof campaigns.$inferSelect;
 export type Candidate = typeof candidates.$inferSelect;
@@ -564,6 +619,11 @@ export type PlatformConversation = typeof platformConversations.$inferSelect;
 export type ConversationContext = typeof conversationContext.$inferSelect;
 export type ConversationMemory = typeof conversationMemory.$inferSelect;
 
+// Jason AI types
+export type JasonSetting = typeof jasonSettings.$inferSelect;
+export type JasonTemplate = typeof jasonTemplates.$inferSelect;
+export type JasonChannelBehavior = typeof jasonChannelBehaviors.$inferSelect;
+
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
 export type InsertInterview = z.infer<typeof insertInterviewSchema>;
@@ -579,6 +639,11 @@ export type InsertElevenLabsTracking = z.infer<typeof insertElevenLabsTrackingSc
 export type InsertPlatformConversation = z.infer<typeof insertPlatformConversationSchema>;
 export type InsertConversationContext = z.infer<typeof insertConversationContextSchema>;
 export type InsertConversationMemory = z.infer<typeof insertConversationMemorySchema>;
+
+// Jason AI insert types
+export type InsertJasonSetting = z.infer<typeof insertJasonSettingSchema>;
+export type InsertJasonTemplate = z.infer<typeof insertJasonTemplateSchema>;
+export type InsertJasonChannelBehavior = z.infer<typeof insertJasonChannelBehaviorSchema>;
 
 // Messenger insert schemas
 export const insertChannelSchema = createInsertSchema(channels).omit({ id: true, createdAt: true });

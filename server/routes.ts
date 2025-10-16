@@ -1451,6 +1451,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =========================
+  // JASON AI ADMIN ENDPOINTS
+  // =========================
+  
+  // GET /api/admin/jason/settings - Get all Jason settings
+  app.get("/api/admin/jason/settings", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const settings = await storage.getJasonSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("[Jason Admin] Error fetching settings:", error);
+      res.status(500).json({ error: "Failed to fetch Jason settings" });
+    }
+  });
+
+  // PUT /api/admin/jason/settings - Update Jason settings
+  app.put("/api/admin/jason/settings", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const { settingKey, settingValue, category, description } = req.body;
+      
+      if (!settingKey || !settingValue) {
+        return res.status(400).json({ error: "Setting key and value are required" });
+      }
+
+      const existingSetting = await storage.getJasonSetting(settingKey);
+      
+      let updatedSetting;
+      if (existingSetting) {
+        updatedSetting = await storage.updateJasonSetting(settingKey, settingValue, userId);
+      } else {
+        updatedSetting = await storage.createJasonSetting({
+          settingKey,
+          settingValue,
+          category: category || 'general',
+          description,
+          updatedBy: userId
+        });
+      }
+
+      res.json(updatedSetting);
+    } catch (error) {
+      console.error("[Jason Admin] Error updating settings:", error);
+      res.status(500).json({ error: "Failed to update Jason settings" });
+    }
+  });
+
+  // GET /api/admin/jason/templates - Get all templates
+  app.get("/api/admin/jason/templates", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { channelTier } = req.query;
+      const templates = await storage.getJasonTemplates(channelTier as string | undefined);
+      res.json(templates);
+    } catch (error) {
+      console.error("[Jason Admin] Error fetching templates:", error);
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  // POST /api/admin/jason/templates - Create new template
+  app.post("/api/admin/jason/templates", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const { templateName, templateType, channelTier, template, variables, tags } = req.body;
+      
+      if (!templateName || !templateType || !template) {
+        return res.status(400).json({ error: "Template name, type, and content are required" });
+      }
+
+      const newTemplate = await storage.createJasonTemplate({
+        templateName,
+        templateType,
+        channelTier,
+        template,
+        variables: variables || [],
+        tags: tags || [],
+        updatedBy: userId
+      });
+
+      res.json(newTemplate);
+    } catch (error) {
+      console.error("[Jason Admin] Error creating template:", error);
+      res.status(500).json({ error: "Failed to create template" });
+    }
+  });
+
+  // PUT /api/admin/jason/templates/:id - Update template
+  app.put("/api/admin/jason/templates/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req.user as any)?.id;
+      const updates = { ...req.body, updatedBy: userId };
+      
+      const updatedTemplate = await storage.updateJasonTemplate(id, updates);
+      res.json(updatedTemplate);
+    } catch (error) {
+      console.error("[Jason Admin] Error updating template:", error);
+      res.status(500).json({ error: "Failed to update template" });
+    }
+  });
+
+  // DELETE /api/admin/jason/templates/:id - Delete template
+  app.delete("/api/admin/jason/templates/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteJasonTemplate(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Jason Admin] Error deleting template:", error);
+      res.status(500).json({ error: "Failed to delete template" });
+    }
+  });
+
+  // GET /api/admin/jason/channel-behaviors - Get all channel behaviors
+  app.get("/api/admin/jason/channel-behaviors", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const behaviors = await storage.getJasonChannelBehaviors();
+      res.json(behaviors);
+    } catch (error) {
+      console.error("[Jason Admin] Error fetching channel behaviors:", error);
+      res.status(500).json({ error: "Failed to fetch channel behaviors" });
+    }
+  });
+
+  // PUT /api/admin/jason/channel-behaviors/:channelId - Update channel behavior
+  app.put("/api/admin/jason/channel-behaviors/:channelId", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      const userId = (req.user as any)?.id;
+      const behavior = { ...req.body, updatedBy: userId };
+      
+      const updatedBehavior = await storage.upsertJasonChannelBehavior(channelId, behavior);
+      res.json(updatedBehavior);
+    } catch (error) {
+      console.error("[Jason Admin] Error updating channel behavior:", error);
+      res.status(500).json({ error: "Failed to update channel behavior" });
+    }
+  });
+
+  // =========================
   // MESSENGER DM API ENDPOINTS
   // =========================
   

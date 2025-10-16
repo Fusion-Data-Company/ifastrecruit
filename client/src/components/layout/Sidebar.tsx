@@ -13,6 +13,7 @@ export default function Sidebar() {
     { path: "/messenger", label: "Messenger", icon: "fas fa-comments" },
     { path: "/candidates", label: "Candidates", icon: "fas fa-users" },
     { path: "/interviews", label: "Interviews", icon: "fas fa-calendar-alt" },
+    { path: "/jason-ai-settings", label: "Jason AI Settings", icon: "fas fa-robot" },
     { path: "/airtop", label: "Airtop Integration", icon: "fas fa-desktop" },
     { path: "/elevenlabs", label: "ElevenLabs Data", icon: "fas fa-headphones" },
   ];

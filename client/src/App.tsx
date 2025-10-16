@@ -14,6 +14,7 @@ import Interview from "@/pages/interview";
 import Booking from "@/pages/booking";
 import AirtopIntegration from "@/pages/AirtopIntegration";
 import ElevenLabsPage from "@/pages/elevenlabs";
+import JasonAIAdmin from "@/pages/JasonAIAdmin";
 import MessengerPage from "@/pages/MessengerPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import DevMessengerPage from "@/pages/DevMessengerPage";
@@ -126,6 +127,7 @@ function Router() {
         <Route path="/booking/:token" component={Booking} />
         <Route path="/airtop">{() => <AdminPageWrapper><AirtopIntegration /></AdminPageWrapper>}</Route>
         <Route path="/elevenlabs">{() => <AdminPageWrapper><ElevenLabsPage /></AdminPageWrapper>}</Route>
+        <Route path="/jason-ai-settings">{() => <AdminPageWrapper><JasonAIAdmin /></AdminPageWrapper>}</Route>
         <Route path="/onboarding" component={OnboardingPage} />
         <Route path="/messenger" component={MessengerPage} />
         <Route component={NotFound} />
