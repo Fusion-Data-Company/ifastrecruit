@@ -466,6 +466,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New onboarding endpoints for the modal wizard
+  app.get('/api/user/onboarding-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const status = await storage.getOnboardingStatus(userId);
+      res.json(status);
+    } catch (error) {
+      console.error("[Onboarding Modal] Error fetching status:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding status" });
+    }
+  });
+
+  app.post('/api/user/onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { answers, tier } = req.body;
+      
+      if (!answers || !tier) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      // Save onboarding answers and update user
+      const updatedUser = await storage.saveOnboardingAnswers(userId, answers, tier);
+      
+      // Auto-join appropriate channels based on tier
+      const allChannels = await storage.getChannels();
+      const channelsToJoin = [];
+      
+      // Join channels based on tier
+      if (tier === 'FL_LICENSED') {
+        // FL licensed users get access to FL_LICENSED and NON_LICENSED channels
+        const eligibleChannels = allChannels.filter(c => 
+          c.tier === 'FL_LICENSED' || c.tier === 'NON_LICENSED'
+        );
+        for (const channel of eligibleChannels) {
+          try {
+            await storage.joinChannel(userId, channel.id);
+            channelsToJoin.push(channel.name);
+          } catch (e) {
+            // Channel membership might already exist
+          }
+        }
+      } else if (tier === 'MULTI_STATE') {
+        // Multi-state users get access to all channels
+        for (const channel of allChannels) {
+          try {
+            await storage.joinChannel(userId, channel.id);
+            channelsToJoin.push(channel.name);
+          } catch (e) {
+            // Channel membership might already exist
+          }
+        }
+      } else {
+        // Non-licensed users only get access to NON_LICENSED channels
+        const eligibleChannels = allChannels.filter(c => c.tier === 'NON_LICENSED');
+        for (const channel of eligibleChannels) {
+          try {
+            await storage.joinChannel(userId, channel.id);
+            channelsToJoin.push(channel.name);
+          } catch (e) {
+            // Channel membership might already exist
+          }
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        tier,
+        channels: channelsToJoin,
+        user: updatedUser
+      });
+      
+      console.log(`[Onboarding Modal] User ${userId} completed onboarding with tier: ${tier}`);
+    } catch (error) {
+      console.error("[Onboarding Modal] Error:", error);
+      res.status(500).json({ message: "Failed to save onboarding data" });
+    }
+  });
+
   // Onboarding completion endpoint with channel assignment
   const onboardingSchema = z.object({
     hasFloridaLicense: z.boolean(),

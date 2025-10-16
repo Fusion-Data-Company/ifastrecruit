@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { CybercoreBackground } from '@/components/CybercoreBackground';
 import { FloatingConsultButton } from '@/components/FloatingConsultButton';
 import { HoverFooter } from '@/components/HoverFooter';
+import { OnboardingModal } from '@/components/OnboardingModal';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,6 +180,7 @@ export default function MessengerPage() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showParsedResumeModal, setShowParsedResumeModal] = useState(false);
@@ -213,6 +215,19 @@ export default function MessengerPage() {
   // Channel info panel state
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [infoPanelTab, setInfoPanelTab] = useState<'members' | 'pinned' | 'about'>('members');
+
+  // Check onboarding status
+  const { data: onboardingStatus } = useQuery({
+    queryKey: ['/api/user/onboarding-status'],
+    enabled: !!user
+  });
+
+  // Show onboarding modal if not completed
+  useEffect(() => {
+    if (onboardingStatus && !onboardingStatus.completed) {
+      setShowOnboarding(true);
+    }
+  }, [onboardingStatus]);
 
   // Queries
   const { data: channels = [] } = useQuery<Channel[]>({
@@ -2688,6 +2703,21 @@ export default function MessengerPage() {
 
       <HoverFooter />
       <FloatingConsultButton />
+      
+      {/* Onboarding Modal */}
+      {user && (
+        <OnboardingModal
+          isOpen={showOnboarding}
+          userId={user.id}
+          onComplete={(tier) => {
+            setShowOnboarding(false);
+            // Refresh channels and user data
+            queryClient.invalidateQueries(['/api/channels']);
+            queryClient.invalidateQueries(['/api/auth/user']);
+            console.log(`User onboarding completed with tier: ${tier}`);
+          }}
+        />
+      )}
     </div>
   );
 }

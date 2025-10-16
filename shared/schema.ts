@@ -271,6 +271,9 @@ export const users = pgTable("users", {
   showCalendlyButton: boolean("show_calendly_button").default(true),
   onlineStatus: text("online_status").default("offline"), // "online", "offline", "away"
   lastSeenAt: timestamp("last_seen_at"),
+  // Onboarding fields
+  onboardingAnswers: jsonb("onboarding_answers"), // Stores questionnaire responses
+  phone: varchar("phone"), // Phone number for communication
 });
 
 // Messenger channels with three-tier structure

@@ -93,6 +93,10 @@ export interface IStorage {
   getUnreadCounts(userId: string): Promise<{ [senderId: string]: number }>;
   getDMMessages(userId: string, otherUserId: string): Promise<DirectMessage[]>;
   markDMAsRead(userId: string, senderId: string): Promise<void>;
+  
+  // Onboarding methods
+  saveOnboardingAnswers(userId: string, answers: any, tier: string): Promise<User>;
+  getOnboardingStatus(userId: string): Promise<{ completed: boolean; answers?: any }>;
 
   // Campaign methods
   getCampaigns(): Promise<Campaign[]>;
@@ -467,6 +471,54 @@ export class DatabaseStorage implements IStorage {
           eq(directMessages.isRead, false)
         )
       );
+  }
+
+  // Onboarding methods implementation
+  async saveOnboardingAnswers(userId: string, answers: any, tier: string): Promise<User> {
+    // Determine the license fields based on tier
+    const licenseFields: any = {
+      hasCompletedOnboarding: true,
+      onboardingAnswers: answers,
+      hasFloridaLicense: tier === 'FL_LICENSED',
+      isMultiStateLicensed: tier === 'MULTI_STATE',
+    };
+    
+    // Add licensed states if available
+    if (answers.licensedStates && answers.licensedStates.length > 0) {
+      licenseFields.licensedStates = answers.licensedStates;
+    }
+    
+    const [updated] = await db.update(users)
+      .set({
+        ...licenseFields,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+      
+    if (!updated) {
+      throw new Error(`User ${userId} not found`);
+    }
+    
+    return updated;
+  }
+
+  async getOnboardingStatus(userId: string): Promise<{ completed: boolean; answers?: any }> {
+    const [user] = await db.select({
+      hasCompletedOnboarding: users.hasCompletedOnboarding,
+      onboardingAnswers: users.onboardingAnswers
+    })
+    .from(users)
+    .where(eq(users.id, userId));
+    
+    if (!user) {
+      return { completed: false };
+    }
+    
+    return { 
+      completed: user.hasCompletedOnboarding || false,
+      answers: user.onboardingAnswers
+    };
   }
 
   async getCampaigns(): Promise<Campaign[]> {
