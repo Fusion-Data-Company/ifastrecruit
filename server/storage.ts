@@ -234,24 +234,13 @@ export class DatabaseStorage implements IStorage {
     if (userData.email) {
       const existingUserByEmail = await this.getUserByEmail(userData.email);
       if (existingUserByEmail) {
-        // If email exists for the same user ID, update that user
-        if (existingUserByEmail.id === userData.id) {
-          const [updated] = await db
-            .update(users)
-            .set({
-              ...userData,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, userData.id))
-            .returning();
-          return updated;
-        }
-        // Email exists for different user - keep existing user's ID, just update other fields
-        const { id: newId, ...updateData } = userData; // Extract ID and don't use it
+        // Email exists for different user - update that user's ID to match the Replit auth ID
+        // This handles the case where a user was created with a different ID but same email
         const [updated] = await db
           .update(users)
           .set({
-            ...updateData,
+            ...userData,
+            id: userData.id, // Update to new ID from Replit auth
             updatedAt: new Date(),
           })
           .where(eq(users.email, userData.email))

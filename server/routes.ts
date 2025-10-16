@@ -340,14 +340,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const userEmail = req.user.claims.email;
+      
+      // First try to get by ID
+      let user = await storage.getUser(userId);
+      
+      // If not found by ID, try by email (handles ID mismatch cases)
+      if (!user && userEmail) {
+        user = await storage.getUserByEmail(userEmail);
+      }
       
       // Debug log to see user details
       console.log("[AUTH DEBUG] User logged in:", {
         email: user?.email,
         isAdmin: user?.isAdmin,
-        userId: userId
+        userId: userId,
+        foundById: !!user
       });
+      
+      if (!user) {
+        // User not found - this shouldn't happen after upsertUser in auth flow
+        console.error("User not found after authentication:", userId, userEmail);
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
       
       res.json(user);
     } catch (error) {
