@@ -196,6 +196,9 @@ export interface IStorage {
   // Onboarding methods
   getOnboardingResponse(userId: string): Promise<OnboardingResponse | undefined>;
   createOnboardingResponse(response: InsertOnboardingResponse): Promise<OnboardingResponse>;
+  getOnboardingStatus(userId: string): Promise<{ hasCompleted: boolean; currentLicensingInfo: any; availableChannels: Channel[] }>;
+  completeOnboarding(userId: string, responses: { hasFloridaLicense: boolean; isMultiStateLicensed: boolean; licensedStates: string[] }): Promise<{ user: User; channels: Channel[] }>;
+  assignUserToChannels(userId: string, channelTypes: string[]): Promise<UserChannel[]>;
   
   // Utility methods
   saveICSFile(content: string): Promise<string>;
@@ -957,6 +960,93 @@ export class DatabaseStorage implements IStorage {
   async createOnboardingResponse(response: InsertOnboardingResponse): Promise<OnboardingResponse> {
     const [created] = await db.insert(onboardingResponses).values(response).returning();
     return created;
+  }
+
+  async getOnboardingStatus(userId: string): Promise<{ hasCompleted: boolean; currentLicensingInfo: any; availableChannels: Channel[] }> {
+    const user = await this.getUser(userId);
+    const onboardingResponse = await this.getOnboardingResponse(userId);
+    const allChannels = await this.getChannels();
+
+    return {
+      hasCompleted: user?.hasCompletedOnboarding ?? false,
+      currentLicensingInfo: {
+        hasFloridaLicense: user?.hasFloridaLicense ?? false,
+        isMultiStateLicensed: user?.isMultiStateLicensed ?? false,
+        licensedStates: user?.licensedStates ?? []
+      },
+      availableChannels: allChannels
+    };
+  }
+
+  async completeOnboarding(
+    userId: string, 
+    responses: { hasFloridaLicense: boolean; isMultiStateLicensed: boolean; licensedStates: string[] }
+  ): Promise<{ user: User; channels: Channel[] }> {
+    // Update user with onboarding completion and licensing info
+    const updatedUser = await this.updateUser(userId, {
+      hasCompletedOnboarding: true,
+      hasFloridaLicense: responses.hasFloridaLicense,
+      isMultiStateLicensed: responses.isMultiStateLicensed,
+      licensedStates: responses.licensedStates
+    });
+
+    // Create onboarding response record
+    await this.createOnboardingResponse({
+      userId,
+      hasFloridaLicense: responses.hasFloridaLicense,
+      isMultiStateLicensed: responses.isMultiStateLicensed,
+      licensedStates: responses.licensedStates
+    });
+
+    // Determine channel types based on licensing
+    let channelTypes: string[] = [];
+    if (!responses.hasFloridaLicense) {
+      channelTypes = ["non_licensed", "general", "social", "onboarding"];
+    } else if (responses.isMultiStateLicensed) {
+      channelTypes = ["multi_state", "fl_licensed", "general", "social"];
+    } else {
+      channelTypes = ["fl_licensed", "general", "social"];
+    }
+
+    // Assign user to channels
+    const assignedChannels = await this.assignUserToChannels(userId, channelTypes);
+    
+    // Get the full channel objects
+    const allChannels = await this.getChannels();
+    const userChannelsList = assignedChannels.map(uc => 
+      allChannels.find(c => c.id === uc.channelId)
+    ).filter(Boolean) as Channel[];
+
+    return { user: updatedUser, channels: userChannelsList };
+  }
+
+  async assignUserToChannels(userId: string, channelTypes: string[]): Promise<UserChannel[]> {
+    const allChannels = await this.getChannels();
+    const assignedChannels: UserChannel[] = [];
+
+    for (const channelType of channelTypes) {
+      const channel = allChannels.find(c => c.type === channelType);
+      if (channel) {
+        // Check if already joined
+        const existingMembership = await db
+          .select()
+          .from(userChannels)
+          .where(and(eq(userChannels.userId, userId), eq(userChannels.channelId, channel.id)))
+          .limit(1);
+
+        if (existingMembership.length === 0) {
+          const joined = await this.joinChannel(userId, channel.id);
+          await this.updateChannelAccess(userId, channel.id, true);
+          assignedChannels.push(joined);
+        } else {
+          // Update access if already joined
+          const updated = await this.updateChannelAccess(userId, channel.id, true);
+          assignedChannels.push(updated);
+        }
+      }
+    }
+
+    return assignedChannels;
   }
 }
 

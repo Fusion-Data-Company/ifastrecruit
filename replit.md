@@ -35,10 +35,20 @@ Preferred communication style: Simple, everyday language.
 - **Connection Pooling**: Neon serverless connection pooling for optimal performance
 
 ### Authentication & Security
-- **Token-based Authentication**: Secure token generation using crypto.randomBytes
+- **OpenID Connect Authentication**: Replit Auth integration with Passport.js for secure user authentication
+- **Session Management**: PostgreSQL-backed sessions (connect-pg-simple) with secure cookie handling
+- **WebSocket Security**: Session-validated WebSocket connections that derive user identity from trusted server-side sessions (FIXED: October 16, 2025 - Eliminated identity spoofing vulnerability)
 - **Input Validation**: Zod schemas for request validation and type safety
 - **CORS Configuration**: Fastify CORS plugin for cross-origin resource sharing
 - **Rate Limiting**: Built-in rate limiting for API protection
+
+#### WebSocket Authentication (Security Fix - October 16, 2025)
+The WebSocket messenger service now implements secure session-based authentication:
+- **Session Validation on Upgrade**: User identity is extracted from HTTP session cookies during WebSocket upgrade, not from client messages
+- **No Client-Supplied Identity**: Client `authenticate` messages are ignored to prevent identity spoofing
+- **Secure Identity Derivation**: `ws.userId` is set exclusively from validated PostgreSQL session store data
+- **Fail-Secure Design**: WebSocket connections without valid sessions are rejected with HTTP 401
+- **Session Parser Utility**: `server/utils/sessionParser.ts` handles cookie extraction and session validation against the PostgreSQL session store
 
 ## External Dependencies
 

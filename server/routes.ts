@@ -64,6 +64,9 @@ import {
 import { cacheManager } from "./services/cache";
 import { dbOptimizer } from "./services/database-optimization";
 import { observabilityService } from "./services/observability";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { sql } from "drizzle-orm";
 import { runProductionReadinessChecks, getDeploymentHealth } from "../deployment.config";
 import { apifyService } from "./services/apify-client";
 import { elevenlabsIntegration } from "./integrations/elevenlabs";
@@ -156,7 +159,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Onboarding endpoint with channel assignment
+  // Onboarding status endpoint
+  app.get('/api/onboarding/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const status = await storage.getOnboardingStatus(userId);
+      res.json(status);
+    } catch (error) {
+      console.error("[Onboarding] Error fetching status:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding status" });
+    }
+  });
+
+  // Onboarding completion endpoint with channel assignment
+  const onboardingSchema = z.object({
+    hasFloridaLicense: z.boolean(),
+    isMultiStateLicensed: z.boolean(),
+    licensedStates: z.array(z.string()).optional().default([])
+  });
+
   const upload = multer({ dest: 'uploads/' });
   app.post('/api/onboarding/complete', isAuthenticated, upload.fields([
     { name: 'resume', maxCount: 1 },
@@ -170,64 +191,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { hasFloridaLicense, hasMultiStateLicense, selectedStates } = req.body;
+      // Parse and validate request body
+      const bodyData = {
+        hasFloridaLicense: req.body.hasFloridaLicense === 'true' || req.body.hasFloridaLicense === true,
+        isMultiStateLicensed: req.body.hasMultiStateLicense === 'true' || req.body.hasMultiStateLicense === true || req.body.isMultiStateLicensed === 'true' || req.body.isMultiStateLicensed === true,
+        licensedStates: req.body.selectedStates ? (typeof req.body.selectedStates === 'string' ? JSON.parse(req.body.selectedStates) : req.body.selectedStates) : (req.body.licensedStates || [])
+      };
+
+      const validatedData = onboardingSchema.parse(bodyData);
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-      // Save onboarding response
-      await storage.createOnboardingResponse({
-        userId,
-        hasFloridaLicense: hasFloridaLicense === 'true',
-        hasMultiStateLicense: hasMultiStateLicense === 'true',
-        licensedStates: selectedStates ? JSON.parse(selectedStates) : []
-      });
-
-      // Determine channel assignment based on licensing
-      let channelNames: string[] = ['Onboarding'];
+      // Complete onboarding using storage method
+      const { user: updatedUser, channels: assignedChannels } = await storage.completeOnboarding(userId, validatedData);
       
-      if (hasFloridaLicense === 'true') {
-        if (hasMultiStateLicense === 'true') {
-          channelNames.push('Multi-State Licensed');
-        } else {
-          channelNames.push('Florida Licensed Brokers');
-        }
-      } else {
-        channelNames.push('Non-Licensed Candidates');
-      }
+      const channelNames = assignedChannels.map(c => c.name);
 
-      // Get all channels
-      const allChannels = await storage.getChannels();
-      
-      // Assign user to appropriate channels
-      for (const channelName of channelNames) {
-        const channel = allChannels.find(c => c.name === channelName);
-        if (channel) {
-          // Check if already joined
-          const userChannels = await storage.getUserChannels(userId);
-          const alreadyJoined = userChannels.some(uc => uc.channelId === channel.id);
-          
-          if (!alreadyJoined) {
-            await storage.joinChannel(userId, channel.id);
-            await storage.updateChannelAccess(userId, channel.id, true);
+      // Send Jason AI welcome message to each assigned channel
+      for (const channel of assignedChannels) {
+        const welcomeMessage = await jasonAI.generateChannelAssignmentMessage(
+          user.firstName || user.email || 'New Candidate',
+          channel.name,
+          {
+            hasFloridaLicense: validatedData.hasFloridaLicense,
+            hasMultiStateLicense: validatedData.isMultiStateLicensed,
+            states: validatedData.licensedStates
           }
+        );
 
-          // Send Jason AI welcome message to the channel
-          const welcomeMessage = await jasonAI.generateChannelAssignmentMessage(
-            user.name || 'New Candidate',
-            channelName,
-            {
-              hasFloridaLicense: hasFloridaLicense === 'true',
-              hasMultiStateLicense: hasMultiStateLicense === 'true',
-              states: selectedStates ? JSON.parse(selectedStates) : []
-            }
-          );
-
-          // Create the welcome message
-          await storage.createMessage({
-            channelId: channel.id,
-            senderId: 'system', // Jason AI
-            content: welcomeMessage
-          });
-        }
+        // Create the welcome message
+        await storage.createMessage({
+          channelId: channel.id,
+          userId: 'system', // Jason AI (system user)
+          content: welcomeMessage,
+          isAiGenerated: true
+        });
       }
 
       // Handle file uploads with resume parsing
@@ -325,6 +322,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Direct Messages API endpoints
+  app.get('/api/direct-messages/conversations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversations = await storage.getUserConversations(userId);
+      
+      // Enrich with user details
+      const enrichedConversations = await Promise.all(
+        conversations.map(async (conv) => {
+          const otherUser = await storage.getUser(conv.userId);
+          return {
+            userId: conv.userId,
+            user: otherUser ? {
+              id: otherUser.id,
+              firstName: otherUser.firstName,
+              lastName: otherUser.lastName,
+              email: otherUser.email,
+              isAdmin: otherUser.isAdmin,
+              onlineStatus: otherUser.onlineStatus
+            } : null,
+            lastMessage: conv.lastMessage
+          };
+        })
+      );
+      
+      res.json(enrichedConversations);
+    } catch (error) {
+      console.error("Error fetching DM conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get('/api/direct-messages/:otherUserId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { otherUserId } = req.params;
+      
+      const messages = await storage.getDirectMessages(userId, otherUserId);
+      
+      // Mark messages as read
+      await storage.markDirectMessagesAsRead(userId, otherUserId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching direct messages:", error);
+      res.status(500).json({ message: "Failed to fetch direct messages" });
+    }
+  });
+
+  app.post('/api/direct-messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { receiverId, content } = req.body;
+      
+      if (!receiverId || !content) {
+        return res.status(400).json({ message: "Missing receiverId or content" });
+      }
+      
+      const message = await storage.createDirectMessage({
+        senderId: userId,
+        receiverId,
+        content
+      });
+      
+      res.json(message);
+    } catch (error) {
+      console.error("Error sending direct message:", error);
+      res.status(500).json({ message: "Failed to send direct message" });
+    }
+  });
+
+  // Get list of users available for DMs (admins for regular users, all users for admins)
+  app.get('/api/direct-messages-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // For now, get all users - in production you'd filter based on permissions
+      const allUsers = await db.select().from(users).where(sql`${users.id} != ${userId}`);
+      
+      // Filter based on role - regular users see only admins, admins see everyone
+      const availableUsers = currentUser.isAdmin 
+        ? allUsers 
+        : allUsers.filter(u => u.isAdmin);
+      
+      res.json(availableUsers.map(u => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        isAdmin: u.isAdmin,
+        onlineStatus: u.onlineStatus,
+        profileImageUrl: u.profileImageUrl
+      })));
+    } catch (error) {
+      console.error("Error fetching DM users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 

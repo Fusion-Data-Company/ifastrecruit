@@ -8,6 +8,7 @@ import type {
   InsertDirectMessage 
 } from "@shared/schema";
 import { storage } from "../storage";
+import { validateWebSocketRequest } from "../utils/sessionParser";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -29,16 +30,65 @@ export class MessengerWebSocketService {
     });
 
     // Handle upgrade manually to avoid conflicts with Vite's WebSocket
-    server.on('upgrade', (request, socket, head) => {
+    // SECURITY: Validate session BEFORE upgrading to WebSocket
+    server.on('upgrade', async (request, socket, head) => {
       if (request.url === '/ws/messenger') {
-        this.wss!.handleUpgrade(request, socket, head, (ws) => {
-          this.wss!.emit('connection', ws, request);
-        });
+        try {
+          // CRITICAL: Validate session and extract userId from trusted session store
+          const userId = await validateWebSocketRequest(request);
+          
+          if (!userId) {
+            console.log('[Messenger WS] Unauthorized connection attempt - no valid session');
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          // Verify user exists in database
+          const user = await storage.getUser(userId);
+          if (!user) {
+            console.log('[Messenger WS] User not found:', userId);
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          // Session is valid - upgrade connection
+          this.wss!.handleUpgrade(request, socket, head, (ws) => {
+            // SECURITY: Set userId from validated session, not from client
+            (ws as AuthenticatedWebSocket).userId = userId;
+            (ws as AuthenticatedWebSocket).isAuthenticated = true;
+            this.wss!.emit('connection', ws, request);
+          });
+        } catch (error) {
+          console.error('[Messenger WS] Error during upgrade:', error);
+          socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
+          socket.destroy();
+        }
       }
     });
 
-    this.wss.on('connection', (ws: AuthenticatedWebSocket, req) => {
-      console.log('[Messenger WS] New connection attempt');
+    this.wss.on('connection', async (ws: AuthenticatedWebSocket, req) => {
+      // At this point, ws.userId and ws.isAuthenticated are already set from session validation
+      console.log('[Messenger WS] Authenticated connection established for user:', ws.userId);
+
+      // Register client and update online status
+      if (ws.userId) {
+        if (!this.clients.has(ws.userId)) {
+          this.clients.set(ws.userId, []);
+        }
+        this.clients.get(ws.userId)!.push(ws);
+
+        await storage.updateUserOnlineStatus(ws.userId, true);
+
+        // Send authentication confirmation
+        ws.send(JSON.stringify({ 
+          type: 'authenticated', 
+          payload: { userId: ws.userId } 
+        }));
+
+        this.broadcastOnlineStatus(ws.userId, true);
+      }
 
       ws.on('message', async (data: string) => {
         try {
@@ -68,7 +118,12 @@ export class MessengerWebSocketService {
   private async handleMessage(ws: AuthenticatedWebSocket, message: WSMessage) {
     switch (message.type) {
       case 'authenticate':
-        await this.handleAuthentication(ws, message.payload);
+        // SECURITY: Authentication now happens during WebSocket upgrade via session validation
+        // Client-supplied authentication messages are ignored to prevent identity spoofing
+        ws.send(JSON.stringify({ 
+          type: 'error', 
+          payload: { message: 'Authentication handled during connection. Already authenticated.' } 
+        }));
         break;
       
       case 'message':
@@ -103,59 +158,9 @@ export class MessengerWebSocketService {
     }
   }
 
-  private async handleAuthentication(ws: AuthenticatedWebSocket, payload: { userId: string }) {
-    const { userId } = payload;
-    
-    try {
-      // Validate userId exists in database
-      // In production, this should verify the WebSocket connection's session/JWT
-      // For now, we trust the userId from the authenticated HTTP session
-      if (!userId) {
-        ws.send(JSON.stringify({ 
-          type: 'auth_error', 
-          payload: { message: 'Authentication required' } 
-        }));
-        ws.close();
-        return;
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        ws.send(JSON.stringify({ 
-          type: 'auth_error', 
-          payload: { message: 'User not found' } 
-        }));
-        ws.close();
-        return;
-      }
-
-      ws.userId = userId;
-      ws.isAuthenticated = true;
-
-      if (!this.clients.has(userId)) {
-        this.clients.set(userId, []);
-      }
-      this.clients.get(userId)!.push(ws);
-
-      await storage.updateUserOnlineStatus(userId, true);
-
-      ws.send(JSON.stringify({ 
-        type: 'authenticated', 
-        payload: { userId } 
-      }));
-
-      this.broadcastOnlineStatus(userId, true);
-
-      console.log(`[Messenger WS] User ${userId} authenticated`);
-    } catch (error) {
-      console.error('[Messenger WS] Authentication error:', error);
-      ws.send(JSON.stringify({ 
-        type: 'auth_error', 
-        payload: { message: 'Authentication failed' } 
-      }));
-      ws.close();
-    }
-  }
+  // REMOVED: handleAuthentication method is no longer used
+  // Authentication now happens during WebSocket upgrade via session validation
+  // This prevents identity spoofing by never trusting client-supplied userId
 
   private async handleChannelMessage(ws: AuthenticatedWebSocket, payload: InsertMessage) {
     if (!ws.isAuthenticated || !ws.userId) {
@@ -178,8 +183,9 @@ export class MessengerWebSocketService {
 
       // SECURITY: Always use authenticated userId, never trust client payload
       const messageWithAuthenticatedSender = {
-        ...payload,
-        senderId: ws.userId
+        channelId: payload.channelId,
+        userId: ws.userId,
+        content: payload.content
       };
 
       const message = await storage.createMessage(messageWithAuthenticatedSender);
