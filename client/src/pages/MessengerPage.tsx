@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { CybercoreBackground } from '@/components/CybercoreBackground';
 import { FloatingConsultButton } from '@/components/FloatingConsultButton';
@@ -9,16 +9,40 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Send, Hash, User, ChevronRight, ChevronDown, MessageSquare, Info } from 'lucide-react';
+import { 
+  Send, 
+  Hash, 
+  User, 
+  Shield, 
+  Star, 
+  Globe, 
+  MessageSquare, 
+  MoreVertical,
+  Edit2,
+  Trash2,
+  Paperclip,
+  Upload,
+  Circle,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Settings,
+  Plus
+} from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
 import iFastRecruitLogo from "@assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png";
 
 interface Channel {
   id: string;
   name: string;
   description?: string;
-  type: string;
+  tier: 'NON_LICENSED' | 'FL_LICENSED' | 'MULTI_STATE';
+  badgeIcon?: string;
+  badgeColor?: string;
+  isActive?: boolean;
 }
 
 interface Message {
@@ -27,8 +51,20 @@ interface Message {
   senderId: string;
   userId: string;
   content: string;
-  createdAt: Date;
-  sender?: { name: string; email: string };
+  createdAt: string;
+  updatedAt?: string;
+  fileUrl?: string;
+  fileName?: string;
+  sender?: { 
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+    profileImageUrl?: string;
+    isAdmin?: boolean;
+  };
+  isEdited?: boolean;
+  reactions?: Array<{ emoji: string; userId: string }>;
 }
 
 interface DirectMessage {
@@ -37,7 +73,9 @@ interface DirectMessage {
   receiverId: string;
   content: string;
   isRead: boolean;
-  createdAt: Date;
+  createdAt: string;
+  fileUrl?: string;
+  fileName?: string;
 }
 
 interface DMUser {
@@ -48,15 +86,36 @@ interface DMUser {
   isAdmin: boolean;
   onlineStatus?: string;
   profileImageUrl?: string;
+  hasFloridaLicense?: boolean;
+  isMultiStateLicensed?: boolean;
 }
 
 interface DMConversation {
   userId: string;
   user: DMUser | null;
   lastMessage: DirectMessage;
+  unreadCount?: number;
 }
 
 type ViewMode = 'channel' | 'dm';
+
+const tierConfig = {
+  NON_LICENSED: {
+    icon: Shield,
+    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    label: 'Non-Licensed'
+  },
+  FL_LICENSED: {
+    icon: Star,
+    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    label: 'FL Licensed'
+  },
+  MULTI_STATE: {
+    icon: Globe,
+    color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    label: 'Multi-State'
+  }
+};
 
 export default function MessengerPage() {
   const { user } = useAuth();
@@ -65,11 +124,18 @@ export default function MessengerPage() {
   const [selectedDMUser, setSelectedDMUser] = useState<DMUser | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [ws, setWs] = useState<WebSocket | null>(null);
-  const [showDMs, setShowDMs] = useState(true);
   const [showChannels, setShowChannels] = useState(true);
-  const [showProfilePanel, setShowProfilePanel] = useState(true);
+  const [showDMs, setShowDMs] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
+  // Queries
   const { data: channels = [] } = useQuery<Channel[]>({
     queryKey: ['/api/channels'],
     enabled: !!user,
@@ -95,6 +161,13 @@ export default function MessengerPage() {
     enabled: !!selectedDMUser && viewMode === 'dm',
   });
 
+  const { data: onlineUsers = [] } = useQuery<DMUser[]>({
+    queryKey: ['/api/online-users'],
+    enabled: !!user,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // WebSocket connection
   useEffect(() => {
     if (!user) return;
 
@@ -120,6 +193,14 @@ export default function MessengerPage() {
         queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedDMUser?.id}`] });
         queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
       }
+
+      if (data.type === 'message_edited' || data.type === 'message_deleted') {
+        queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel?.id}/messages`] });
+      }
+
+      if (data.type === 'user_status_change') {
+        queryClient.invalidateQueries({ queryKey: ['/api/online-users'] });
+      }
     };
 
     websocket.onerror = (error) => {
@@ -137,12 +218,14 @@ export default function MessengerPage() {
     };
   }, [user, selectedChannel, selectedDMUser, viewMode]);
 
+  // Auto-scroll to bottom for new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [channelMessages, directMessages]);
 
+  // Mutations
   const sendChannelMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (payload: { content: string; fileUrl?: string; fileName?: string }) => {
       if (!selectedChannel || !user) return;
 
       if (ws && ws.readyState === WebSocket.OPEN) {
@@ -151,13 +234,14 @@ export default function MessengerPage() {
           payload: {
             channelId: selectedChannel.id,
             userId: user.id,
-            content
+            ...payload
           }
         }));
       }
     },
     onSuccess: () => {
       setMessageInput('');
+      setUploadingFile(false);
       if (selectedChannel) {
         queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel.id}/messages`] });
       }
@@ -165,7 +249,7 @@ export default function MessengerPage() {
   });
 
   const sendDirectMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (payload: { content: string; fileUrl?: string; fileName?: string }) => {
       if (!selectedDMUser || !user) return;
 
       if (ws && ws.readyState === WebSocket.OPEN) {
@@ -173,13 +257,14 @@ export default function MessengerPage() {
           type: 'direct_message',
           payload: {
             receiverId: selectedDMUser.id,
-            content
+            ...payload
           }
         }));
       }
     },
     onSuccess: () => {
       setMessageInput('');
+      setUploadingFile(false);
       if (selectedDMUser) {
         queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedDMUser.id}`] });
         queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
@@ -187,178 +272,359 @@ export default function MessengerPage() {
     }
   });
 
+  const editMessageMutation = useMutation({
+    mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      
+      ws.send(JSON.stringify({
+        type: 'edit_message',
+        payload: { messageId, content }
+      }));
+    },
+    onSuccess: () => {
+      setEditingMessageId(null);
+      setEditContent('');
+      if (selectedChannel) {
+        queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel.id}/messages`] });
+      }
+    }
+  });
+
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      
+      ws.send(JSON.stringify({
+        type: 'delete_message',
+        payload: { messageId }
+      }));
+    },
+    onSuccess: () => {
+      if (selectedChannel) {
+        queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel.id}/messages`] });
+      }
+    }
+  });
+
+  // File upload handlers
+  const handleFileUpload = useCallback(async (file: File) => {
+    if (!file) return;
+    
+    setUploadingFile(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await apiRequest('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const payload = {
+        content: messageInput || `📎 ${file.name}`,
+        fileUrl: response.fileUrl,
+        fileName: file.name
+      };
+      
+      if (viewMode === 'channel') {
+        sendChannelMessageMutation.mutate(payload);
+      } else {
+        sendDirectMessageMutation.mutate(payload);
+      }
+    } catch (error) {
+      console.error('File upload failed:', error);
+      setUploadingFile(false);
+    }
+  }, [messageInput, viewMode, sendChannelMessageMutation, sendDirectMessageMutation]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  }, [handleFileUpload]);
+
   const handleSendMessage = () => {
-    if (!messageInput.trim()) return;
+    if (!messageInput.trim() && !uploadingFile) return;
     
     if (viewMode === 'channel') {
-      sendChannelMessageMutation.mutate(messageInput);
+      sendChannelMessageMutation.mutate({ content: messageInput });
     } else {
-      sendDirectMessageMutation.mutate(messageInput);
+      sendDirectMessageMutation.mutate({ content: messageInput });
     }
   };
 
-  useEffect(() => {
-    if (channels.length > 0 && !selectedChannel && viewMode === 'channel') {
-      setSelectedChannel(channels[0]);
-    }
-  }, [channels, selectedChannel, viewMode]);
-
-  const getChannelBadge = (channel: Channel) => {
-    if (channel.type === 'non_licensed') {
-      return (
-        <Badge className="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400 border border-gray-500/30" data-testid={`badge-non-licensed-${channel.id}`}>
-          Non-Licensed
-        </Badge>
-      );
-    } else if (channel.type === 'fl_licensed') {
-      return (
-        <Badge className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30" data-testid={`badge-fl-licensed-${channel.id}`}>
-          FL-Licensed
-        </Badge>
-      );
-    } else if (channel.type === 'multi_state') {
-      return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Badge className="px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 cursor-pointer" data-testid={`badge-multi-state-${channel.id}`}>
-              Multi-State
-            </Badge>
-          </PopoverTrigger>
-          <PopoverContent className="w-64 bg-black/90 border-cyan-400/30 text-cyan-400">
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm">Licensed States:</h4>
-              <div className="flex flex-wrap gap-1">
-                {user?.licensedStates?.map((state) => (
-                  <Badge key={state} variant="outline" className="text-xs border-cyan-400/30 text-cyan-400">
-                    {state}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-      );
-    }
-    return null;
+  const handleEditMessage = (message: Message) => {
+    setEditingMessageId(message.id);
+    setEditContent(message.content);
   };
 
-  const getUserBadge = () => {
-    if (!user) return null;
+  const saveEdit = () => {
+    if (editingMessageId && editContent.trim()) {
+      editMessageMutation.mutate({ messageId: editingMessageId, content: editContent });
+    }
+  };
+
+  // Check user's channel access
+  const getUserAccessibleChannels = () => {
+    if (!user) return [];
+    if (user.isAdmin) return channels; // Admins can access all channels
     
+    const accessibleChannels: Channel[] = [];
+    
+    // Everyone can access NON_LICENSED
+    const nonLicensed = channels.find(c => c.tier === 'NON_LICENSED');
+    if (nonLicensed) accessibleChannels.push(nonLicensed);
+    
+    // FL licensed users can access FL_LICENSED
+    if (user.hasFloridaLicense) {
+      const flLicensed = channels.find(c => c.tier === 'FL_LICENSED');
+      if (flLicensed) accessibleChannels.push(flLicensed);
+    }
+    
+    // Multi-state licensed users can access MULTI_STATE
     if (user.isMultiStateLicensed) {
-      return (
-        <Badge className="px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" data-testid="user-badge-multi-state">
-          Multi-State
-        </Badge>
-      );
-    } else if (user.hasFloridaLicense) {
-      return (
-        <Badge className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30" data-testid="user-badge-fl-licensed">
-          FL-Licensed
-        </Badge>
-      );
+      const multiState = channels.find(c => c.tier === 'MULTI_STATE');
+      if (multiState) accessibleChannels.push(multiState);
+    }
+    
+    return accessibleChannels;
+  };
+
+  const accessibleChannels = getUserAccessibleChannels();
+
+  // Auto-select first accessible channel
+  useEffect(() => {
+    if (accessibleChannels.length > 0 && !selectedChannel && viewMode === 'channel') {
+      setSelectedChannel(accessibleChannels[0]);
+    }
+  }, [accessibleChannels, selectedChannel, viewMode]);
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     } else {
-      return (
-        <Badge className="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400 border border-gray-500/30" data-testid="user-badge-non-licensed">
-          Non-Licensed
-        </Badge>
-      );
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
   };
 
-  const getUserDisplayName = (dmUser: DMUser) => {
-    if (dmUser.firstName && dmUser.lastName) {
-      return `${dmUser.firstName} ${dmUser.lastName}`;
+  const getUserDisplayName = (user: DMUser | undefined) => {
+    if (!user) return 'Unknown User';
+    if (user.firstName || user.lastName) {
+      return `${user.firstName || ''} ${user.lastName || ''}`.trim();
     }
-    return dmUser.email;
+    return user.email.split('@')[0];
   };
 
-  const getOnlineStatusColor = (status?: string) => {
-    if (status === 'online') return 'bg-green-500';
-    if (status === 'away') return 'bg-yellow-500';
-    return 'bg-gray-500';
+  const getUserInitials = (user: DMUser | undefined) => {
+    if (!user) return '?';
+    const name = getUserDisplayName(user);
+    const parts = name.split(' ');
+    if (parts.length > 1) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
   };
 
-  if (!user) {
+  const TierBadge = ({ tier }: { tier: keyof typeof tierConfig }) => {
+    const config = tierConfig[tier];
+    const Icon = config.icon;
+    
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-cyan-400">
-        <div>Please log in to access the messenger</div>
-      </div>
+      <Badge 
+        className={cn(
+          "px-2 py-0.5 rounded text-xs flex items-center gap-1 border",
+          config.color
+        )}
+        data-testid={`badge-${tier.toLowerCase()}`}
+      >
+        <Icon className="h-3 w-3" />
+        {config.label}
+      </Badge>
     );
-  }
-
-  const currentMessages = viewMode === 'channel' ? channelMessages : directMessages;
+  };
 
   return (
-    <div className="min-h-screen relative">
+    <div className="flex flex-col h-screen bg-[#0a0f1c]">
       <CybercoreBackground />
       
-      <div className="relative z-10 container mx-auto px-4 py-8 h-screen flex items-center justify-center">
-        <div className="w-full max-w-7xl h-[85vh] bg-black/40 backdrop-blur-xl border border-cyan-400/30 rounded-2xl shadow-2xl shadow-cyan-400/20 overflow-hidden flex">
-          
-          {/* Left Sidebar */}
-          <div className="w-72 bg-black/60 border-r border-cyan-400/30 flex flex-col">
+      {/* Main Container */}
+      <div className="flex flex-1 relative z-10 overflow-hidden">
+        {/* Left Sidebar - Servers & Channels */}
+        <div className="w-64 bg-black/30 backdrop-blur-sm border-r border-white/5 flex flex-col">
+          {/* Server Header */}
+          <div className="p-4 border-b border-white/5">
+            <div className="flex items-center gap-3">
+              <img src={iFastRecruitLogo} alt="iFast Recruit" className="h-8 w-8 rounded" />
+              <div>
+                <h2 className="text-white font-semibold">iFast Recruit</h2>
+                <p className="text-xs text-gray-400">Enterprise Messaging</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="p-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input 
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                data-testid="search-input"
+              />
+            </div>
+          </div>
+
+          <ScrollArea className="flex-1 px-2">
             {/* Channels Section */}
-            <div className="p-4 border-b border-cyan-400/30">
+            <div className="mb-4">
               <button
                 onClick={() => setShowChannels(!showChannels)}
-                className="w-full flex items-center justify-between text-cyan-400 hover:text-cyan-300"
+                className="flex items-center gap-1 w-full px-2 py-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
                 data-testid="toggle-channels"
               >
-                <h2 className="text-lg font-bold">Channels</h2>
-                {showChannels ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                {showChannels ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                CHANNELS
               </button>
+              
+              {showChannels && (
+                <div className="mt-1 space-y-0.5">
+                  {accessibleChannels.map(channel => (
+                    <button
+                      key={channel.id}
+                      onClick={() => {
+                        setSelectedChannel(channel);
+                        setViewMode('channel');
+                        setSelectedDMUser(null);
+                      }}
+                      className={cn(
+                        "w-full px-2 py-2 rounded text-sm text-left transition-all",
+                        "hover:bg-white/5",
+                        selectedChannel?.id === channel.id && viewMode === 'channel' 
+                          ? "bg-white/10 text-white" 
+                          : "text-gray-400"
+                      )}
+                      data-testid={`channel-${channel.id}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Hash className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{channel.name}</span>
+                        </div>
+                        {channel.tier && (
+                          <div className="flex-shrink-0">
+                            <TierBadge tier={channel.tier} />
+                          </div>
+                        )}
+                      </div>
+                      {channel.description && selectedChannel?.id === channel.id && (
+                        <p className="text-xs text-gray-500 mt-1 pl-6">{channel.description}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            
-            {showChannels && (
-              <div className="border-b border-cyan-400/30">
-                <ScrollArea className="max-h-60">
-                  <div className="p-2 space-y-1">
-                    {channels.map((channel) => (
-                      <button
-                        key={channel.id}
-                        onClick={() => {
-                          setSelectedChannel(channel);
-                          setViewMode('channel');
-                          setSelectedDMUser(null);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
-                          viewMode === 'channel' && selectedChannel?.id === channel.id
-                            ? 'bg-cyan-400/20 text-cyan-300'
-                            : 'text-cyan-400/60 hover:bg-cyan-400/10 hover:text-cyan-400'
-                        }`}
-                        data-testid={`channel-${channel.id}`}
-                      >
-                        <Hash className="w-4 h-4 flex-shrink-0" />
-                        <span className="flex-1 truncate">{channel.name}</span>
-                        {getChannelBadge(channel)}
-                      </button>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
 
             {/* Direct Messages Section */}
-            <div className="p-4 border-b border-cyan-400/30">
-              <button
-                onClick={() => setShowDMs(!showDMs)}
-                className="w-full flex items-center justify-between text-cyan-400 hover:text-cyan-300"
-                data-testid="toggle-dms"
-              >
-                <h2 className="text-lg font-bold">Direct Messages</h2>
-                {showDMs ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {showDMs && (
-              <ScrollArea className="flex-1">
-                <div className="p-2 space-y-1">
-                  {dmUsers.map((dmUser) => {
-                    const conversation = dmConversations.find(c => c.userId === dmUser.id);
-                    const hasUnread = conversation && !conversation.lastMessage.isRead && conversation.lastMessage.receiverId === user.id;
-                    
-                    return (
+            <div>
+              <div className="flex items-center justify-between px-2 py-1">
+                <button
+                  onClick={() => setShowDMs(!showDMs)}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                  data-testid="toggle-dms"
+                >
+                  {showDMs ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  DIRECT MESSAGES
+                </button>
+                <button className="text-gray-400 hover:text-gray-300">
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+              
+              {showDMs && (
+                <div className="mt-1 space-y-0.5">
+                  {dmConversations.map(conversation => (
+                    <button
+                      key={conversation.userId}
+                      onClick={() => {
+                        setSelectedDMUser(conversation.user);
+                        setViewMode('dm');
+                        setSelectedChannel(null);
+                      }}
+                      className={cn(
+                        "w-full px-2 py-2 rounded text-sm text-left transition-all",
+                        "hover:bg-white/5",
+                        selectedDMUser?.id === conversation.userId && viewMode === 'dm'
+                          ? "bg-white/10 text-white" 
+                          : "text-gray-400"
+                      )}
+                      data-testid={`dm-${conversation.userId}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <Avatar className="h-6 w-6">
+                            {conversation.user?.profileImageUrl ? (
+                              <AvatarImage src={conversation.user.profileImageUrl} />
+                            ) : (
+                              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-xs">
+                                {getUserInitials(conversation.user)}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <Circle 
+                            className={cn(
+                              "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current",
+                              conversation.user?.onlineStatus === 'online' 
+                                ? "text-green-500" 
+                                : "text-gray-500"
+                            )}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="truncate">
+                              {getUserDisplayName(conversation.user)}
+                            </span>
+                            {conversation.user?.isAdmin && (
+                              <Badge className="px-1 py-0 text-[10px] bg-red-500/20 text-red-400">
+                                Admin
+                              </Badge>
+                            )}
+                          </div>
+                          {conversation.unreadCount && conversation.unreadCount > 0 && (
+                            <span className="text-xs bg-primary text-primary-foreground rounded-full px-1.5">
+                              {conversation.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  
+                  {/* Show other users for starting new conversations */}
+                  {dmUsers
+                    .filter(u => u.id !== user?.id && !dmConversations.some(c => c.userId === u.id))
+                    .map(dmUser => (
                       <button
                         key={dmUser.id}
                         onClick={() => {
@@ -366,236 +632,477 @@ export default function MessengerPage() {
                           setViewMode('dm');
                           setSelectedChannel(null);
                         }}
-                        className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
-                          viewMode === 'dm' && selectedDMUser?.id === dmUser.id
-                            ? 'bg-cyan-400/20 text-cyan-300'
-                            : 'text-cyan-400/60 hover:bg-cyan-400/10 hover:text-cyan-400'
-                        }`}
-                        data-testid={`dm-user-${dmUser.id}`}
+                        className={cn(
+                          "w-full px-2 py-2 rounded text-sm text-left transition-all",
+                          "hover:bg-white/5 text-gray-500"
+                        )}
+                        data-testid={`dm-new-${dmUser.id}`}
                       >
-                        <div className="relative flex-shrink-0">
-                          <div className="w-8 h-8 rounded-full bg-cyan-400/20 flex items-center justify-center text-cyan-400">
-                            {dmUser.firstName?.[0] || dmUser.email[0].toUpperCase()}
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <Avatar className="h-6 w-6">
+                              {dmUser.profileImageUrl ? (
+                                <AvatarImage src={dmUser.profileImageUrl} />
+                              ) : (
+                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-xs">
+                                  {getUserInitials(dmUser)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <Circle 
+                              className={cn(
+                                "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current",
+                                dmUser.onlineStatus === 'online' 
+                                  ? "text-green-500" 
+                                  : "text-gray-500"
+                              )}
+                            />
                           </div>
-                          <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${getOnlineStatusColor(dmUser.onlineStatus)}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="truncate">{getUserDisplayName(dmUser)}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="truncate">
+                              {getUserDisplayName(dmUser)}
+                            </span>
                             {dmUser.isAdmin && (
-                              <Badge variant="outline" className="text-xs border-cyan-400/30 text-cyan-400">Admin</Badge>
+                              <Badge className="px-1 py-0 text-[10px] bg-red-500/20 text-red-400">
+                                Admin
+                              </Badge>
                             )}
                           </div>
-                          {conversation && (
-                            <p className="text-xs text-cyan-400/40 truncate">
-                              {conversation.lastMessage.content}
-                            </p>
-                          )}
                         </div>
-                        {hasUnread && (
-                          <div className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0" data-testid={`unread-indicator-${dmUser.id}`} />
-                        )}
                       </button>
-                    );
-                  })}
+                    ))
+                  }
                 </div>
-              </ScrollArea>
-            )}
+              )}
+            </div>
+          </ScrollArea>
 
-            {/* User Profile Footer */}
-            <div className="p-4 border-t border-cyan-400/30">
+          {/* User Settings */}
+          <div className="p-3 border-t border-white/5">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-cyan-400/20 flex items-center justify-center text-cyan-400">
-                  {user.firstName?.[0] || user.email[0].toUpperCase()}
-                </div>
+                <Avatar className="h-8 w-8">
+                  {user?.profileImageUrl ? (
+                    <AvatarImage src={user.profileImageUrl} />
+                  ) : (
+                    <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                      {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-cyan-400 truncate">
-                    {user.firstName && user.lastName 
-                      ? `${user.firstName} ${user.lastName}` 
-                      : user.email}
-                  </div>
-                  {getUserBadge()}
+                  <p className="text-sm text-white truncate">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">
+                    {user?.email}
+                  </p>
                 </div>
               </div>
+              <button className="text-gray-400 hover:text-gray-300">
+                <Settings className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Center - Messages Area */}
+        <div 
+          className="flex-1 flex flex-col"
+          ref={dropZoneRef}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {/* Channel/DM Header */}
+          <div className="h-14 px-4 flex items-center justify-between border-b border-white/5 bg-black/20 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              {viewMode === 'channel' && selectedChannel ? (
+                <>
+                  <Hash className="h-5 w-5 text-gray-400" />
+                  <span className="text-white font-medium">{selectedChannel.name}</span>
+                  {selectedChannel.tier && <TierBadge tier={selectedChannel.tier} />}
+                  {selectedChannel.description && (
+                    <span className="text-sm text-gray-400 ml-2">
+                      {selectedChannel.description}
+                    </span>
+                  )}
+                </>
+              ) : selectedDMUser ? (
+                <>
+                  <Avatar className="h-8 w-8">
+                    {selectedDMUser.profileImageUrl ? (
+                      <AvatarImage src={selectedDMUser.profileImageUrl} />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                        {getUserInitials(selectedDMUser)}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <span className="text-white font-medium">
+                    {getUserDisplayName(selectedDMUser)}
+                  </span>
+                  <Circle 
+                    className={cn(
+                      "h-2.5 w-2.5 fill-current",
+                      selectedDMUser.onlineStatus === 'online' ? "text-green-500" : "text-gray-500"
+                    )}
+                  />
+                </>
+              ) : (
+                <span className="text-gray-400">Select a channel or user</span>
+              )}
             </div>
           </div>
 
-          {/* Main Content Area */}
-          <div className={`flex-1 flex flex-col ${showProfilePanel ? '' : 'flex-1'}`}>
-            {/* Header */}
-            <div className="p-4 border-b border-cyan-400/30 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <img 
-                  src={iFastRecruitLogo} 
-                  alt="iFast Recruit Logo" 
-                  className="h-8 w-auto object-contain opacity-80"
-                />
-                <div className="flex items-center gap-2">
-                  {viewMode === 'channel' ? (
-                    <>
-                      <Hash className="w-5 h-5 text-cyan-400" />
-                      <h3 className="text-lg font-semibold text-cyan-400">{selectedChannel?.name || 'Select a channel'}</h3>
-                    </>
-                  ) : (
-                    <>
-                      <MessageSquare className="w-5 h-5 text-cyan-400" />
-                      <h3 className="text-lg font-semibold text-cyan-400">
-                        {selectedDMUser ? getUserDisplayName(selectedDMUser) : 'Select a conversation'}
-                      </h3>
-                    </>
-                  )}
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-4">
+            {isDragging && (
+              <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-50">
+                <div className="text-center">
+                  <Upload className="h-12 w-12 text-primary mx-auto mb-2" />
+                  <p className="text-white text-lg">Drop files here to upload</p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowProfilePanel(!showProfilePanel)}
-                className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-400/10"
-                data-testid="toggle-profile-panel"
-              >
-                <Info className="w-5 h-5" />
-              </Button>
-            </div>
+            )}
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {currentMessages.map((message: any) => {
-                  const isCurrentUser = message.userId === user.id || message.senderId === user.id;
-                  const displayName = viewMode === 'channel' 
-                    ? (message.sender?.name || message.userId)
-                    : (message.senderId === user.id ? 'You' : getUserDisplayName(selectedDMUser!));
+            <div className="space-y-4">
+              {viewMode === 'channel' ? (
+                channelMessages.map((message) => {
+                  const isOwnMessage = message.userId === user?.id;
                   
                   return (
-                    <div
-                      key={message.id}
-                      className="flex gap-3"
-                      data-testid={`message-${message.id}`}
-                    >
-                      <div className="w-10 h-10 rounded-full bg-cyan-400/20 flex items-center justify-center text-cyan-400 flex-shrink-0">
-                        {displayName[0]?.toUpperCase()}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline gap-2 mb-1">
-                          <span className={`font-semibold ${isCurrentUser ? 'text-cyan-300' : 'text-cyan-400'}`}>
-                            {displayName}
+                    <div key={message.id} className="group flex gap-3 hover:bg-white/5 px-2 py-2 rounded transition-all">
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        {message.sender?.profileImageUrl ? (
+                          <AvatarImage src={message.sender.profileImageUrl} />
+                        ) : (
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                            {getUserInitials(message.sender)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-white font-medium">
+                            {getUserDisplayName(message.sender)}
                           </span>
-                          <span className="text-xs text-cyan-400/40">
-                            {new Date(message.createdAt).toLocaleTimeString()}
+                          {message.sender?.isAdmin && (
+                            <Badge className="px-1 py-0 text-[10px] bg-red-500/20 text-red-400">
+                              Admin
+                            </Badge>
+                          )}
+                          <span className="text-xs text-gray-500">
+                            {formatTime(message.createdAt)}
                           </span>
+                          {message.isEdited && (
+                            <span className="text-xs text-gray-500">(edited)</span>
+                          )}
+                          
+                          {isOwnMessage && (
+                            <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                              <button
+                                onClick={() => handleEditMessage(message)}
+                                className="text-gray-400 hover:text-gray-300"
+                                data-testid={`edit-message-${message.id}`}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => deleteMessageMutation.mutate(message.id)}
+                                className="text-gray-400 hover:text-red-400"
+                                data-testid={`delete-message-${message.id}`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-cyan-400/80">{message.content}</p>
+                        
+                        {editingMessageId === message.id ? (
+                          <div className="mt-1 flex gap-2">
+                            <Input
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveEdit();
+                                if (e.key === 'Escape') {
+                                  setEditingMessageId(null);
+                                  setEditContent('');
+                                }
+                              }}
+                              className="flex-1 bg-white/5 border-white/10 text-white"
+                              autoFocus
+                            />
+                            <Button
+                              onClick={saveEdit}
+                              size="sm"
+                              className="bg-primary hover:bg-primary/80"
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setEditingMessageId(null);
+                                setEditContent('');
+                              }}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-gray-300 mt-1 break-words">
+                              {message.content}
+                            </p>
+                            {message.fileUrl && (
+                              <a
+                                href={message.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 mt-2 text-primary hover:text-primary/80"
+                              >
+                                <Paperclip className="h-4 w-4" />
+                                {message.fileName || 'Attachment'}
+                              </a>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                })
+              ) : (
+                directMessages.map((message) => {
+                  const isOwnMessage = message.senderId === user?.id;
+                  const messageUser = isOwnMessage ? user : selectedDMUser;
+                  
+                  return (
+                    <div key={message.id} className={cn(
+                      "group flex gap-3 px-2 py-2 rounded transition-all",
+                      isOwnMessage ? "flex-row-reverse" : "",
+                      "hover:bg-white/5"
+                    )}>
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        {messageUser?.profileImageUrl ? (
+                          <AvatarImage src={messageUser.profileImageUrl} />
+                        ) : (
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                            {getUserInitials(messageUser)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      
+                      <div className={cn(
+                        "max-w-[70%]",
+                        isOwnMessage && "text-right"
+                      )}>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs text-gray-500">
+                            {formatTime(message.createdAt)}
+                          </span>
+                        </div>
+                        
+                        <div className={cn(
+                          "mt-1 px-4 py-2 rounded-lg inline-block",
+                          isOwnMessage 
+                            ? "bg-primary/20 text-white" 
+                            : "bg-white/10 text-gray-300"
+                        )}>
+                          <p className="break-words">
+                            {message.content}
+                          </p>
+                          {message.fileUrl && (
+                            <a
+                              href={message.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 mt-2 text-primary hover:text-primary/80"
+                            >
+                              <Paperclip className="h-4 w-4" />
+                              {message.fileName || 'Attachment'}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div ref={messagesEndRef} />
+          </ScrollArea>
 
-            {/* Message Input */}
-            <div className="p-4 border-t border-cyan-400/30">
-              <div className="flex gap-2">
-                <Input
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                  placeholder={
-                    viewMode === 'channel' 
-                      ? `Message #${selectedChannel?.name || 'channel'}`
-                      : `Message ${selectedDMUser ? getUserDisplayName(selectedDMUser) : 'user'}`
+          {/* Message Input */}
+          <div className="p-4 border-t border-white/5">
+            <div className="flex gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-gray-400 hover:text-gray-300 transition-colors"
+                disabled={uploadingFile}
+                data-testid="attach-file"
+              >
+                <Paperclip className="h-5 w-5" />
+              </button>
+              
+              <Input
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
                   }
-                  className="flex-1 bg-black/40 border-cyan-400/30 text-cyan-400 placeholder:text-cyan-400/40 focus:border-cyan-400"
-                  data-testid="input-message"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!messageInput.trim() || (viewMode === 'channel' ? sendChannelMessageMutation.isPending : sendDirectMessageMutation.isPending)}
-                  className="bg-cyan-400 text-black hover:bg-cyan-300"
-                  data-testid="button-send-message"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
+                }}
+                placeholder={
+                  uploadingFile 
+                    ? "Uploading file..." 
+                    : viewMode === 'channel' && selectedChannel 
+                      ? `Message #${selectedChannel.name}` 
+                      : selectedDMUser 
+                        ? `Message ${getUserDisplayName(selectedDMUser)}`
+                        : "Select a channel or user"
+                }
+                disabled={uploadingFile || (!selectedChannel && !selectedDMUser)}
+                className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                data-testid="message-input"
+              />
+              
+              <Button
+                onClick={handleSendMessage}
+                disabled={(!messageInput.trim() && !uploadingFile) || (!selectedChannel && !selectedDMUser)}
+                className="bg-primary hover:bg-primary/80 transition-colors"
+                data-testid="send-button"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
           </div>
+        </div>
 
-          {/* Right Profile Panel */}
-          {showProfilePanel && (
-            <div className="w-80 bg-black/60 border-l border-cyan-400/30 flex flex-col" data-testid="profile-panel">
-              <ScrollArea className="flex-1 p-6">
-                {viewMode === 'channel' && selectedChannel ? (
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <div className="w-20 h-20 mx-auto rounded-full bg-cyan-400/20 flex items-center justify-center mb-4">
-                        <Hash className="w-10 h-10 text-cyan-400" />
-                      </div>
-                      <h3 className="text-xl font-bold text-cyan-400 mb-2">#{selectedChannel.name}</h3>
-                      {getChannelBadge(selectedChannel)}
+        {/* Right Sidebar - Active Users */}
+        <div className="w-64 bg-black/30 backdrop-blur-sm border-l border-white/5 flex flex-col">
+          <div className="p-4 border-b border-white/5">
+            <h3 className="text-white font-medium">Active Now</h3>
+          </div>
+          
+          <ScrollArea className="flex-1 p-3">
+            <div className="space-y-2">
+              {onlineUsers
+                .filter(u => u.onlineStatus === 'online')
+                .map(onlineUser => (
+                  <button
+                    key={onlineUser.id}
+                    onClick={() => {
+                      setSelectedDMUser(onlineUser);
+                      setViewMode('dm');
+                      setSelectedChannel(null);
+                    }}
+                    className="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-all text-left"
+                    data-testid={`online-user-${onlineUser.id}`}
+                  >
+                    <div className="relative">
+                      <Avatar className="h-8 w-8">
+                        {onlineUser.profileImageUrl ? (
+                          <AvatarImage src={onlineUser.profileImageUrl} />
+                        ) : (
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                            {getUserInitials(onlineUser)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current text-green-500" />
                     </div>
-                    
-                    <Separator className="bg-cyan-400/20" />
-                    
-                    <div>
-                      <h4 className="text-sm font-semibold text-cyan-400 mb-2">About</h4>
-                      <p className="text-sm text-cyan-400/60">
-                        {selectedChannel.description || 'No description available'}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white truncate">
+                        {getUserDisplayName(onlineUser)}
                       </p>
-                    </div>
-                  </div>
-                ) : viewMode === 'dm' && selectedDMUser ? (
-                  <div className="space-y-6">
-                    <div className="text-center">
-                      <div className="w-20 h-20 mx-auto rounded-full bg-cyan-400/20 flex items-center justify-center mb-4 text-2xl text-cyan-400">
-                        {selectedDMUser.firstName?.[0] || selectedDMUser.email[0].toUpperCase()}
-                      </div>
-                      <h3 className="text-xl font-bold text-cyan-400 mb-2">{getUserDisplayName(selectedDMUser)}</h3>
-                      <div className="flex items-center justify-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${getOnlineStatusColor(selectedDMUser.onlineStatus)}`} />
-                        <span className="text-sm text-cyan-400/60 capitalize">{selectedDMUser.onlineStatus || 'offline'}</span>
-                      </div>
-                    </div>
-                    
-                    <Separator className="bg-cyan-400/20" />
-                    
-                    <div>
-                      <h4 className="text-sm font-semibold text-cyan-400 mb-2">About</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-cyan-400/60">Email:</span>
-                          <span className="text-cyan-400">{selectedDMUser.email}</span>
-                        </div>
-                        {selectedDMUser.isAdmin && (
-                          <div className="flex justify-between">
-                            <span className="text-cyan-400/60">Role:</span>
-                            <Badge variant="outline" className="border-cyan-400/30 text-cyan-400">Admin</Badge>
-                          </div>
+                      <div className="flex items-center gap-1">
+                        {onlineUser.isAdmin && (
+                          <Badge className="px-1 py-0 text-[10px] bg-red-500/20 text-red-400">
+                            Admin
+                          </Badge>
+                        )}
+                        {onlineUser.isMultiStateLicensed && (
+                          <Badge className="px-1 py-0 text-[10px] bg-purple-500/20 text-purple-400">
+                            Multi
+                          </Badge>
+                        )}
+                        {onlineUser.hasFloridaLicense && !onlineUser.isMultiStateLicensed && (
+                          <Badge className="px-1 py-0 text-[10px] bg-amber-500/20 text-amber-400">
+                            FL
+                          </Badge>
                         )}
                       </div>
                     </div>
-                    
-                    <Separator className="bg-cyan-400/20" />
-                    
-                    <Button 
-                      className="w-full bg-cyan-400 text-black hover:bg-cyan-300"
-                      data-testid="button-view-profile"
-                    >
-                      View Full Profile
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center text-cyan-400/60 py-8">
-                    Select a channel or conversation to view details
-                  </div>
-                )}
-              </ScrollArea>
+                  </button>
+                ))
+              }
+              
+              {onlineUsers.filter(u => u.onlineStatus === 'online').length === 0 && (
+                <p className="text-gray-500 text-sm text-center py-4">
+                  No users online
+                </p>
+              )}
             </div>
-          )}
+
+            {/* Offline Users Section */}
+            <div className="mt-6">
+              <h4 className="text-xs text-gray-400 font-medium mb-2">OFFLINE</h4>
+              <div className="space-y-2">
+                {onlineUsers
+                  .filter(u => u.onlineStatus !== 'online')
+                  .map(offlineUser => (
+                    <button
+                      key={offlineUser.id}
+                      onClick={() => {
+                        setSelectedDMUser(offlineUser);
+                        setViewMode('dm');
+                        setSelectedChannel(null);
+                      }}
+                      className="w-full flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-all text-left opacity-60"
+                      data-testid={`offline-user-${offlineUser.id}`}
+                    >
+                      <div className="relative">
+                        <Avatar className="h-8 w-8">
+                          {offlineUser.profileImageUrl ? (
+                            <AvatarImage src={offlineUser.profileImageUrl} />
+                          ) : (
+                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                              {getUserInitials(offlineUser)}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <Circle className="absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-400 truncate">
+                          {getUserDisplayName(offlineUser)}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
+          </ScrollArea>
         </div>
       </div>
 
-      <FloatingConsultButton visible={true} />
       <HoverFooter />
+      <FloatingConsultButton />
     </div>
   );
 }

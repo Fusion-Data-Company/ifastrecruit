@@ -19,34 +19,28 @@ export async function seedDefaultChannels() {
 
     const defaultChannels: InsertChannel[] = [
       {
-        name: "all-ifast-recruiting",
-        type: "general",
-        description: "General announcements and company-wide updates for all iFast brokers"
-      },
-      {
         name: "non-licensed",
-        type: "non_licensed",
-        description: "Support and resources for candidates pursuing their insurance license"
+        tier: "NON_LICENSED",
+        description: "Support and resources for candidates pursuing their insurance license",
+        badgeIcon: "shield",
+        badgeColor: "blue",
+        isActive: true
       },
       {
-        name: "already-licensed",
-        type: "fl_licensed",
-        description: "Community for Florida-licensed insurance brokers"
+        name: "fl-licensed",
+        tier: "FL_LICENSED",
+        description: "Community for Florida-licensed insurance brokers",
+        badgeIcon: "star",
+        badgeColor: "gold",
+        isActive: true
       },
       {
-        name: "multi-state-license",
-        type: "multi_state",
-        description: "Advanced strategies and opportunities for multi-state licensed brokers"
-      },
-      {
-        name: "onboarding-doc",
-        type: "onboarding",
-        description: "Onboarding documentation and getting started resources"
-      },
-      {
-        name: "social",
-        type: "social",
-        description: "Off-topic conversations and team building"
+        name: "multi-state",
+        tier: "MULTI_STATE",
+        description: "Advanced strategies and opportunities for multi-state licensed brokers",
+        badgeIcon: "globe",
+        badgeColor: "purple",
+        isActive: true
       }
     ];
 
@@ -54,20 +48,20 @@ export async function seedDefaultChannels() {
     let existingCount = 0;
 
     for (const channelData of defaultChannels) {
-      // Check if channel already exists by type
+      // Check if channel already exists by tier
       const [existing] = await db
         .select()
         .from(channels)
-        .where(eq(channels.type, channelData.type))
+        .where(eq(channels.tier, channelData.tier))
         .limit(1);
 
       if (!existing) {
         await db.insert(channels).values(channelData);
         createdCount++;
-        console.log(`   ✓ Created channel: ${channelData.name} (${channelData.type})`);
+        console.log(`   ✓ Created channel: ${channelData.name} (${channelData.tier})`);
       } else {
         existingCount++;
-        console.log(`   - Channel already exists: ${existing.name} (${existing.type})`);
+        console.log(`   - Channel already exists: ${existing.name} (${existing.tier})`);
       }
     }
 
