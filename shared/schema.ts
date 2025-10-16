@@ -302,6 +302,10 @@ export const messages = pgTable("messages", {
   isAiGenerated: boolean("is_ai_generated").default(false),
   isEdited: boolean("is_edited").default(false),
   editedAt: timestamp("edited_at"),
+  // Threading fields
+  parentMessageId: varchar("parent_message_id").references(() => messages.id),
+  threadCount: integer("thread_count").default(0),
+  lastThreadReply: timestamp("last_thread_reply"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -317,6 +321,10 @@ export const directMessages = pgTable("direct_messages", {
   readAt: timestamp("read_at"),
   isEdited: boolean("is_edited").default(false),
   editedAt: timestamp("edited_at"),
+  // Threading fields
+  parentMessageId: varchar("parent_message_id").references(() => directMessages.id),
+  threadCount: integer("thread_count").default(0),
+  lastThreadReply: timestamp("last_thread_reply"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

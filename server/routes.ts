@@ -1592,6 +1592,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== THREAD ROUTES =====
+  
+  // GET /api/messenger/threads/:messageId - Get thread replies for a channel message
+  app.get("/api/messenger/threads/:messageId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { messageId } = req.params;
+      const replies = await storage.getThreadReplies(messageId);
+      
+      res.json(replies);
+    } catch (error) {
+      console.error("[Messenger Threads] Error fetching thread replies:", error);
+      res.status(500).json({ error: "Failed to fetch thread replies" });
+    }
+  });
+  
+  // POST /api/messenger/threads/reply - Post a reply to a channel thread
+  app.post("/api/messenger/threads/reply", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { parentMessageId, channelId, content, fileUrl, fileName } = req.body;
+      
+      if (!parentMessageId || !channelId || !content) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Create the thread reply
+      const reply = await storage.createThreadReply({
+        channelId,
+        userId,
+        content,
+        parentMessageId,
+        attachmentId: null,
+        messageType: 'text' as const
+      });
+      
+      // Emit WebSocket event for real-time thread update
+      messengerWS.broadcast({
+        type: 'thread_reply',
+        payload: {
+          reply,
+          parentMessageId,
+          channelId
+        }
+      });
+      
+      res.json(reply);
+    } catch (error) {
+      console.error("[Messenger Threads] Error creating thread reply:", error);
+      res.status(500).json({ error: "Failed to create thread reply" });
+    }
+  });
+  
+  // GET /api/messenger/dm/threads/:messageId - Get thread replies for a direct message
+  app.get("/api/messenger/dm/threads/:messageId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { messageId } = req.params;
+      const replies = await storage.getDirectThreadReplies(messageId);
+      
+      res.json(replies);
+    } catch (error) {
+      console.error("[Messenger DM Threads] Error fetching thread replies:", error);
+      res.status(500).json({ error: "Failed to fetch thread replies" });
+    }
+  });
+  
+  // POST /api/messenger/dm/threads/reply - Post a reply to a DM thread
+  app.post("/api/messenger/dm/threads/reply", isAuthenticated, async (req, res) => {
+    try {
+      const senderId = (req.user as any)?.id;
+      if (!senderId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { parentMessageId, receiverId, content, fileUrl, fileName } = req.body;
+      
+      if (!parentMessageId || !receiverId || !content) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Create the DM thread reply
+      const reply = await storage.createDirectThreadReply({
+        senderId,
+        receiverId,
+        content,
+        parentMessageId,
+        attachmentId: null,
+        messageType: 'text' as const,
+        isRead: false
+      });
+      
+      // Emit WebSocket event for real-time thread update
+      messengerWS.broadcast({
+        type: 'dm_thread_reply',
+        payload: {
+          reply,
+          parentMessageId,
+          senderId,
+          receiverId
+        }
+      });
+      
+      res.json(reply);
+    } catch (error) {
+      console.error("[Messenger DM Threads] Error creating thread reply:", error);
+      res.status(500).json({ error: "Failed to create thread reply" });
+    }
+  });
+
   // ===== FILE UPLOAD ROUTES =====
   
   // POST /api/messenger/upload - Handle file uploads with resume parsing

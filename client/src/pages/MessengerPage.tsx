@@ -32,7 +32,8 @@ import {
   Plus,
   Bot,
   Sparkles,
-  Lock
+  Lock,
+  X
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
@@ -69,6 +70,10 @@ interface Message {
   isEdited?: boolean;
   isAiGenerated?: boolean;
   reactions?: Array<{ emoji: string; userId: string }>;
+  // Threading fields
+  parentMessageId?: string | null;
+  threadCount?: number;
+  lastThreadReply?: string | null;
 }
 
 interface DirectMessage {
@@ -80,6 +85,10 @@ interface DirectMessage {
   createdAt: string;
   fileUrl?: string;
   fileName?: string;
+  // Threading fields
+  parentMessageId?: string | null;
+  threadCount?: number;
+  lastThreadReply?: string | null;
 }
 
 interface DMUser {
@@ -141,9 +150,15 @@ export default function MessengerPage() {
   const [userFiles, setUserFiles] = useState<any[]>([]);
   const [askJasonMode, setAskJasonMode] = useState(false);
   const [jasonLoading, setJasonLoading] = useState(false);
+  // Thread state
+  const [selectedThread, setSelectedThread] = useState<Message | DirectMessage | null>(null);
+  const [threadReplies, setThreadReplies] = useState<(Message | DirectMessage)[]>([]);
+  const [threadInput, setThreadInput] = useState('');
+  const [showThreadPanel, setShowThreadPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const threadEndRef = useRef<HTMLDivElement>(null);
 
   // Queries
   const { data: channels = [] } = useQuery<Channel[]>({
@@ -180,6 +195,19 @@ export default function MessengerPage() {
   const { data: userUploads = [] } = useQuery<any[]>({
     queryKey: ['/api/messenger/uploads'],
     enabled: !!user,
+  });
+
+  // Thread queries
+  const { data: threadRepliesData = [] } = useQuery<Message[] | DirectMessage[]>({
+    queryKey: selectedThread 
+      ? viewMode === 'channel' 
+        ? [`/api/messenger/threads/${selectedThread.id}`]
+        : [`/api/messenger/dm/threads/${selectedThread.id}`]
+      : [],
+    enabled: !!selectedThread,
+    onSuccess: (data) => {
+      setThreadReplies(data);
+    }
   });
 
   // WebSocket connection
@@ -264,6 +292,33 @@ export default function MessengerPage() {
           )
         );
       }
+      
+      // Thread events
+      if (data.type === 'thread_reply') {
+        // Refresh thread replies if thread is open
+        if (selectedThread?.id === data.payload.parentMessageId) {
+          queryClient.invalidateQueries({ 
+            queryKey: [`/api/messenger/threads/${data.payload.parentMessageId}`] 
+          });
+        }
+        // Update parent message thread count
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/channels/${data.payload.channelId}/messages`] 
+        });
+      }
+      
+      if (data.type === 'dm_thread_reply') {
+        // Refresh thread replies if thread is open
+        if (selectedThread?.id === data.payload.parentMessageId) {
+          queryClient.invalidateQueries({ 
+            queryKey: [`/api/messenger/dm/threads/${data.payload.parentMessageId}`] 
+          });
+        }
+        // Update DM conversations
+        queryClient.invalidateQueries({ 
+          queryKey: [`/api/messenger/dm/messages/${data.payload.senderId}`] 
+        });
+      }
     };
 
     websocket.onerror = (error) => {
@@ -279,7 +334,7 @@ export default function MessengerPage() {
     return () => {
       websocket.close();
     };
-  }, [user, selectedChannel, selectedDMUser, viewMode]);
+  }, [user, selectedChannel, selectedDMUser, viewMode, selectedThread]);
 
   // Auto-scroll to bottom for new messages
   useEffect(() => {
@@ -331,6 +386,50 @@ export default function MessengerPage() {
       if (selectedDMUser) {
         queryClient.invalidateQueries({ queryKey: [`/api/direct-messages/${selectedDMUser.id}`] });
         queryClient.invalidateQueries({ queryKey: ['/api/direct-messages/conversations'] });
+      }
+    }
+  });
+
+  // Thread reply mutations
+  const sendThreadReplyMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!selectedThread || !user) return;
+
+      const endpoint = viewMode === 'channel' 
+        ? '/api/messenger/threads/reply' 
+        : '/api/messenger/dm/threads/reply';
+
+      const payload = viewMode === 'channel' 
+        ? {
+            parentMessageId: selectedThread.id,
+            channelId: (selectedThread as Message).channelId,
+            content
+          }
+        : {
+            parentMessageId: selectedThread.id,
+            receiverId: selectedDMUser?.id,
+            content
+          };
+
+      return apiRequest(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    },
+    onSuccess: () => {
+      setThreadInput('');
+      // Refresh thread replies
+      if (selectedThread) {
+        const queryKey = viewMode === 'channel'
+          ? [`/api/messenger/threads/${selectedThread.id}`]
+          : [`/api/messenger/dm/threads/${selectedThread.id}`];
+        queryClient.invalidateQueries({ queryKey });
+      }
+      // Refresh main message list to update thread count
+      if (viewMode === 'channel' && selectedChannel) {
+        queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel.id}/messages`] });
+      } else if (viewMode === 'dm' && selectedDMUser) {
+        queryClient.invalidateQueries({ queryKey: [`/api/messenger/dm/messages/${selectedDMUser.id}`] });
       }
     }
   });
@@ -511,6 +610,37 @@ export default function MessengerPage() {
       editMessageMutation.mutate({ messageId: editingMessageId, content: editContent });
     }
   };
+
+  // Thread handling functions
+  const openThread = (message: Message | DirectMessage) => {
+    setSelectedThread(message);
+    setShowThreadPanel(true);
+    setThreadReplies([]);
+    
+    // Fetch thread replies
+    const endpoint = viewMode === 'channel'
+      ? `/api/messenger/threads/${message.id}`
+      : `/api/messenger/dm/threads/${message.id}`;
+    
+    queryClient.invalidateQueries({ queryKey: [endpoint] });
+  };
+
+  const closeThread = () => {
+    setSelectedThread(null);
+    setShowThreadPanel(false);
+    setThreadReplies([]);
+    setThreadInput('');
+  };
+
+  const handleSendThreadReply = () => {
+    if (!threadInput.trim() || !selectedThread) return;
+    sendThreadReplyMutation.mutate(threadInput);
+  };
+
+  // Auto-scroll to bottom for thread replies
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [threadReplies]);
 
   // Check user's channel access
   const getUserAccessibleChannels = () => {
@@ -1037,6 +1167,29 @@ export default function MessengerPage() {
                                 {message.fileName || 'Attachment'}
                               </a>
                             )}
+                            
+                            {/* Thread indicator */}
+                            {(message.threadCount > 0 || !message.parentMessageId) && (
+                              <button
+                                onClick={() => openThread(message)}
+                                className="inline-flex items-center gap-2 mt-2 text-blue-400 hover:text-blue-300 transition-colors text-sm"
+                                data-testid={`thread-indicator-${message.id}`}
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                                {message.threadCount > 0 ? (
+                                  <span>
+                                    {message.threadCount} {message.threadCount === 1 ? 'reply' : 'replies'}
+                                    {message.lastThreadReply && (
+                                      <span className="text-gray-500 ml-1">
+                                        • Last reply {formatTime(message.lastThreadReply)}
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span>Reply in thread</span>
+                                )}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -1180,11 +1333,126 @@ export default function MessengerPage() {
           </div>
         </div>
 
-        {/* Right Sidebar - Active Users */}
-        <div className="w-64 bg-black/30 backdrop-blur-sm border-l border-white/5 flex flex-col">
-          <div className="p-4 border-b border-white/5">
-            <h3 className="text-white font-medium">Active Now</h3>
-          </div>
+        {/* Right Sidebar - Thread Panel or Active Users */}
+        <div className="w-96 bg-black/30 backdrop-blur-sm border-l border-white/5 flex flex-col">
+          {showThreadPanel && selectedThread ? (
+            <>
+              {/* Thread Panel */}
+              <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-white font-medium">Thread</h3>
+                <Button
+                  onClick={closeThread}
+                  size="sm"
+                  variant="ghost"
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <ScrollArea className="flex-1 p-4">
+                {/* Original Message */}
+                <div className="bg-white/5 rounded-lg p-4 mb-4 border-l-4 border-primary">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Avatar className="h-8 w-8">
+                      {(selectedThread as any).sender?.profileImageUrl ? (
+                        <AvatarImage src={(selectedThread as any).sender.profileImageUrl} />
+                      ) : (
+                        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
+                          {getUserInitials((selectedThread as any).sender)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div>
+                      <span className="text-white text-sm font-medium">
+                        {getUserDisplayName((selectedThread as any).sender)}
+                      </span>
+                      <span className="text-gray-500 text-xs ml-2">
+                        {formatTime(selectedThread.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-gray-300 text-sm break-words">
+                    {selectedThread.content}
+                  </p>
+                </div>
+                
+                {/* Thread Replies */}
+                <div className="space-y-3">
+                  <div className="text-xs text-gray-500 mb-2">
+                    {threadRepliesData.length} {threadRepliesData.length === 1 ? 'reply' : 'replies'}
+                  </div>
+                  
+                  {threadRepliesData.map((reply: any) => {
+                    const isOwnReply = reply.userId === user?.id || reply.senderId === user?.id;
+                    const replySender = viewMode === 'channel' ? reply.sender : (isOwnReply ? user : selectedDMUser);
+                    
+                    return (
+                      <div key={reply.id} className="group flex gap-3 hover:bg-white/5 px-2 py-2 rounded transition-all">
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                          {replySender?.profileImageUrl ? (
+                            <AvatarImage src={replySender.profileImageUrl} />
+                          ) : (
+                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-xs">
+                              {getUserInitials(replySender)}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-white text-sm font-medium">
+                              {getUserDisplayName(replySender)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {formatTime(reply.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-gray-300 text-sm mt-1 break-words">
+                            {reply.content}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div ref={threadEndRef} />
+              </ScrollArea>
+              
+              {/* Thread Reply Input */}
+              <div className="p-4 border-t border-white/5">
+                <div className="flex gap-2">
+                  <Input
+                    value={threadInput}
+                    onChange={(e) => setThreadInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendThreadReply();
+                      }
+                    }}
+                    placeholder="Reply in thread..."
+                    className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-gray-500"
+                    data-testid="thread-reply-input"
+                  />
+                  <Button
+                    onClick={handleSendThreadReply}
+                    disabled={!threadInput.trim()}
+                    className="bg-primary hover:bg-primary/80"
+                    data-testid="send-thread-reply-button"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Original Active Users Panel */}
+              <div className="p-4 border-b border-white/5">
+                <h3 className="text-white font-medium">Active Now</h3>
+              </div>
           
           <ScrollArea className="flex-1 p-3">
             <div className="space-y-2">
@@ -1286,6 +1554,8 @@ export default function MessengerPage() {
               </div>
             </div>
           </ScrollArea>
+            </>
+          )}
         </div>
       </div>
 

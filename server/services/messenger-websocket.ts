@@ -16,7 +16,7 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'online_status' | 'read_receipt' | 'join_channel';
+  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'online_status' | 'read_receipt' | 'join_channel' | 'thread_reply' | 'thread_typing';
   payload: any;
 }
 
@@ -148,6 +148,14 @@ export class MessengerWebSocketService {
       
       case 'join_channel':
         await this.handleJoinChannel(ws, message.payload);
+        break;
+        
+      case 'thread_reply':
+        await this.handleThreadReply(ws, message.payload);
+        break;
+        
+      case 'thread_typing':
+        await this.handleThreadTyping(ws, message.payload);
         break;
       
       default:
@@ -358,6 +366,147 @@ export class MessengerWebSocketService {
       }));
     } catch (error) {
       console.error('[Messenger WS] Error joining channel:', error);
+    }
+  }
+
+  private async handleThreadReply(ws: AuthenticatedWebSocket, payload: { 
+    parentMessageId: string;
+    content: string;
+    isDirectMessage?: boolean;
+    fileUrl?: string;
+    fileName?: string;
+  }) {
+    if (!ws.isAuthenticated || !ws.userId) return;
+
+    try {
+      let threadReply;
+      let notificationTargets: string[] = [];
+
+      if (payload.isDirectMessage) {
+        // Handle DM thread reply
+        const parentDM = await storage.getDirectMessageById(payload.parentMessageId);
+        if (!parentDM) {
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            payload: { message: 'Parent message not found' } 
+          }));
+          return;
+        }
+
+        const reply = await storage.sendDM(
+          ws.userId,
+          parentDM.senderId === ws.userId ? parentDM.receiverId : parentDM.senderId,
+          payload.content,
+          payload.fileUrl,
+          payload.fileName,
+          payload.parentMessageId
+        );
+
+        threadReply = reply;
+        notificationTargets = [parentDM.senderId, parentDM.receiverId];
+      } else {
+        // Handle channel thread reply
+        const parentMessage = await storage.getMessageById(payload.parentMessageId);
+        if (!parentMessage) {
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            payload: { message: 'Parent message not found' } 
+          }));
+          return;
+        }
+
+        const hasAccess = await storage.userHasChannelAccess(ws.userId, parentMessage.channelId);
+        if (!hasAccess) {
+          ws.send(JSON.stringify({ 
+            type: 'error', 
+            payload: { message: 'No access to this channel' } 
+          }));
+          return;
+        }
+
+        const reply = await storage.createMessage({
+          channelId: parentMessage.channelId,
+          userId: ws.userId,
+          content: payload.content,
+          parentMessageId: payload.parentMessageId,
+          fileUrl: payload.fileUrl,
+          fileName: payload.fileName
+        });
+
+        threadReply = reply;
+        
+        // Notify all channel members
+        const channelMembers = await storage.getChannelMembers(parentMessage.channelId);
+        notificationTargets = channelMembers.map(m => m.userId);
+      }
+
+      // Broadcast thread reply to relevant users
+      notificationTargets.forEach(userId => {
+        this.sendToUser(userId, {
+          type: 'thread_reply_created',
+          payload: {
+            reply: threadReply,
+            parentMessageId: payload.parentMessageId,
+            isDirectMessage: payload.isDirectMessage
+          }
+        });
+      });
+
+      // Also broadcast thread count update
+      notificationTargets.forEach(userId => {
+        this.sendToUser(userId, {
+          type: 'thread_count_updated',
+          payload: {
+            messageId: payload.parentMessageId,
+            isDirectMessage: payload.isDirectMessage
+          }
+        });
+      });
+
+      console.log(`[Messenger WS] Thread reply created for message ${payload.parentMessageId}`);
+    } catch (error) {
+      console.error('[Messenger WS] Error creating thread reply:', error);
+      ws.send(JSON.stringify({ 
+        type: 'error', 
+        payload: { message: 'Failed to create thread reply' } 
+      }));
+    }
+  }
+
+  private async handleThreadTyping(ws: AuthenticatedWebSocket, payload: { 
+    parentMessageId: string;
+    isDirectMessage?: boolean;
+  }) {
+    if (!ws.isAuthenticated || !ws.userId) return;
+
+    try {
+      let notificationTargets: string[] = [];
+
+      if (payload.isDirectMessage) {
+        const parentDM = await storage.getDirectMessageById(payload.parentMessageId);
+        if (!parentDM) return;
+        notificationTargets = [parentDM.senderId, parentDM.receiverId].filter(id => id !== ws.userId);
+      } else {
+        const parentMessage = await storage.getMessageById(payload.parentMessageId);
+        if (!parentMessage) return;
+        
+        const channelMembers = await storage.getChannelMembers(parentMessage.channelId);
+        notificationTargets = channelMembers.map(m => m.userId).filter(id => id !== ws.userId);
+      }
+
+      // Broadcast thread typing indicator
+      notificationTargets.forEach(userId => {
+        this.sendToUser(userId, {
+          type: 'thread_typing',
+          payload: {
+            userId: ws.userId,
+            parentMessageId: payload.parentMessageId,
+            isDirectMessage: payload.isDirectMessage
+          }
+        });
+      });
+    } catch (error) {
+      console.error('[Messenger WS] Error handling thread typing:', error);
     }
   }
 

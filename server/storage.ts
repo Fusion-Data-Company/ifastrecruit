@@ -183,11 +183,21 @@ export interface IStorage {
   getChannelMessages(channelId: string, limit?: number): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
   
+  // Thread methods for channel messages
+  getThreadReplies(messageId: string): Promise<Message[]>;
+  createThreadReply(reply: InsertMessage): Promise<Message>;
+  updateThreadCount(parentMessageId: string): Promise<void>;
+  
   // Direct message methods
   getDirectMessages(userId: string, otherUserId: string): Promise<DirectMessage[]>;
   getUserConversations(userId: string): Promise<{userId: string, lastMessage: DirectMessage}[]>;
   createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage>;
   markDirectMessagesAsRead(userId: string, senderId: string): Promise<void>;
+  
+  // Thread methods for direct messages
+  getDirectThreadReplies(messageId: string): Promise<DirectMessage[]>;
+  createDirectThreadReply(reply: InsertDirectMessage): Promise<DirectMessage>;
+  updateDirectThreadCount(parentMessageId: string): Promise<void>;
   
   // File upload methods
   getUserFiles(userId: string): Promise<FileUpload[]>;
@@ -916,7 +926,57 @@ export class DatabaseStorage implements IStorage {
 
   async createMessage(message: InsertMessage): Promise<Message> {
     const [created] = await db.insert(messages).values(message).returning();
+    
+    // Update thread count if this is a reply
+    if (message.parentMessageId) {
+      await this.updateThreadCount(message.parentMessageId);
+    }
+    
     return created;
+  }
+  
+  // Thread methods for channel messages
+  async getThreadReplies(messageId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.parentMessageId, messageId))
+      .orderBy(messages.createdAt);
+  }
+  
+  async createThreadReply(reply: InsertMessage): Promise<Message> {
+    // Ensure parentMessageId is set
+    if (!reply.parentMessageId) {
+      throw new Error('parentMessageId is required for thread replies');
+    }
+    return this.createMessage(reply);
+  }
+  
+  async updateThreadCount(parentMessageId: string): Promise<void> {
+    // Get the count of replies
+    const [result] = await db
+      .select({ count: count() })
+      .from(messages)
+      .where(eq(messages.parentMessageId, parentMessageId));
+    
+    const replyCount = result?.count || 0;
+    
+    // Get the latest reply timestamp
+    const [latestReply] = await db
+      .select({ createdAt: messages.createdAt })
+      .from(messages)
+      .where(eq(messages.parentMessageId, parentMessageId))
+      .orderBy(desc(messages.createdAt))
+      .limit(1);
+    
+    // Update the parent message
+    await db
+      .update(messages)
+      .set({
+        threadCount: replyCount,
+        lastThreadReply: latestReply?.createdAt || null
+      })
+      .where(eq(messages.id, parentMessageId));
   }
 
   // Direct message methods
@@ -1028,7 +1088,57 @@ export class DatabaseStorage implements IStorage {
 
   async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
     const [created] = await db.insert(directMessages).values(message).returning();
+    
+    // Update thread count if this is a reply
+    if (message.parentMessageId) {
+      await this.updateDirectThreadCount(message.parentMessageId);
+    }
+    
     return created;
+  }
+  
+  // Thread methods for direct messages
+  async getDirectThreadReplies(messageId: string): Promise<DirectMessage[]> {
+    return await db
+      .select()
+      .from(directMessages)
+      .where(eq(directMessages.parentMessageId, messageId))
+      .orderBy(directMessages.createdAt);
+  }
+  
+  async createDirectThreadReply(reply: InsertDirectMessage): Promise<DirectMessage> {
+    // Ensure parentMessageId is set
+    if (!reply.parentMessageId) {
+      throw new Error('parentMessageId is required for thread replies');
+    }
+    return this.createDirectMessage(reply);
+  }
+  
+  async updateDirectThreadCount(parentMessageId: string): Promise<void> {
+    // Get the count of replies
+    const [result] = await db
+      .select({ count: count() })
+      .from(directMessages)
+      .where(eq(directMessages.parentMessageId, parentMessageId));
+    
+    const replyCount = result?.count || 0;
+    
+    // Get the latest reply timestamp
+    const [latestReply] = await db
+      .select({ createdAt: directMessages.createdAt })
+      .from(directMessages)
+      .where(eq(directMessages.parentMessageId, parentMessageId))
+      .orderBy(desc(directMessages.createdAt))
+      .limit(1);
+    
+    // Update the parent message
+    await db
+      .update(directMessages)
+      .set({
+        threadCount: replyCount,
+        lastThreadReply: latestReply?.createdAt || null
+      })
+      .where(eq(directMessages.id, parentMessageId));
   }
 
   async markDirectMessagesAsRead(userId: string, senderId: string): Promise<void> {
