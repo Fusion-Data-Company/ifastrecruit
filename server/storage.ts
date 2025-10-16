@@ -248,10 +248,22 @@ export interface IStorage {
   // File upload methods
   getUserFiles(userId: string): Promise<FileUpload[]>;
   createFileUpload(upload: InsertFileUpload): Promise<FileUpload>;
-  saveFileUpload(userId: string, fileName: string, fileType: string, fileUrl: string, fileSize: number, isResume: boolean): Promise<FileUpload>;
+  saveFileUpload(
+    userId: string, 
+    fileName: string, 
+    fileType: string, 
+    fileUrl: string, 
+    fileSize: number, 
+    isResume: boolean,
+    mimeType?: string,
+    metadata?: any,
+    linkedToMessageId?: string,
+    thumbnailUrl?: string
+  ): Promise<FileUpload>;
   updateParsedData(fileId: string, parsedData: any, status: 'parsed' | 'failed'): Promise<FileUpload>;
   getFileUpload(fileId: string): Promise<FileUpload | undefined>;
   getUserUploads(userId: string): Promise<FileUpload[]>;
+  getFilesByMessageId(messageId: string): Promise<FileUpload[]>;
   
   // Onboarding methods
   getOnboardingResponse(userId: string): Promise<OnboardingResponse | undefined>;
@@ -1498,7 +1510,18 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async saveFileUpload(userId: string, fileName: string, fileType: string, fileUrl: string, fileSize: number, isResume: boolean): Promise<FileUpload> {
+  async saveFileUpload(
+    userId: string, 
+    fileName: string, 
+    fileType: string, 
+    fileUrl: string, 
+    fileSize: number, 
+    isResume: boolean,
+    mimeType?: string,
+    metadata?: any,
+    linkedToMessageId?: string,
+    thumbnailUrl?: string
+  ): Promise<FileUpload> {
     return await this.createFileUpload({
       userId,
       fileName,
@@ -1506,7 +1529,11 @@ export class DatabaseStorage implements IStorage {
       fileUrl,
       fileSize,
       isResume,
-      parseStatus: isResume ? 'pending' : undefined
+      parseStatus: isResume ? 'pending' : undefined,
+      mimeType,
+      metadata,
+      linkedToMessageId,
+      thumbnailUrl
     });
   }
 
@@ -1531,6 +1558,14 @@ export class DatabaseStorage implements IStorage {
 
   async getUserUploads(userId: string): Promise<FileUpload[]> {
     return await this.getUserFiles(userId);
+  }
+
+  async getFilesByMessageId(messageId: string): Promise<FileUpload[]> {
+    return await db
+      .select()
+      .from(fileUploads)
+      .where(eq(fileUploads.linkedToMessageId, messageId))
+      .orderBy(desc(fileUploads.uploadedAt));
   }
 
   // Onboarding methods

@@ -21,7 +21,12 @@ import {
   Paperclip,
   Hash,
   AtSign,
-  X
+  X,
+  Upload,
+  FileImage,
+  FileText,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -72,6 +77,16 @@ const HOTKEYS: Record<string, string> = {
   'mod+shift+9': 'quote',
 };
 
+interface FileUpload {
+  id: string;
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'success' | 'error';
+  url?: string;
+  thumbnailUrl?: string;
+  error?: string;
+}
+
 interface RichTextEditorProps {
   value: string;
   formattedValue?: string;
@@ -86,6 +101,12 @@ interface RichTextEditorProps {
   onAttachmentClick?: () => void;
   showEmoji?: boolean;
   onEmojiClick?: () => void;
+  onFilesSelected?: (files: File[]) => void;
+  uploadProgress?: { [key: string]: number };
+  attachedFiles?: FileUpload[];
+  onRemoveFile?: (fileId: string) => void;
+  maxFileSize?: number;
+  acceptedFileTypes?: string[];
 }
 
 export function RichTextEditor({
@@ -101,7 +122,13 @@ export function RichTextEditor({
   showAttachment = true,
   onAttachmentClick,
   showEmoji = true,
-  onEmojiClick
+  onEmojiClick,
+  onFilesSelected,
+  uploadProgress = {},
+  attachedFiles = [],
+  onRemoveFile,
+  maxFileSize = 50 * 1024 * 1024, // 50MB default
+  acceptedFileTypes = ['image/*', 'video/*', 'audio/*', 'application/pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.zip', '.rar']
 }: RichTextEditorProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -109,14 +136,83 @@ export function RichTextEditor({
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionTarget, setMentionTarget] = useState<Range | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize editor with plugins
   const editor = useMemo(
     () => withMentions(withHistory(withReact(createEditor()))),
     []
   );
+
+  // File handling functions
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || !onFilesSelected) return;
+
+    const validFiles = Array.from(files).filter(file => {
+      if (file.size > maxFileSize) {
+        console.error(`File ${file.name} exceeds maximum size of ${maxFileSize} bytes`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length > 0) {
+      onFilesSelected(validFiles);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => prev + 1);
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => prev - 1);
+    if (dragCounter - 1 === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    setDragCounter(0);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  const handleAttachmentClick = () => {
+    if (onAttachmentClick) {
+      onAttachmentClick();
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
 
   // Initialize editor value
   const initialValue: Descendant[] = useMemo(() => {
@@ -344,7 +440,100 @@ export function RichTextEditor({
   );
 
   return (
-    <div className={cn("relative", className)}>
+    <div 
+      className={cn("relative", className)}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={acceptedFileTypes.join(',')}
+        onChange={(e) => handleFileSelect(e.target.files)}
+        className="hidden"
+      />
+
+      {/* Drag & Drop Overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm border-2 border-dashed border-primary rounded-md flex items-center justify-center">
+          <div className="text-center">
+            <Upload className="h-12 w-12 mx-auto mb-2 text-primary animate-pulse" />
+            <p className="text-lg font-semibold">Drop files here</p>
+            <p className="text-sm text-muted-foreground">Release to upload</p>
+          </div>
+        </div>
+      )}
+
+      {/* File Previews */}
+      {attachedFiles.length > 0 && (
+        <div className="p-3 border-b bg-muted/30">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Attached Files ({attachedFiles.length})</span>
+            {onRemoveFile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => attachedFiles.forEach(f => onRemoveFile(f.id))}
+              >
+                Clear all
+              </Button>
+            )}
+          </div>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {attachedFiles.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center gap-2 p-2 bg-background/50 rounded-md"
+              >
+                {file.file.type.startsWith('image/') ? (
+                  <FileImage className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                ) : (
+                  <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{file.file.name}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {formatFileSize(file.file.size)}
+                    </span>
+                    {file.status === 'uploading' && (
+                      <div className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span className="text-xs">{uploadProgress[file.id] || 0}%</span>
+                      </div>
+                    )}
+                    {file.status === 'success' && (
+                      <span className="text-xs text-green-600">✓ Uploaded</span>
+                    )}
+                    {file.status === 'error' && (
+                      <span className="text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {file.error || 'Failed'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {onRemoveFile && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => onRemoveFile(file.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <Slate editor={editor} initialValue={initialValue} onChange={handleChange}>
         {/* Formatting Toolbar */}
         <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
@@ -514,7 +703,7 @@ export function RichTextEditor({
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2"
-                onClick={onAttachmentClick}
+                onClick={handleAttachmentClick}
                 disabled={disabled}
               >
                 <Paperclip className="h-4 w-4" />

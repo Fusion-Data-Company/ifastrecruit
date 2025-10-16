@@ -381,6 +381,11 @@ export const fileUploads = pgTable("file_uploads", {
   fileSize: integer("file_size"),
   thumbnailUrl: text("thumbnail_url"),
   
+  // Extended file metadata
+  mimeType: varchar("mime_type", { length: 255 }),
+  metadata: jsonb("metadata"), // dimensions, pages, duration, etc.
+  linkedToMessageId: varchar("linked_to_message_id"), // links file to a message
+  
   // Resume parsing fields
   isResume: boolean("is_resume").default(false),
   parseStatus: fileStatusEnum("parse_status").default("pending"),

@@ -18,12 +18,33 @@ import { Button } from '@/components/ui/button';
 import { ExternalLink, ChevronUp, ChevronDown, Globe } from 'lucide-react';
 import { Node } from 'slate';
 import { LinkPreview } from './LinkPreview';
+import FilePreview from './FilePreview';
+
+interface FileAttachment {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  thumbnailUrl?: string;
+  fileSize?: number;
+  mimeType?: string;
+  metadata?: any;
+  uploadedAt?: string;
+  uploadedBy?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+  };
+}
 
 interface MessageRendererProps {
   content: string;
   formattedContent?: string | null;
   className?: string;
   showLinkPreviews?: boolean;
+  attachments?: FileAttachment[];
+  onFileDownload?: (fileId: string) => void;
 }
 
 
@@ -31,7 +52,9 @@ export function MessageRenderer({
   content,
   formattedContent,
   className,
-  showLinkPreviews = true
+  showLinkPreviews = true,
+  attachments = [],
+  onFileDownload
 }: MessageRendererProps) {
   const [linkPreviews, setLinkPreviews] = useState<LinkPreview[]>([]);
   const [expandedPreviews, setExpandedPreviews] = useState<Set<string>>(new Set());
@@ -199,6 +222,22 @@ export function MessageRenderer({
   return (
     <div>
       {renderedContent}
+      
+      {/* File Attachments */}
+      {attachments.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {attachments.map((file) => (
+            <FilePreview
+              key={file.id}
+              file={file}
+              inline={true}
+              showFullPreview={true}
+              onDownload={onFileDownload ? () => onFileDownload(file.id) : undefined}
+              maxHeight="400px"
+            />
+          ))}
+        </div>
+      )}
       
       {/* Link Previews */}
       {linkPreviews.length > 0 && (

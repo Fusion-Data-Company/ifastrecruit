@@ -2038,10 +2038,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== FILE UPLOAD ROUTES =====
   
-  // POST /api/messenger/upload - Handle file uploads with resume parsing
+  // POST /api/messenger/upload - Handle file uploads with enhanced metadata
   app.post("/api/messenger/upload", isAuthenticated, uploadRateLimit, upload.single('file'), async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
+      const { messageId } = req.body; // Optional message ID to link file to
+      
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2053,9 +2055,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const file = req.file;
       const ext = path.extname(file.originalname).toLowerCase();
       const isResume = ['.pdf', '.doc', '.docx'].includes(ext);
+      const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext);
       
       // Generate public URL for the file
       const fileUrl = `/uploads/${file.filename}`;
+      let thumbnailUrl = null;
+      let metadata: any = {};
+      
+      // Generate thumbnail for images
+      if (isImage) {
+        try {
+          // For simplicity, we'll use the same URL for now
+          // In production, you'd use a library like sharp to generate thumbnails
+          thumbnailUrl = fileUrl; // TODO: Generate actual thumbnail
+          
+          // Extract image dimensions (would use sharp or similar in production)
+          metadata.dimensions = { width: 0, height: 0 }; // Placeholder
+        } catch (error) {
+          console.error('[File Upload] Thumbnail generation failed:', error);
+        }
+      }
+      
+      // Extract metadata based on file type
+      if (file.mimetype === 'application/pdf') {
+        metadata.pages = 1; // TODO: Extract actual page count
+      }
       
       // Save file metadata to database
       const fileUpload = await storage.saveFileUpload(
@@ -2064,7 +2088,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         file.mimetype,
         fileUrl,
         file.size,
-        isResume
+        isResume,
+        file.mimetype,
+        metadata,
+        messageId,
+        thumbnailUrl
       );
 
       // If it's a resume, parse it asynchronously
@@ -2152,6 +2180,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/messenger/files/:fileId - Serve uploaded file
+  app.get("/api/messenger/files/:fileId", async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      
+      const file = await storage.getFileUpload(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Set appropriate headers
+      res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${file.fileName}"`);
+      
+      // Serve the file from the uploads directory
+      const filePath = path.join(process.cwd(), file.fileUrl);
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error('[File Serving] Error:', error);
+      res.status(500).json({ error: "Failed to serve file" });
+    }
+  });
+  
+  // GET /api/messenger/files/:fileId/thumbnail - Serve file thumbnail
+  app.get("/api/messenger/files/:fileId/thumbnail", async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      
+      const file = await storage.getFileUpload(fileId);
+      if (!file || !file.thumbnailUrl) {
+        return res.status(404).json({ error: "Thumbnail not found" });
+      }
+      
+      // Set appropriate headers for thumbnail
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+      
+      // Serve the thumbnail
+      const thumbnailPath = path.join(process.cwd(), file.thumbnailUrl);
+      res.sendFile(thumbnailPath);
+    } catch (error) {
+      console.error('[Thumbnail Serving] Error:', error);
+      res.status(500).json({ error: "Failed to serve thumbnail" });
+    }
+  });
+  
   // Static route to serve uploaded files
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
