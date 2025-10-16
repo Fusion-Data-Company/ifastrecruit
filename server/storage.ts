@@ -78,6 +78,12 @@ export interface IStorage {
   updateUser(id: string, updates: Partial<User>): Promise<User>;
   updateUserProfile(id: string, updates: { email?: string; phone?: string }): Promise<User>;
   setUserAdmin(id: string, isAdmin: boolean): Promise<User>;
+  searchUsers(query: string, currentUserId: string, isAdmin: boolean, limit?: number): Promise<User[]>;
+  searchChannelMembers(channelId: string, query: string, limit?: number): Promise<User[]>;
+  getDMUsers(currentUserId: string, isAdmin: boolean): Promise<User[]>;
+  getUnreadCounts(userId: string): Promise<{ [senderId: string]: number }>;
+  getDMMessages(userId: string, otherUserId: string): Promise<DirectMessage[]>;
+  markDMAsRead(userId: string, senderId: string): Promise<void>;
 
   // Campaign methods
   getCampaigns(): Promise<Campaign[]>;
@@ -305,6 +311,123 @@ export class DatabaseStorage implements IStorage {
 
   async setUserAdmin(id: string, isAdmin: boolean): Promise<User> {
     return await this.updateUser(id, { isAdmin });
+  }
+
+  async searchUsers(query: string, currentUserId: string, isAdmin: boolean, limit: number = 10): Promise<User[]> {
+    // Build search query - search by first name, last name, or email
+    const searchPattern = `%${query}%`;
+    
+    // Build the base query
+    let results = await db.select()
+      .from(users)
+      .where(
+        and(
+          sql`${users.id} != ${currentUserId}`, // Exclude current user
+          sql`(
+            LOWER(${users.firstName}) LIKE LOWER(${searchPattern}) OR
+            LOWER(${users.lastName}) LIKE LOWER(${searchPattern}) OR
+            LOWER(${users.email}) LIKE LOWER(${searchPattern}) OR
+            LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE LOWER(${searchPattern})
+          )`
+        )
+      )
+      .limit(limit);
+    
+    // Filter based on permissions: regular users only see admins
+    if (!isAdmin) {
+      results = results.filter(u => u.isAdmin);
+    }
+    
+    return results;
+  }
+
+  async searchChannelMembers(channelId: string, query: string, limit: number = 10): Promise<User[]> {
+    const searchPattern = `%${query}%`;
+    
+    // Get channel members that match the search query
+    const results = await db.select({
+      user: users
+    })
+    .from(userChannels)
+    .innerJoin(users, eq(users.id, userChannels.userId))
+    .where(
+      and(
+        eq(userChannels.channelId, channelId),
+        eq(userChannels.canAccess, true),
+        sql`(
+          LOWER(${users.firstName}) LIKE LOWER(${searchPattern}) OR
+          LOWER(${users.lastName}) LIKE LOWER(${searchPattern}) OR
+          LOWER(${users.email}) LIKE LOWER(${searchPattern}) OR
+          LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE LOWER(${searchPattern})
+        )`
+      )
+    )
+    .limit(limit);
+    
+    return results.map(r => r.user);
+  }
+
+  async getDMUsers(currentUserId: string, isAdmin: boolean): Promise<User[]> {
+    // Get all users except the current user
+    let results = await db.select()
+      .from(users)
+      .where(sql`${users.id} != ${currentUserId}`);
+    
+    // Filter based on permissions: regular users only see admins
+    if (!isAdmin) {
+      results = results.filter(u => u.isAdmin);
+    }
+    
+    return results;
+  }
+
+  async getUnreadCounts(userId: string): Promise<{ [senderId: string]: number }> {
+    // Get count of unread messages grouped by sender
+    const results = await db.select({
+      senderId: directMessages.senderId,
+      count: count()
+    })
+    .from(directMessages)
+    .where(
+      and(
+        eq(directMessages.receiverId, userId),
+        eq(directMessages.isRead, false)
+      )
+    )
+    .groupBy(directMessages.senderId);
+    
+    // Convert to map
+    const counts: { [senderId: string]: number } = {};
+    results.forEach(r => {
+      counts[r.senderId] = r.count;
+    });
+    
+    return counts;
+  }
+
+  async getDMMessages(userId: string, otherUserId: string): Promise<DirectMessage[]> {
+    return await db.select()
+      .from(directMessages)
+      .where(
+        sql`(${directMessages.senderId} = ${userId} AND ${directMessages.receiverId} = ${otherUserId}) OR
+            (${directMessages.senderId} = ${otherUserId} AND ${directMessages.receiverId} = ${userId})`
+      )
+      .orderBy(desc(directMessages.createdAt));
+  }
+
+  async markDMAsRead(userId: string, senderId: string): Promise<void> {
+    await db.update(directMessages)
+      .set({ 
+        isRead: true,
+        readAt: new Date()
+      })
+      .where(
+        and(
+          eq(directMessages.receiverId, userId),
+          eq(directMessages.senderId, senderId),
+          eq(directMessages.isRead, false)
+        )
+      );
   }
 
   async getCampaigns(): Promise<Campaign[]> {
@@ -937,8 +1060,67 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
+  // Helper function to extract mentioned user IDs from message content
+  private async extractMentionedUserIds(content: string, channelId?: string): Promise<string[]> {
+    const mentionedUserIds: string[] = [];
+    
+    // Regular expression to match @mentions
+    // Matches @FirstName, @FirstName_LastName, or @email
+    const mentionRegex = /@([a-zA-Z0-9._-]+)/g;
+    const matches = content.matchAll(mentionRegex);
+    
+    for (const match of matches) {
+      const mentionText = match[1].toLowerCase();
+      
+      // Handle special mentions
+      if (mentionText === 'everyone' || mentionText === 'channel') {
+        if (channelId) {
+          // Get all channel members
+          const channelMembers = await this.getChannelMembers(channelId);
+          const memberIds = channelMembers.map(m => m.userId);
+          mentionedUserIds.push(...memberIds);
+        }
+        continue;
+      }
+      
+      // Search for user by mention text
+      // Try to match by firstName_lastName pattern or email
+      const searchPattern = mentionText.replace('_', ' ');
+      
+      const users = await db.select()
+        .from(users)
+        .where(
+          sql`(
+            LOWER(${users.firstName}) = LOWER(${searchPattern}) OR
+            LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) = LOWER(${searchPattern}) OR
+            LOWER(REPLACE(CONCAT(${users.firstName}, '_', ${users.lastName}), ' ', '_')) = LOWER(${mentionText}) OR
+            LOWER(SPLIT_PART(${users.email}, '@', 1)) = LOWER(${mentionText})
+          )`
+        )
+        .limit(1);
+      
+      if (users.length > 0) {
+        mentionedUserIds.push(users[0].id);
+      }
+    }
+    
+    // Remove duplicates
+    return [...new Set(mentionedUserIds)];
+  }
+
   async createMessage(message: InsertMessage): Promise<Message> {
-    const [created] = await db.insert(messages).values(message).returning();
+    // Extract mentioned user IDs from content
+    const mentionedUserIds = message.content 
+      ? await this.extractMentionedUserIds(message.content, message.channelId)
+      : [];
+    
+    // Create message with mentioned user IDs
+    const messageWithMentions = {
+      ...message,
+      mentionedUserIds
+    };
+    
+    const [created] = await db.insert(messages).values(messageWithMentions).returning();
     
     // Update thread count if this is a reply
     if (message.parentMessageId) {
@@ -1100,7 +1282,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDirectMessage(message: InsertDirectMessage): Promise<DirectMessage> {
-    const [created] = await db.insert(directMessages).values(message).returning();
+    // Extract mentioned user IDs from content
+    const mentionedUserIds = message.content 
+      ? await this.extractMentionedUserIds(message.content)
+      : [];
+    
+    // Create message with mentioned user IDs
+    const messageWithMentions = {
+      ...message,
+      mentionedUserIds
+    };
+    
+    const [created] = await db.insert(directMessages).values(messageWithMentions).returning();
     
     // Update thread count if this is a reply
     if (message.parentMessageId) {

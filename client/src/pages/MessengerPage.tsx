@@ -174,10 +174,17 @@ export default function MessengerPage() {
   // Reaction state
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
   const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: { [emoji: string]: Reaction[] } }>({});
+  // Mention state
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [mentionStartPosition, setMentionStartPosition] = useState<number | null>(null);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [mentionUsers, setMentionUsers] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Queries
   const { data: channels = [] } = useQuery<Channel[]>({
@@ -814,6 +821,122 @@ export default function MessengerPage() {
   // Popular emojis for quick access
   const popularEmojis = ['👍', '❤️', '😂', '🎉', '😮', '😢', '🔥', '👏'];
 
+  // Mention handlers
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const cursorPosition = e.target.selectionStart || 0;
+    
+    setMessageInput(value);
+    
+    // Check for @ character
+    const lastAtSymbol = value.lastIndexOf('@', cursorPosition - 1);
+    
+    if (lastAtSymbol !== -1) {
+      // Check if @ is followed by text (for search)
+      const textAfterAt = value.slice(lastAtSymbol + 1, cursorPosition);
+      const hasSpaceAfterAt = textAfterAt.includes(' ');
+      
+      if (!hasSpaceAfterAt && (cursorPosition > lastAtSymbol)) {
+        // Show dropdown and search for users
+        setMentionStartPosition(lastAtSymbol);
+        setMentionSearch(textAfterAt);
+        setShowMentionDropdown(true);
+        setSelectedMentionIndex(0);
+        
+        // Search for users
+        searchMentionUsers(textAfterAt);
+      } else {
+        setShowMentionDropdown(false);
+      }
+    } else {
+      setShowMentionDropdown(false);
+    }
+  };
+
+  const searchMentionUsers = async (search: string) => {
+    try {
+      const endpoint = viewMode === 'channel' && selectedChannel
+        ? `/api/messenger/users/search?q=${encodeURIComponent(search)}&channelId=${selectedChannel.id}`
+        : `/api/messenger/users/search?q=${encodeURIComponent(search)}`;
+      
+      const response = await fetch(endpoint, { credentials: 'include' });
+      if (response.ok) {
+        const users = await response.json();
+        setMentionUsers(users);
+      }
+    } catch (error) {
+      console.error('Failed to search users:', error);
+    }
+  };
+
+  const insertMention = (user: any) => {
+    if (mentionStartPosition === null) return;
+    
+    const mentionText = user.mentionText || `@${user.firstName || user.email.split('@')[0]}`;
+    const beforeMention = messageInput.slice(0, mentionStartPosition);
+    const afterMention = messageInput.slice(mentionStartPosition + mentionSearch.length + 1);
+    
+    const newMessage = `${beforeMention}${mentionText} ${afterMention}`;
+    setMessageInput(newMessage);
+    setShowMentionDropdown(false);
+    setMentionStartPosition(null);
+    setMentionSearch('');
+    
+    // Focus back on input
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
+
+  const handleKeyDownWithMentions = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showMentionDropdown) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedMentionIndex((prev) => 
+          prev < mentionUsers.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedMentionIndex((prev) => prev > 0 ? prev - 1 : 0);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (mentionUsers[selectedMentionIndex]) {
+          insertMention(mentionUsers[selectedMentionIndex]);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMentionDropdown(false);
+      }
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Helper function to render message with mentions highlighted
+  const renderMessageWithMentions = (content: string) => {
+    const mentionRegex = /(@[a-zA-Z0-9._-]+)/g;
+    const parts = content.split(mentionRegex);
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('@')) {
+        return (
+          <span
+            key={index}
+            className="font-semibold text-cyan-400 hover:underline cursor-pointer"
+            onClick={() => {
+              // Could open user profile or DM
+              console.log('Clicked mention:', part);
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   const handleReaction = (messageId: string, emoji: string) => {
     const messageType = viewMode === 'channel' ? 'channel' : 'dm';
     const userReacted = messageReactions[messageId]?.[emoji]?.some(r => r.userId === user?.id);
@@ -1287,7 +1410,7 @@ export default function MessengerPage() {
                         ) : (
                           <>
                             <p className="text-gray-300 mt-1 break-words">
-                              {message.content}
+                              {renderMessageWithMentions(message.content)}
                             </p>
                             {message.fileUrl && (
                               <a
@@ -1430,7 +1553,7 @@ export default function MessengerPage() {
                             : "bg-white/10 text-gray-300"
                         )}>
                           <p className="break-words">
-                            {message.content}
+                            {renderMessageWithMentions(message.content)}
                           </p>
                           {message.fileUrl && (
                             <a
@@ -1555,15 +1678,55 @@ export default function MessengerPage() {
                 <Sparkles className="h-3 w-3" />
               </Button>
               
+              {/* Mention Autocomplete Dropdown */}
+              {showMentionDropdown && mentionUsers.length > 0 && (
+                <div className="absolute bottom-full mb-2 left-0 right-0 mx-4 max-h-64 overflow-y-auto bg-zinc-900 border border-white/10 rounded-lg shadow-xl">
+                  <div className="p-1">
+                    {mentionUsers.map((user, index) => (
+                      <button
+                        key={user.id}
+                        onClick={() => insertMention(user)}
+                        className={cn(
+                          "w-full text-left px-3 py-2 rounded-md flex items-center gap-3 transition-colors",
+                          index === selectedMentionIndex
+                            ? "bg-primary/20 text-white"
+                            : "text-gray-300 hover:bg-white/5"
+                        )}
+                        onMouseEnter={() => setSelectedMentionIndex(index)}
+                      >
+                        <Avatar className="h-8 w-8">
+                          {user.profileImageUrl ? (
+                            <AvatarImage src={user.profileImageUrl} />
+                          ) : (
+                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-xs">
+                              {user.firstName && user.lastName
+                                ? `${user.firstName[0]}${user.lastName[0]}`
+                                : user.email[0].toUpperCase()}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">
+                            {user.firstName} {user.lastName}
+                          </div>
+                          <div className="text-xs text-gray-500">{user.email}</div>
+                        </div>
+                        {user.isAdmin && (
+                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                            Admin
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <Input
+                ref={inputRef}
                 value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDownWithMentions}
                 placeholder={
                   uploadingFile 
                     ? "Uploading file..." 

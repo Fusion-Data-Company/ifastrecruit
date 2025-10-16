@@ -270,6 +270,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dev bypass versions of all messenger-related routes (NO AUTH)
+  
+  // Dev bypass user search for @mentions
+  app.get('/api/dev/messenger/users/search', async (req, res) => {
+    try {
+      const { q: query, channelId } = req.query;
+      const devUser = await storage.getUserByEmail('rob@fusiondataco.com');
+      
+      if (!devUser) {
+        return res.status(404).json({ message: 'Dev user not found. Access /dev/messenger first.' });
+      }
+
+      if (!query || typeof query !== 'string') {
+        return res.json([]);
+      }
+
+      // Search users - for channel mentions, get channel members; for DMs, get all available users
+      let searchResults;
+      if (channelId && typeof channelId === 'string') {
+        // Get channel members for channel-specific mentions
+        searchResults = await storage.searchChannelMembers(channelId, query.toLowerCase(), 10);
+      } else {
+        // Get all users for DM mentions (dev user is admin)
+        searchResults = await storage.searchUsers(query.toLowerCase(), devUser.id, true, 10);
+      }
+      
+      // Format users for frontend autocomplete
+      const formattedUsers = searchResults.map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        onlineStatus: user.onlineStatus || 'offline',
+        profileImageUrl: user.profileImageUrl,
+        mentionText: user.firstName && user.lastName 
+          ? `@${user.firstName}_${user.lastName}`.replace(/\s+/g, '_')
+          : `@${user.firstName || user.email.split('@')[0]}`
+      }));
+
+      res.json(formattedUsers);
+    } catch (error) {
+      console.error("[DEV BYPASS] Error searching users:", error);
+      res.status(500).json({ message: "Failed to search users" });
+    }
+  });
+  
   app.get('/api/dev/messenger/channels', async (req, res) => {
     try {
       // Get the dev user first
@@ -1407,6 +1453,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // =========================
   // MESSENGER DM API ENDPOINTS
   // =========================
+  
+  // GET /api/messenger/users/search - Search users for @mentions
+  app.get("/api/messenger/users/search", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      const { q: query, channelId } = req.query;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      if (!query || typeof query !== 'string') {
+        return res.json([]);
+      }
+
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Search users - for channel mentions, get channel members; for DMs, get all available users
+      let searchResults;
+      if (channelId && typeof channelId === 'string') {
+        // Get channel members for channel-specific mentions
+        searchResults = await storage.searchChannelMembers(channelId, query.toLowerCase(), 10);
+      } else {
+        // Get all users for DM mentions (considering permissions)
+        searchResults = await storage.searchUsers(query.toLowerCase(), userId, currentUser.isAdmin, 10);
+      }
+      
+      // Format users for frontend autocomplete
+      const formattedUsers = searchResults.map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        onlineStatus: user.onlineStatus || 'offline',
+        profileImageUrl: user.profileImageUrl,
+        mentionText: user.firstName && user.lastName 
+          ? `@${user.firstName}_${user.lastName}`.replace(/\s+/g, '_')
+          : `@${user.firstName || user.email.split('@')[0]}`
+      }));
+
+      res.json(formattedUsers);
+    } catch (error) {
+      console.error("[Messenger] Error searching users:", error);
+      res.status(500).json({ error: "Failed to search users" });
+    }
+  });
   
   // GET /api/messenger/dm/users - List all users available for DM (admins see all, users see admins only)
   app.get("/api/messenger/dm/users", isAuthenticated, async (req, res) => {
