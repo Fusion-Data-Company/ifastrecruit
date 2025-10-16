@@ -33,7 +33,8 @@ import {
   Bot,
   Sparkles,
   Lock,
-  X
+  X,
+  Smile
 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,21 @@ interface Channel {
   badgeIcon?: string;
   badgeColor?: string;
   isActive?: boolean;
+}
+
+interface Reaction {
+  id: string;
+  messageId?: string;
+  directMessageId?: string;
+  userId: string;
+  emoji: string;
+  createdAt: string;
+  user?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+  };
 }
 
 interface Message {
@@ -69,7 +85,7 @@ interface Message {
   };
   isEdited?: boolean;
   isAiGenerated?: boolean;
-  reactions?: Array<{ emoji: string; userId: string }>;
+  reactions?: { [emoji: string]: Reaction[] };
   // Threading fields
   parentMessageId?: string | null;
   threadCount?: number;
@@ -155,6 +171,9 @@ export default function MessengerPage() {
   const [threadReplies, setThreadReplies] = useState<(Message | DirectMessage)[]>([]);
   const [threadInput, setThreadInput] = useState('');
   const [showThreadPanel, setShowThreadPanel] = useState(false);
+  // Reaction state
+  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+  const [messageReactions, setMessageReactions] = useState<{ [messageId: string]: { [emoji: string]: Reaction[] } }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -209,6 +228,79 @@ export default function MessengerPage() {
       setThreadReplies(data);
     }
   });
+
+  // Reaction mutations
+  const addReactionMutation = useMutation({
+    mutationFn: async ({ messageId, emoji, messageType }: { messageId: string; emoji: string; messageType: 'channel' | 'dm' }) => {
+      return apiRequest('/api/messenger/reactions/add', {
+        method: 'POST',
+        body: { messageId, emoji, messageType }
+      });
+    },
+    onSuccess: (data, variables) => {
+      // Optimistically update UI
+      const { messageId, emoji } = variables;
+      setMessageReactions(prev => ({
+        ...prev,
+        [messageId]: {
+          ...prev[messageId],
+          [emoji]: [...(prev[messageId]?.[emoji] || []), data]
+        }
+      }));
+    }
+  });
+
+  const removeReactionMutation = useMutation({
+    mutationFn: async ({ messageId, emoji, messageType }: { messageId: string; emoji: string; messageType: 'channel' | 'dm' }) => {
+      return apiRequest('/api/messenger/reactions/remove', {
+        method: 'POST',
+        body: { messageId, emoji, messageType }
+      });
+    },
+    onSuccess: (_, variables) => {
+      // Optimistically update UI
+      const { messageId, emoji } = variables;
+      setMessageReactions(prev => {
+        const updated = { ...prev };
+        if (updated[messageId]?.[emoji]) {
+          updated[messageId][emoji] = updated[messageId][emoji].filter(r => r.userId !== user?.id);
+          if (updated[messageId][emoji].length === 0) {
+            delete updated[messageId][emoji];
+          }
+        }
+        return updated;
+      });
+    }
+  });
+
+  // Load reactions for messages
+  useEffect(() => {
+    const loadReactions = async () => {
+      const messages = viewMode === 'channel' ? channelMessages : directMessages;
+      const messageType = viewMode === 'channel' ? 'channel' : 'dm';
+      
+      for (const message of messages) {
+        try {
+          const response = await fetch(`/api/messenger/reactions/${messageType}/${message.id}`, {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const reactions = await response.json();
+            setMessageReactions(prev => ({
+              ...prev,
+              [message.id]: reactions
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading reactions:', error);
+        }
+      }
+    };
+
+    if ((channelMessages.length > 0 && viewMode === 'channel') || (directMessages.length > 0 && viewMode === 'dm')) {
+      loadReactions();
+    }
+  }, [channelMessages, directMessages, viewMode]);
 
   // WebSocket connection
   useEffect(() => {
@@ -317,6 +409,32 @@ export default function MessengerPage() {
         // Update DM conversations
         queryClient.invalidateQueries({ 
           queryKey: [`/api/messenger/dm/messages/${data.payload.senderId}`] 
+        });
+      }
+      
+      // Reaction events
+      if (data.type === 'reaction_added') {
+        const { messageId, messageType, reaction } = data.payload;
+        setMessageReactions(prev => ({
+          ...prev,
+          [messageId]: {
+            ...prev[messageId],
+            [reaction.emoji]: [...(prev[messageId]?.[reaction.emoji] || []), reaction]
+          }
+        }));
+      }
+      
+      if (data.type === 'reaction_removed') {
+        const { messageId, userId, emoji } = data.payload;
+        setMessageReactions(prev => {
+          const updated = { ...prev };
+          if (updated[messageId]?.[emoji]) {
+            updated[messageId][emoji] = updated[messageId][emoji].filter(r => r.userId !== userId);
+            if (updated[messageId][emoji].length === 0) {
+              delete updated[messageId][emoji];
+            }
+          }
+          return updated;
         });
       }
     };
@@ -692,6 +810,21 @@ export default function MessengerPage() {
       setSelectedChannel(accessibleChannels[0]);
     }
   }, [accessibleChannels, selectedChannel, viewMode]);
+
+  // Popular emojis for quick access
+  const popularEmojis = ['👍', '❤️', '😂', '🎉', '😮', '😢', '🔥', '👏'];
+
+  const handleReaction = (messageId: string, emoji: string) => {
+    const messageType = viewMode === 'channel' ? 'channel' : 'dm';
+    const userReacted = messageReactions[messageId]?.[emoji]?.some(r => r.userId === user?.id);
+    
+    if (userReacted) {
+      removeReactionMutation.mutate({ messageId, emoji, messageType });
+    } else {
+      addReactionMutation.mutate({ messageId, emoji, messageType });
+    }
+    setShowEmojiPicker(null);
+  };
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -1190,6 +1323,69 @@ export default function MessengerPage() {
                                 )}
                               </button>
                             )}
+
+                            {/* Reactions */}
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              {/* Display existing reactions */}
+                              {messageReactions[message.id] && Object.entries(messageReactions[message.id]).map(([emoji, reactions]) => {
+                                const userReacted = reactions.some(r => r.userId === user?.id);
+                                const reactionUsers = reactions.map(r => r.user?.firstName || r.user?.email?.split('@')[0] || 'Unknown');
+                                const displayNames = reactionUsers.slice(0, 3).join(', ');
+                                const remainingCount = reactionUsers.length - 3;
+                                
+                                return (
+                                  <Popover key={emoji}>
+                                    <PopoverTrigger asChild>
+                                      <button
+                                        onClick={() => handleReaction(message.id, emoji)}
+                                        className={cn(
+                                          "inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm transition-all hover:scale-105",
+                                          userReacted 
+                                            ? "bg-primary/30 border border-primary text-primary-foreground" 
+                                            : "bg-white/10 border border-white/20 text-gray-300 hover:bg-white/20"
+                                        )}
+                                        data-testid={`reaction-${emoji}-${message.id}`}
+                                      >
+                                        <span className="text-lg">{emoji}</span>
+                                        <span className="text-xs font-medium">{reactions.length}</span>
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent side="top" className="p-2 bg-black/90 border-white/10">
+                                      <p className="text-sm text-white">
+                                        {displayNames}
+                                        {remainingCount > 0 && ` and ${remainingCount} others`}
+                                      </p>
+                                    </PopoverContent>
+                                  </Popover>
+                                );
+                              })}
+
+                              {/* Add reaction button with emoji picker */}
+                              <Popover open={showEmojiPicker === message.id} onOpenChange={(open) => setShowEmojiPicker(open ? message.id : null)}>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 transition-all"
+                                    data-testid={`add-reaction-${message.id}`}
+                                  >
+                                    <Smile className="h-4 w-4 text-gray-400" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent side="top" className="p-2 bg-black/90 border-white/10 w-auto">
+                                  <div className="flex gap-1">
+                                    {popularEmojis.map(emoji => (
+                                      <button
+                                        key={emoji}
+                                        onClick={() => handleReaction(message.id, emoji)}
+                                        className="p-1.5 hover:bg-white/10 rounded transition-all hover:scale-110"
+                                        data-testid={`emoji-picker-${emoji}-${message.id}`}
+                                      >
+                                        <span className="text-xl">{emoji}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                           </>
                         )}
                       </div>
@@ -1247,6 +1443,69 @@ export default function MessengerPage() {
                               {message.fileName || 'Attachment'}
                             </a>
                           )}
+                        </div>
+                        
+                        {/* Reactions for DMs */}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {/* Display existing reactions */}
+                          {messageReactions[message.id] && Object.entries(messageReactions[message.id]).map(([emoji, reactions]) => {
+                            const userReacted = reactions.some(r => r.userId === user?.id);
+                            const reactionUsers = reactions.map(r => r.user?.firstName || r.user?.email?.split('@')[0] || 'Unknown');
+                            const displayNames = reactionUsers.slice(0, 3).join(', ');
+                            const remainingCount = reactionUsers.length - 3;
+                            
+                            return (
+                              <Popover key={emoji}>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    onClick={() => handleReaction(message.id, emoji)}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm transition-all hover:scale-105",
+                                      userReacted 
+                                        ? "bg-primary/30 border border-primary text-primary-foreground" 
+                                        : "bg-white/10 border border-white/20 text-gray-300 hover:bg-white/20"
+                                    )}
+                                    data-testid={`dm-reaction-${emoji}-${message.id}`}
+                                  >
+                                    <span className="text-lg">{emoji}</span>
+                                    <span className="text-xs font-medium">{reactions.length}</span>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent side="top" className="p-2 bg-black/90 border-white/10">
+                                  <p className="text-sm text-white">
+                                    {displayNames}
+                                    {remainingCount > 0 && ` and ${remainingCount} others`}
+                                  </p>
+                                </PopoverContent>
+                              </Popover>
+                            );
+                          })}
+
+                          {/* Add reaction button with emoji picker for DMs */}
+                          <Popover open={showEmojiPicker === message.id} onOpenChange={(open) => setShowEmojiPicker(open ? message.id : null)}>
+                            <PopoverTrigger asChild>
+                              <button
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 transition-all"
+                                data-testid={`dm-add-reaction-${message.id}`}
+                              >
+                                <Smile className="h-4 w-4 text-gray-400" />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent side="top" className="p-2 bg-black/90 border-white/10 w-auto">
+                              <div className="flex gap-1">
+                                {popularEmojis.map(emoji => (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleReaction(message.id, emoji)}
+                                    className="p-1.5 hover:bg-white/10 rounded transition-all hover:scale-110"
+                                    data-testid={`dm-emoji-picker-${emoji}-${message.id}`}
+                                  >
+                                    <span className="text-xl">{emoji}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                     </div>

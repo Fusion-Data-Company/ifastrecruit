@@ -328,6 +328,31 @@ export const directMessages = pgTable("direct_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Message Reactions
+export const messageReactions = pgTable("message_reactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  messageId: varchar("message_id").notNull().references(() => messages.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  emoji: text("emoji").notNull(), // emoji character or shortcode
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Direct Message Reactions
+export const directMessageReactions = pgTable("direct_message_reactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  directMessageId: varchar("direct_message_id").notNull().references(() => directMessages.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  emoji: text("emoji").notNull(), // emoji character or shortcode
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Unique constraints to prevent duplicate reactions
+export const messageReactionUniqueConstraint = unique("message_reaction_unique")
+  .on(messageReactions.messageId, messageReactions.userId, messageReactions.emoji);
+
+export const directMessageReactionUniqueConstraint = unique("direct_message_reaction_unique")
+  .on(directMessageReactions.directMessageId, directMessageReactions.userId, directMessageReactions.emoji);
+
 // File uploads and resume storage
 export const fileUploads = pgTable("file_uploads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -558,6 +583,8 @@ export const insertMessageSchema = createInsertSchema(messages).omit({ id: true,
 export const insertDirectMessageSchema = createInsertSchema(directMessages).omit({ id: true, createdAt: true });
 export const insertFileUploadSchema = createInsertSchema(fileUploads).omit({ id: true, uploadedAt: true });
 export const insertOnboardingResponseSchema = createInsertSchema(onboardingResponses).omit({ id: true, completedAt: true });
+export const insertMessageReactionSchema = createInsertSchema(messageReactions).omit({ id: true, createdAt: true });
+export const insertDirectMessageReactionSchema = createInsertSchema(directMessageReactions).omit({ id: true, createdAt: true });
 
 // Messenger types
 export type Channel = typeof channels.$inferSelect;
@@ -566,6 +593,8 @@ export type Message = typeof messages.$inferSelect;
 export type DirectMessage = typeof directMessages.$inferSelect;
 export type FileUpload = typeof fileUploads.$inferSelect;
 export type OnboardingResponse = typeof onboardingResponses.$inferSelect;
+export type MessageReaction = typeof messageReactions.$inferSelect;
+export type DirectMessageReaction = typeof directMessageReactions.$inferSelect;
 
 export type InsertChannel = z.infer<typeof insertChannelSchema>;
 export type InsertUserChannel = z.infer<typeof insertUserChannelSchema>;
@@ -573,6 +602,8 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertDirectMessage = z.infer<typeof insertDirectMessageSchema>;
 export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
 export type InsertOnboardingResponse = z.infer<typeof insertOnboardingResponseSchema>;
+export type InsertMessageReaction = z.infer<typeof insertMessageReactionSchema>;
+export type InsertDirectMessageReaction = z.infer<typeof insertDirectMessageReactionSchema>;
 
 // Replit Auth types
 export type UpsertUser = typeof users.$inferInsert;

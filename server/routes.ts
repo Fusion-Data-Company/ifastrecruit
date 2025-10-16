@@ -1833,6 +1833,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Static route to serve uploaded files
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+  // ===== REACTION ROUTES =====
+  
+  // POST /api/messenger/reactions/add - Add a reaction to a message
+  app.post("/api/messenger/reactions/add", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { messageId, emoji, messageType } = req.body;
+      
+      if (!messageId || !emoji || !messageType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      if (!['channel', 'dm'].includes(messageType)) {
+        return res.status(400).json({ error: "Invalid message type" });
+      }
+
+      const reaction = await storage.addReaction(messageId, userId, emoji, messageType);
+      
+      // Get user info for the reaction
+      const user = await storage.getUser(userId);
+      
+      // Emit WebSocket event for real-time update
+      messengerWS.broadcast({
+        type: 'reaction_added',
+        payload: {
+          messageId,
+          messageType,
+          reaction: {
+            ...reaction,
+            user: {
+              id: user?.id,
+              firstName: user?.firstName,
+              lastName: user?.lastName,
+              email: user?.email
+            }
+          }
+        }
+      });
+      
+      res.json(reaction);
+    } catch (error) {
+      console.error("[Reactions] Error adding reaction:", error);
+      res.status(500).json({ error: "Failed to add reaction" });
+    }
+  });
+  
+  // POST /api/messenger/reactions/remove - Remove a reaction from a message
+  app.post("/api/messenger/reactions/remove", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { messageId, emoji, messageType } = req.body;
+      
+      if (!messageId || !emoji || !messageType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      if (!['channel', 'dm'].includes(messageType)) {
+        return res.status(400).json({ error: "Invalid message type" });
+      }
+
+      await storage.removeReaction(messageId, userId, emoji, messageType);
+      
+      // Emit WebSocket event for real-time update
+      messengerWS.broadcast({
+        type: 'reaction_removed',
+        payload: {
+          messageId,
+          messageType,
+          userId,
+          emoji
+        }
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Reactions] Error removing reaction:", error);
+      res.status(500).json({ error: "Failed to remove reaction" });
+    }
+  });
+  
+  // GET /api/messenger/reactions/:messageType/:messageId - Get all reactions for a message
+  app.get("/api/messenger/reactions/:messageType/:messageId", isAuthenticated, async (req, res) => {
+    try {
+      const { messageType, messageId } = req.params;
+      
+      if (!['channel', 'dm'].includes(messageType)) {
+        return res.status(400).json({ error: "Invalid message type" });
+      }
+
+      let reactions;
+      if (messageType === 'channel') {
+        reactions = await storage.getMessageReactions(messageId);
+      } else {
+        reactions = await storage.getDirectMessageReactions(messageId);
+      }
+      
+      // Group reactions by emoji and include user info
+      const reactionsByEmoji: { [emoji: string]: any[] } = {};
+      
+      for (const reaction of reactions) {
+        const user = await storage.getUser(reaction.userId);
+        const reactionWithUser = {
+          ...reaction,
+          user: {
+            id: user?.id,
+            firstName: user?.firstName,
+            lastName: user?.lastName,
+            email: user?.email
+          }
+        };
+        
+        if (!reactionsByEmoji[reaction.emoji]) {
+          reactionsByEmoji[reaction.emoji] = [];
+        }
+        reactionsByEmoji[reaction.emoji].push(reactionWithUser);
+      }
+      
+      res.json(reactionsByEmoji);
+    } catch (error) {
+      console.error("[Reactions] Error fetching reactions:", error);
+      res.status(500).json({ error: "Failed to fetch reactions" });
+    }
+  });
+
   // GET /api/channels - Get list of channels for user  
   app.get("/api/channels", isAuthenticated, async (req, res) => {
     try {

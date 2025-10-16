@@ -11,6 +11,8 @@ import {
   userChannels,
   messages,
   directMessages,
+  messageReactions,
+  directMessageReactions,
   fileUploads,
   onboardingResponses,
   workflowRules,
@@ -31,6 +33,8 @@ import {
   type UserChannel,
   type Message,
   type DirectMessage,
+  type MessageReaction,
+  type DirectMessageReaction,
   type FileUpload,
   type OnboardingResponse,
   type WorkflowRule,
@@ -50,6 +54,8 @@ import {
   type InsertUserChannel,
   type InsertMessage,
   type InsertDirectMessage,
+  type InsertMessageReaction,
+  type InsertDirectMessageReaction,
   type InsertFileUpload,
   type InsertOnboardingResponse,
   type InsertWorkflowRule,
@@ -198,6 +204,13 @@ export interface IStorage {
   getDirectThreadReplies(messageId: string): Promise<DirectMessage[]>;
   createDirectThreadReply(reply: InsertDirectMessage): Promise<DirectMessage>;
   updateDirectThreadCount(parentMessageId: string): Promise<void>;
+  
+  // Reaction methods
+  addReaction(messageId: string, userId: string, emoji: string, messageType: 'channel' | 'dm'): Promise<MessageReaction | DirectMessageReaction>;
+  removeReaction(messageId: string, userId: string, emoji: string, messageType: 'channel' | 'dm'): Promise<void>;
+  getMessageReactions(messageId: string): Promise<MessageReaction[]>;
+  getDirectMessageReactions(messageId: string): Promise<DirectMessageReaction[]>;
+  getUserReactions(userId: string, messageType: 'channel' | 'dm'): Promise<(MessageReaction | DirectMessageReaction)[]>;
   
   // File upload methods
   getUserFiles(userId: string): Promise<FileUpload[]>;
@@ -1152,6 +1165,102 @@ export class DatabaseStorage implements IStorage {
           eq(directMessages.isRead, false)
         )
       );
+  }
+
+  // Reaction methods
+  async addReaction(messageId: string, userId: string, emoji: string, messageType: 'channel' | 'dm'): Promise<MessageReaction | DirectMessageReaction> {
+    try {
+      if (messageType === 'channel') {
+        const [reaction] = await db
+          .insert(messageReactions)
+          .values({ messageId, userId, emoji })
+          .onConflictDoNothing()
+          .returning();
+        return reaction;
+      } else {
+        const [reaction] = await db
+          .insert(directMessageReactions)
+          .values({ directMessageId: messageId, userId, emoji })
+          .onConflictDoNothing()
+          .returning();
+        return reaction;
+      }
+    } catch (error) {
+      // If reaction already exists, fetch and return it
+      if (messageType === 'channel') {
+        const [existing] = await db
+          .select()
+          .from(messageReactions)
+          .where(and(
+            eq(messageReactions.messageId, messageId),
+            eq(messageReactions.userId, userId),
+            eq(messageReactions.emoji, emoji)
+          ));
+        return existing;
+      } else {
+        const [existing] = await db
+          .select()
+          .from(directMessageReactions)
+          .where(and(
+            eq(directMessageReactions.directMessageId, messageId),
+            eq(directMessageReactions.userId, userId),
+            eq(directMessageReactions.emoji, emoji)
+          ));
+        return existing;
+      }
+    }
+  }
+
+  async removeReaction(messageId: string, userId: string, emoji: string, messageType: 'channel' | 'dm'): Promise<void> {
+    if (messageType === 'channel') {
+      await db
+        .delete(messageReactions)
+        .where(and(
+          eq(messageReactions.messageId, messageId),
+          eq(messageReactions.userId, userId),
+          eq(messageReactions.emoji, emoji)
+        ));
+    } else {
+      await db
+        .delete(directMessageReactions)
+        .where(and(
+          eq(directMessageReactions.directMessageId, messageId),
+          eq(directMessageReactions.userId, userId),
+          eq(directMessageReactions.emoji, emoji)
+        ));
+    }
+  }
+
+  async getMessageReactions(messageId: string): Promise<MessageReaction[]> {
+    return await db
+      .select()
+      .from(messageReactions)
+      .where(eq(messageReactions.messageId, messageId))
+      .orderBy(messageReactions.createdAt);
+  }
+
+  async getDirectMessageReactions(messageId: string): Promise<DirectMessageReaction[]> {
+    return await db
+      .select()
+      .from(directMessageReactions)
+      .where(eq(directMessageReactions.directMessageId, messageId))
+      .orderBy(directMessageReactions.createdAt);
+  }
+
+  async getUserReactions(userId: string, messageType: 'channel' | 'dm'): Promise<(MessageReaction | DirectMessageReaction)[]> {
+    if (messageType === 'channel') {
+      return await db
+        .select()
+        .from(messageReactions)
+        .where(eq(messageReactions.userId, userId))
+        .orderBy(desc(messageReactions.createdAt));
+    } else {
+      return await db
+        .select()
+        .from(directMessageReactions)
+        .where(eq(directMessageReactions.userId, userId))
+        .orderBy(desc(directMessageReactions.createdAt));
+    }
   }
 
   // File upload methods
