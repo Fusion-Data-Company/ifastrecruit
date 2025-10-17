@@ -1,0 +1,878 @@
+{
+  method: 'GET',
+  url: '/src/components/SearchAndFilter.tsx',
+  status: 304,
+  duration: '38ms',
+  ip: '10.81.0.48',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.139Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/NotificationSystem.tsx',
+  status: 304,
+  duration: '36ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.142Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/FileViewer.tsx',
+  status: 304,
+  duration: '45ms',
+  ip: '10.81.9.12',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.211Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/EnhancedTranscript.tsx',
+  status: 304,
+  duration: '31ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.254Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/AudioPlayer.tsx',
+  status: 304,
+  duration: '33ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.279Z'
+}
+{
+  method: 'GET',
+  url: '/src/lib/mcp-client.ts',
+  status: 304,
+  duration: '32ms',
+  ip: '10.81.0.48',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.280Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/DataExportImport.tsx',
+  status: 304,
+  duration: '32ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.281Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/CandidateModal.tsx',
+  status: 304,
+  duration: '32ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.291Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/ui/skeleton.tsx',
+  status: 304,
+  duration: '33ms',
+  ip: '10.81.9.12',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.351Z'
+}
+{
+  method: 'GET',
+  url: '/@fs/home/runner/workspace/shared/schema.ts',
+  status: 304,
+  duration: '32ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.397Z'
+}
+{
+  method: 'GET',
+  url: '/@fs/home/runner/workspace/node_modules/prismjs/themes/prism-tomorrow.css',
+  status: 304,
+  duration: '33ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.437Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/FilePreview.tsx',
+  status: 304,
+  duration: '32ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.438Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/ui/collapsible.tsx',
+  status: 304,
+  duration: '31ms',
+  ip: '10.81.0.48',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.440Z'
+}
+{
+  method: 'GET',
+  url: '/src/components/ui/accordion.tsx',
+  status: 304,
+  duration: '31ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.444Z'
+}
+[AUTH DEBUG] User logged in: {
+  email: 'rob@fusiondataco.com',
+  isAdmin: true,
+  userId: '39061945',
+  foundById: true
+}
+5:46:53 AM [express] GET /api/auth/user 304 in 136ms :: {"id":"admin_test_001","email":"rob@fusionda…
+{
+  method: 'GET',
+  url: '/api/auth/user',
+  status: 304,
+  duration: '102ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.693Z'
+}
+[/api/channels Debug] Auth user ID: 39061945 Email: rob@fusiondataco.com
+{
+  method: 'GET',
+  url: '/home/runner/workspace/attached_assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png',
+  status: 304,
+  duration: '32ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.854Z'
+}
+5:46:53 AM [express] GET /api/messenger/notifications/unread-counts 304 in 96ms :: {"total":0,"byCha…
+{
+  method: 'GET',
+  url: '/api/messenger/notifications/unread-counts',
+  status: 304,
+  duration: '67ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:53.896Z'
+}
+[AUTH DEBUG] User logged in: {
+  email: 'rob@fusiondataco.com',
+  isAdmin: true,
+  userId: '39061945',
+  foundById: true
+}
+5:46:54 AM [express] GET /api/messenger/notifications/unread 304 in 206ms :: []
+{
+  method: 'GET',
+  url: '/api/messenger/notifications/unread?limit=20',
+  status: 304,
+  duration: '175ms',
+  ip: '10.81.0.48',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.007Z'
+}
+[/api/channels Debug] Actual user ID from DB: admin_test_001
+5:46:54 AM [express] GET /api/auth/user 304 in 232ms :: {"id":"admin_test_001","email":"rob@fusionda…
+{
+  method: 'GET',
+  url: '/api/auth/user',
+  status: 304,
+  duration: '202ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.038Z'
+}
+[/api/channels Debug] User channel memberships: [
+  {
+    id: '5e90afb3-cc16-4e5c-8d95-b2085a5ecd86',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:01.077Z
+  },
+  {
+    id: 'ee59caee-0d08-4399-a0ff-2d503c2e4fe2',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:01.111Z
+  },
+  {
+    id: '51d4b8c8-7002-4525-8a7e-a0c517fd277c',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:01.145Z
+  },
+  {
+    id: '5f1a0cd1-c1d8-4d07-bf3c-b7678970c8b6',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:48.490Z
+  },
+  {
+    id: '11a58a7b-6142-49dc-abdd-8d88cae87f37',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:48.524Z
+  },
+  {
+    id: 'a633335e-89a0-4a3a-a118-1052b27056a7',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:48.557Z
+  },
+  {
+    id: '26cf6916-d7b4-423d-b32a-d4bc4beb171e',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:56.050Z
+  },
+  {
+    id: '42ca6e97-b9ff-429c-8426-88158fdd7fcf',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:56.084Z
+  },
+  {
+    id: 'de59a6ae-d28e-493e-9d56-798a8267866f',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T00:58:56.117Z
+  },
+  {
+    id: '5b6d8791-5353-4459-921c-6ecc13f2c85e',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:07:50.292Z
+  },
+  {
+    id: 'fa25e726-28fd-4341-bece-359299177256',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:07:50.327Z
+  },
+  {
+    id: '091766fd-199a-46c9-bc46-207e04f73797',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:07:50.360Z
+  },
+  {
+    id: '38f23edb-723a-49fe-8e4c-22a9f234235c',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:10:18.272Z
+  },
+  {
+    id: '6e810ffa-8cc1-4d9d-a13a-1b220edfa2e9',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:10:18.306Z
+  },
+  {
+    id: 'd261c4d5-b811-4267-92d2-cb96bed1a52a',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:10:18.339Z
+  },
+  {
+    id: '40ea4fb0-d09a-4827-a3f4-cb5b7e81bab2',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:10:18.547Z
+  },
+  {
+    id: 'c75f5470-1efe-4cad-9dfc-4ed883169763',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:10:18.579Z
+  },
+  {
+    id: '601c3b24-6e6e-4963-a1b6-f467be4f3aba',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:10:18.612Z
+  },
+  {
+    id: '6065c454-f03c-45be-a685-ad4f5d89b7e1',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:24:03.414Z
+  },
+  {
+    id: '8b767859-ef3c-4980-8772-ac663955247b',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:24:03.458Z
+  },
+  {
+    id: '0d307c98-100b-4bee-bf2b-faee690ea251',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:24:03.489Z
+  },
+  {
+    id: '9d41cf44-0c80-400f-863e-898951f3c972',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:28:06.985Z
+  },
+  {
+    id: '3c937d0c-9f38-4861-a4d6-31f4e1345873',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:28:07.018Z
+  },
+  {
+    id: '9523b315-28b2-413a-b393-28eff2e23eb0',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:28:07.052Z
+  },
+  {
+    id: '7f93ac00-17df-4cf0-917d-0e46d0512b69',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:28:07.375Z
+  },
+  {
+    id: '02675660-ad7e-4924-b1bb-de74cecc0e21',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:28:07.407Z
+  },
+  {
+    id: '5d3aa614-44f4-4c62-9699-00332f27f4c3',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T01:28:07.445Z
+  },
+  {
+    id: 'd4b31745-0b43-487b-b276-48ba20427832',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T02:02:37.175Z
+  },
+  {
+    id: 'ea096492-79dc-43bf-bac7-c691df80427f',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T02:02:37.209Z
+  },
+  {
+    id: 'c4543d93-95e1-401f-8ae9-6cf1387203e6',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T02:02:37.242Z
+  },
+  {
+    id: '6b5bc43e-62f6-4ad0-bb28-e6b861f30c8c',
+    userId: 'admin_test_001',
+    channelId: 'non-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T02:27:39.665Z
+  },
+  {
+    id: '674b5d44-cc7a-41fc-99d8-acece194e644',
+    userId: 'admin_test_001',
+    channelId: 'fl-licensed',
+    canAccess: true,
+    joinedAt: 2025-10-17T02:27:39.702Z
+  },
+  {
+    id: '157a468f-cf6a-4863-809a-5646698851a2',
+    userId: 'admin_test_001',
+    channelId: 'multi-state',
+    canAccess: true,
+    joinedAt: 2025-10-17T02:27:39.734Z
+  }
+]
+5:46:54 AM [express] GET /api/messenger/dm/users 404 in 95ms :: {"error":"User not found"}
+{
+  method: 'GET',
+  url: '/api/messenger/dm/users',
+  status: 404,
+  duration: '64ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.077Z'
+}
+5:46:54 AM [express] GET /api/user/onboarding-status 304 in 210ms :: {"hasCompleted":false,"currentL…
+{
+  method: 'GET',
+  url: '/api/user/onboarding-status',
+  status: 304,
+  duration: '179ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.152Z'
+}
+[Session Validation] Valid session for user: 39061945
+{
+  method: 'GET',
+  url: '/',
+  status: 200,
+  duration: '58ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.264Z'
+}
+[/api/channels Debug] Channel details: [
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'non-licensed',
+    name: 'non-licensed',
+    tier: 'NON_LICENSED',
+    description: 'Welcome to the Non-Licensed channel! This is your starting point in your insurance career journey. Share experiences, ask questions, and connect with others preparing for licensing.',
+    badgeIcon: '📚',
+    badgeColor: 'bg-gray-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'fl-licensed',
+    name: 'fl-licensed',
+    tier: 'FL_LICENSED',
+    description: 'Congratulations on your Florida license! This channel is for FL-licensed agents to share insights, discuss Florida-specific regulations, and network within the state market.',
+    badgeIcon: '🌴',
+    badgeColor: 'bg-blue-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  },
+  {
+    id: 'multi-state',
+    name: 'multi-state',
+    tier: 'MULTI_STATE',
+    description: 'Welcome elite agents! This exclusive channel is for multi-state licensed professionals. Share interstate strategies, discuss compliance across states, and leverage your expanded market reach.',
+    badgeIcon: '🌟',
+    badgeColor: 'bg-purple-500',
+    isActive: true,
+    createdAt: 2025-10-17T00:49:31.675Z,
+    updatedAt: 2025-10-17T00:49:31.675Z
+  }
+]
+5:46:54 AM [express] GET /api/online-users 404 in 291ms :: {"error":"User not found"}
+{
+  method: 'GET',
+  url: '/api/online-users',
+  status: 404,
+  duration: '261ms',
+  ip: '10.81.9.12',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.327Z'
+}
+[Messenger WS] User not found: 39061945
+5:46:54 AM [express] GET /api/channels 304 in 529ms :: [{"id":"non-licensed","name":"non-licensed","…
+{
+  method: 'GET',
+  url: '/api/channels',
+  status: 304,
+  duration: '498ms',
+  ip: '10.81.3.22',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.335Z'
+}
+5:46:54 AM [express] GET /api/messenger/uploads 304 in 230ms :: []
+{
+  method: 'GET',
+  url: '/api/messenger/uploads',
+  status: 304,
+  duration: '158ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.361Z'
+}
+5:46:54 AM [express] GET /api/messenger/dm/conversations 304 in 304ms :: []
+{
+  method: 'GET',
+  url: '/api/messenger/dm/conversations',
+  status: 304,
+  duration: '274ms',
+  ip: '10.81.0.48',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.385Z'
+}
+5:46:54 AM [express] GET /api/channels/non-licensed/messages 403 in 102ms :: {"message":"No access t…
+{
+  method: 'GET',
+  url: '/api/channels/non-licensed/messages',
+  status: 403,
+  duration: '72ms',
+  ip: '10.81.7.38',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.546Z'
+}
+5:46:54 AM [express] GET /api/messenger/pinned/non-licensed 304 in 100ms :: []
+{
+  method: 'GET',
+  url: '/api/messenger/pinned/non-licensed',
+  status: 304,
+  duration: '71ms',
+  ip: '10.81.9.12',
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  timestamp: '2025-10-17T05:46:54.553Z'
+}
