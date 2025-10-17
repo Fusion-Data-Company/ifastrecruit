@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { createEditor, Descendant, Editor, Transforms, Text, Range, Point, Element as SlateElement, Node, Path } from 'slate';
+import { createEditor, Descendant, Editor, Transforms, Text, Range, Point, Element as SlateElement, Node, Path, BaseEditor } from 'slate';
 import { Slate, Editable, withReact, ReactEditor, useSlate, useSelected, useFocused } from 'slate-react';
 import { withHistory } from 'slate-history';
 import isHotkey from 'is-hotkey';
@@ -148,6 +148,33 @@ export function RichTextEditor({
     []
   );
 
+  // Reset editor content when value prop changes to empty
+  useEffect(() => {
+    if (!value && editor.children.length > 0) {
+      // Check if editor has content but value is empty - reset it
+      const currentText = editor.children
+        .map((n: any) => Node.string(n))
+        .join('\n')
+        .trim();
+      
+      if (currentText) {
+        // Reset editor to empty state
+        Transforms.delete(editor, {
+          at: {
+            anchor: Editor.start(editor, []),
+            focus: Editor.end(editor, [])
+          }
+        });
+        
+        // Insert empty paragraph
+        Transforms.insertNodes(editor, {
+          type: 'paragraph',
+          children: [{ text: '' }]
+        } as any);
+      }
+    }
+  }, [value, editor]);
+
   // File handling functions
   const handleFileSelect = (files: FileList | null) => {
     if (!files || !onFilesSelected) return;
@@ -224,7 +251,7 @@ export function RichTextEditor({
       }
     }
     return [{ type: 'paragraph', children: [{ text: value || '' }] }];
-  }, []);
+  }, [value, formattedValue]);
 
   // Track if toolbar buttons are active
   const isMarkActive = (editor: Editor, format: string) => {
@@ -326,7 +353,7 @@ export function RichTextEditor({
 
   // Handle editor changes
   const handleChange = (newValue: Descendant[]) => {
-    // Extract plain text
+    // Extract plain text - don't trim here to preserve user input
     const plainText = newValue
       .map(n => Node.string(n))
       .join('\n');
@@ -334,6 +361,7 @@ export function RichTextEditor({
     // Serialize to formatted value (JSON)
     const formatted = JSON.stringify(newValue);
     
+    // Always call onChange to update parent state
     onChange(plainText, formatted);
 
     // Handle @ mentions

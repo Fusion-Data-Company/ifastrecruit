@@ -1113,6 +1113,7 @@ export default function MessengerPage() {
   // Check user's channel access
   const getUserAccessibleChannels = () => {
     if (!user) return [];
+    if (!channels) return []; // Add null check for channels
     if (user.isAdmin) return channels; // Admins can access all channels
     
     const accessibleChannels: Channel[] = [];
