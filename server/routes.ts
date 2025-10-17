@@ -150,13 +150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/mcp', mcpRateLimit);
   app.use('/api/elevenlabs', elevenlabsRateLimit);
   
-  // Only setup WebSocket server in production to avoid conflict with Vite's WebSocket
-  let wss: WebSocketServer | null = null;
-  if (process.env.NODE_ENV === "production") {
-    wss = new WebSocketServer({ server: httpServer });
-  }
-  
-  // Initialize messenger WebSocket service
+  // Initialize messenger WebSocket service for all environments
+  // The service handles WebSocket upgrade separately to avoid conflicts with Vite
   messengerWS.initialize(httpServer);
   
   // Setup SSE for real-time updates
