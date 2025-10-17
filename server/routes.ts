@@ -1600,10 +1600,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/users/search - Search users for @mentions
   app.get("/api/messenger/users/search", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const { q: query, channelId } = req.query;
       
-      if (!userId) {
+      if (!authUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
@@ -1611,10 +1612,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const currentUser = await storage.getUser(userId);
+      // Get the actual user from the database using email or auth ID
+      let currentUser = await storage.getUser(authUserId);
+      if (!currentUser && userEmail) {
+        currentUser = await storage.getUserByEmail(userEmail);
+      }
+      
       if (!currentUser) {
+        console.error('[/api/messenger/users/search] User not found for auth ID:', authUserId, 'email:', userEmail);
         return res.status(404).json({ error: "User not found" });
       }
+      
+      const actualUserId = currentUser.id;
 
       // Search users - for channel mentions, get channel members; for DMs, get all available users
       let searchResults;
@@ -1623,7 +1632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         searchResults = await storage.searchChannelMembers(channelId, query.toLowerCase(), 10);
       } else {
         // Get all users for DM mentions (considering permissions)
-        searchResults = await storage.searchUsers(query.toLowerCase(), userId, currentUser.isAdmin, 10);
+        searchResults = await storage.searchUsers(query.toLowerCase(), actualUserId, currentUser.isAdmin, 10);
       }
       
       // Format users for frontend autocomplete
@@ -1650,17 +1659,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/users - List all users available for DM (admins see all, users see admins only)
   app.get("/api/messenger/dm/users", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      if (!userId) {
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!authUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const currentUser = await storage.getUser(userId);
+      // Get the actual user from the database using email or auth ID
+      let currentUser = await storage.getUser(authUserId);
+      if (!currentUser && userEmail) {
+        currentUser = await storage.getUserByEmail(userEmail);
+      }
+      
       if (!currentUser) {
+        console.error('[/api/messenger/dm/users] User not found for auth ID:', authUserId, 'email:', userEmail);
         return res.status(404).json({ error: "User not found" });
       }
-
-      const dmUsers = await storage.getDMUsers(userId, currentUser.isAdmin);
+      
+      const actualUserId = currentUser.id;
+      const dmUsers = await storage.getDMUsers(actualUserId, currentUser.isAdmin);
       
       // Format users for frontend
       const formattedUsers = dmUsers.map(user => ({
@@ -1685,13 +1703,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/conversations - Get user's DM conversations
   app.get("/api/messenger/dm/conversations", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      if (!userId) {
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!authUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const conversations = await storage.getUserConversations(userId);
-      const unreadCounts = await storage.getUnreadCounts(userId);
+      // Get the actual user from the database using email or auth ID
+      let currentUser = await storage.getUser(authUserId);
+      if (!currentUser && userEmail) {
+        currentUser = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!currentUser) {
+        console.error('[/api/messenger/dm/conversations] User not found for auth ID:', authUserId, 'email:', userEmail);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const actualUserId = currentUser.id;
+      const conversations = await storage.getUserConversations(actualUserId);
+      const unreadCounts = await storage.getUnreadCounts(actualUserId);
       
       // Enrich conversations with user info and unread counts
       const enrichedConversations = await Promise.all(
@@ -1726,18 +1758,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/messages/:userId - Get messages between current user and another user
   app.get("/api/messenger/dm/messages/:userId", isAuthenticated, async (req, res) => {
     try {
-      const currentUserId = req.user.claims.sub;
-      if (!currentUserId) {
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!authUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
+      // Get the actual user from the database using email or auth ID
+      let currentUser = await storage.getUser(authUserId);
+      if (!currentUser && userEmail) {
+        currentUser = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!currentUser) {
+        console.error('[/api/messenger/dm/messages/:userId] User not found for auth ID:', authUserId, 'email:', userEmail);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const actualUserId = currentUser.id;
       const { userId: otherUserId } = req.params;
       
       // Get messages between users
-      const messages = await storage.getDMMessages(currentUserId, otherUserId);
+      const messages = await storage.getDMMessages(actualUserId, otherUserId);
       
       // Mark messages as read
-      await storage.markDMAsRead(currentUserId, otherUserId);
+      await storage.markDMAsRead(actualUserId, otherUserId);
       
       res.json(messages);
     } catch (error) {
@@ -1749,11 +1795,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/dm/send - Send a direct message
   app.post("/api/messenger/dm/send", isAuthenticated, async (req, res) => {
     try {
-      const senderId = req.user.claims.sub;
-      if (!senderId) {
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!authUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
+      // Get the actual user from the database using email or auth ID
+      let currentUser = await storage.getUser(authUserId);
+      if (!currentUser && userEmail) {
+        currentUser = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!currentUser) {
+        console.error('[/api/messenger/dm/send] User not found for auth ID:', authUserId, 'email:', userEmail);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const actualUserId = currentUser.id;
       const { recipientId, content, formattedContent, fileUrl, fileName } = req.body;
       
       if (!recipientId || !content) {
@@ -1761,14 +1821,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Send the direct message with formatted content
-      const message = await storage.sendDM(senderId, recipientId, content, fileUrl, fileName, formattedContent);
+      const message = await storage.sendDM(actualUserId, recipientId, content, fileUrl, fileName, formattedContent);
       
       // Emit WebSocket event for real-time delivery
       messengerWS.broadcast({
         type: 'dm_message',
         payload: {
           message,
-          senderId,
+          senderId: actualUserId,
           recipientId
         }
       });
@@ -1783,20 +1843,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT /api/messenger/dm/read/:userId - Mark messages as read
   app.put("/api/messenger/dm/read/:userId", isAuthenticated, async (req, res) => {
     try {
-      const recipientId = req.user.claims.sub;
-      if (!recipientId) {
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!authUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
+      // Get the actual user from the database using email or auth ID
+      let currentUser = await storage.getUser(authUserId);
+      if (!currentUser && userEmail) {
+        currentUser = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!currentUser) {
+        console.error('[/api/messenger/dm/read/:userId] User not found for auth ID:', authUserId, 'email:', userEmail);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const actualUserId = currentUser.id;
       const { userId: senderId } = req.params;
       
-      await storage.markDMAsRead(recipientId, senderId);
+      await storage.markDMAsRead(actualUserId, senderId);
       
       // Emit WebSocket event for read receipt
       messengerWS.broadcast({
         type: 'mark_read',
         payload: {
-          recipientId,
+          recipientId: actualUserId,
           senderId
         }
       });
@@ -1811,12 +1885,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/unread - Get unread message counts
   app.get("/api/messenger/dm/unread", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      if (!userId) {
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!authUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
-      const unreadCounts = await storage.getUnreadCounts(userId);
+      // Get the actual user from the database using email or auth ID
+      let currentUser = await storage.getUser(authUserId);
+      if (!currentUser && userEmail) {
+        currentUser = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!currentUser) {
+        console.error('[/api/messenger/dm/unread] User not found for auth ID:', authUserId, 'email:', userEmail);
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const actualUserId = currentUser.id;
+      const unreadCounts = await storage.getUnreadCounts(actualUserId);
       
       // Calculate total unread count
       const totalUnread = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
