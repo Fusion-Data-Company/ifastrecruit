@@ -15,6 +15,8 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { MessageRenderer } from '@/components/MessageRenderer';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Send, 
   Hash, 
@@ -173,6 +175,7 @@ const tierConfig = {
 
 export default function MessengerPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>('channel');
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [selectedDMUser, setSelectedDMUser] = useState<DMUser | null>(null);
@@ -259,30 +262,90 @@ export default function MessengerPage() {
     }
   }, [onboardingStatus, user]);
 
-  // Queries
-  const { data: channels = [] } = useQuery<Channel[]>({
+  // Queries with error handling
+  const { 
+    data: channels = [], 
+    isLoading: channelsLoading, 
+    error: channelsError, 
+    refetch: refetchChannels 
+  } = useQuery<Channel[]>({
     queryKey: ['/api/channels'],
     enabled: !!user,
+    onError: () => {
+      toast({
+        title: "Failed to load channels",
+        description: "Could not fetch channels. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
-  const { data: channelMessages = [] } = useQuery<Message[]>({
+  const { 
+    data: channelMessages = [], 
+    isLoading: channelMessagesLoading, 
+    error: channelMessagesError, 
+    refetch: refetchChannelMessages 
+  } = useQuery<Message[]>({
     queryKey: [`/api/channels/${selectedChannel?.id}/messages`],
     enabled: !!selectedChannel && viewMode === 'channel',
+    onError: () => {
+      toast({
+        title: "Failed to load messages",
+        description: "Could not fetch channel messages. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
-  const { data: dmUsers = [] } = useQuery<DMUser[]>({
+  const { 
+    data: dmUsers = [], 
+    isLoading: dmUsersLoading, 
+    error: dmUsersError, 
+    refetch: refetchDmUsers 
+  } = useQuery<DMUser[]>({
     queryKey: ['/api/messenger/dm/users'],
     enabled: !!user,
+    onError: () => {
+      toast({
+        title: "Failed to load users",
+        description: "Could not fetch DM users. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
-  const { data: dmConversations = [] } = useQuery<DMConversation[]>({
+  const { 
+    data: dmConversations = [], 
+    isLoading: dmConversationsLoading, 
+    error: dmConversationsError, 
+    refetch: refetchDmConversations 
+  } = useQuery<DMConversation[]>({
     queryKey: ['/api/messenger/dm/conversations'],
     enabled: !!user,
+    onError: () => {
+      toast({
+        title: "Failed to load conversations",
+        description: "Could not fetch DM conversations. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
-  const { data: directMessages = [] } = useQuery<DirectMessage[]>({
+  const { 
+    data: directMessages = [], 
+    isLoading: directMessagesLoading, 
+    error: directMessagesError, 
+    refetch: refetchDirectMessages 
+  } = useQuery<DirectMessage[]>({
     queryKey: [`/api/messenger/dm/messages/${selectedDMUser?.id}`],
     enabled: !!selectedDMUser && viewMode === 'dm',
+    onError: () => {
+      toast({
+        title: "Failed to load messages",
+        description: "Could not fetch direct messages. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
   const { data: onlineUsers = [] } = useQuery<DMUser[]>({
@@ -1395,7 +1458,35 @@ export default function MessengerPage() {
               
               {showChannels && (
                 <div className="mt-1 space-y-0.5">
-                  {(channels || []).map(channel => {
+                  {channelsLoading && (
+                    <>
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="px-2 py-2" data-testid="channels-skeleton">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-4 rounded" />
+                            <Skeleton className="h-4 flex-1" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {channelsError && (
+                    <div className="p-4 text-center" data-testid="channels-error">
+                      <p className="text-red-400 mb-2 text-sm">Failed to load channels</p>
+                      <Button 
+                        onClick={() => refetchChannels()} 
+                        size="sm" 
+                        variant="outline"
+                        className="text-xs"
+                        data-testid="retry-channels"
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!channelsLoading && !channelsError && (channels || []).map(channel => {
                     const canPost = true; // All authenticated users can post
                     return (
                       <button
@@ -1466,7 +1557,38 @@ export default function MessengerPage() {
               
               {showDMs && (
                 <div className="mt-1 space-y-0.5">
-                  {(dmConversations || []).map(conversation => (
+                  {(dmConversationsLoading || dmUsersLoading) && (
+                    <>
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="px-2 py-2" data-testid="dm-skeleton">
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-6 w-6 rounded-full" />
+                            <Skeleton className="h-4 flex-1" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {(dmConversationsError || dmUsersError) && (
+                    <div className="p-4 text-center" data-testid="dm-error">
+                      <p className="text-red-400 mb-2 text-sm">Failed to load DMs</p>
+                      <Button 
+                        onClick={() => {
+                          refetchDmConversations();
+                          refetchDmUsers();
+                        }} 
+                        size="sm" 
+                        variant="outline"
+                        className="text-xs"
+                        data-testid="retry-dms"
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!dmConversationsLoading && !dmUsersLoading && !dmConversationsError && !dmUsersError && (dmConversations || []).map(conversation => (
                     <button
                       key={conversation.userId}
                       onClick={() => {
@@ -1751,7 +1873,41 @@ export default function MessengerPage() {
 
             <div className="space-y-4">
               {viewMode === 'channel' ? (
-                (channelMessages || []).map((message) => {
+                <>
+                  {channelMessagesLoading && (
+                    <>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex gap-3 px-2 py-2" data-testid="message-skeleton">
+                          <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-4 w-24" />
+                              <Skeleton className="h-3 w-16" />
+                            </div>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {channelMessagesError && (
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="messages-error">
+                      <MessageSquare className="h-12 w-12 text-gray-500 mb-4" />
+                      <p className="text-red-400 mb-2">Failed to load messages</p>
+                      <p className="text-gray-500 text-sm mb-4">Could not fetch channel messages</p>
+                      <Button 
+                        onClick={() => refetchChannelMessages()} 
+                        size="sm"
+                        data-testid="retry-messages"
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!channelMessagesLoading && !channelMessagesError && (channelMessages || []).map((message) => {
                   const isOwnMessage = message.userId === user?.id;
                   
                   return (
@@ -1976,9 +2132,40 @@ export default function MessengerPage() {
                       </div>
                     </div>
                   );
-                })
+                })}
+                </>
               ) : (
-                (directMessages || []).map((message) => {
+                <>
+                  {directMessagesLoading && (
+                    <>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex gap-3 px-2 py-2" data-testid="dm-message-skeleton">
+                          <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {directMessagesError && (
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center" data-testid="dm-messages-error">
+                      <MessageSquare className="h-12 w-12 text-gray-500 mb-4" />
+                      <p className="text-red-400 mb-2">Failed to load messages</p>
+                      <p className="text-gray-500 text-sm mb-4">Could not fetch direct messages</p>
+                      <Button 
+                        onClick={() => refetchDirectMessages()} 
+                        size="sm"
+                        data-testid="retry-dm-messages"
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!directMessagesLoading && !directMessagesError && (directMessages || []).map((message) => {
                   const isOwnMessage = message.senderId === user?.id;
                   const messageUser = isOwnMessage ? user : selectedDMUser;
                   
@@ -2097,7 +2284,8 @@ export default function MessengerPage() {
                       </div>
                     </div>
                   );
-                })
+                })}
+                </>
               )}
             </div>
             <div ref={messagesEndRef} />
