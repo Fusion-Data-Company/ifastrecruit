@@ -2838,6 +2838,10 @@ export default function MessengerPage() {
             queryClient.invalidateQueries(['/api/auth/user']);
             console.log(`User onboarding completed with tier: ${tier}`);
           }}
+          onClose={() => {
+            setShowOnboarding(false);
+            console.log('User skipped onboarding');
+          }}
         />
       )}
       

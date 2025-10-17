@@ -31,6 +31,7 @@ interface OnboardingModalProps {
   isOpen: boolean;
   userId: string;
   onComplete: (tier: string) => void;
+  onClose?: () => void;
 }
 
 interface OnboardingAnswers {
@@ -57,7 +58,7 @@ const US_STATES = [
   'West Virginia', 'Wisconsin', 'Wyoming'
 ];
 
-export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalProps) {
+export function OnboardingModal({ isOpen, userId, onComplete, onClose }: OnboardingModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [answers, setAnswers] = useState<OnboardingAnswers>({
     licenseStatus: '',
@@ -496,7 +497,11 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open && onClose) {
+        onClose();
+      }
+    }}>
       <DialogContent className="sm:max-w-[600px] bg-gray-900/95 backdrop-blur-xl border-white/10 text-white p-0 overflow-hidden">
         <div className="relative">
           {/* Glassmorphic Background Effect */}
