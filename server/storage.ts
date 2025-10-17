@@ -23,6 +23,7 @@ import {
   jasonSettings,
   jasonTemplates,
   jasonChannelBehaviors,
+  notifications,
   type Campaign,
   type Candidate, 
   type Interview,
@@ -48,6 +49,7 @@ import {
   type JasonSetting,
   type JasonTemplate,
   type JasonChannelBehavior,
+  type Notification,
   type InsertCampaign,
   type InsertCandidate,
   type InsertInterview,
@@ -71,7 +73,8 @@ import {
   type InsertConversationMemory,
   type InsertJasonSetting,
   type InsertJasonTemplate,
-  type InsertJasonChannelBehavior
+  type InsertJasonChannelBehavior,
+  type InsertNotification
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, and } from "drizzle-orm";
@@ -295,6 +298,24 @@ export interface IStorage {
   getOnboardingStatus(userId: string): Promise<{ hasCompleted: boolean; currentLicensingInfo: any; availableChannels: Channel[] }>;
   completeOnboarding(userId: string, responses: { hasFloridaLicense: boolean; isMultiStateLicensed: boolean; licensedStates: string[] }): Promise<{ user: User; channels: Channel[] }>;
   assignUserToChannels(userId: string, channelTypes: string[]): Promise<UserChannel[]>;
+  
+  // Notification methods
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getUnreadNotifications(userId: string, limit?: number): Promise<Notification[]>;
+  getNotificationsByUser(userId: string, limit?: number, offset?: number): Promise<{ notifications: Notification[], total: number }>;
+  markNotificationRead(notificationId: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  getUnreadNotificationCounts(userId: string): Promise<{ 
+    total: number;
+    byChannel: { [channelId: string]: number };
+    byDM: { [senderId: string]: number };
+    byType: { [type: string]: number };
+  }>;
+  deleteNotification(notificationId: string): Promise<void>;
+  deleteOldNotifications(userId: string, daysOld: number): Promise<void>;
+  updateUserNotificationPreferences(userId: string, preferences: any): Promise<User>;
+  updateChannelLastSeen(userId: string, channelId: string): Promise<void>;
+  updateDMLastSeen(userId: string, senderId: string): Promise<void>;
   
   // Utility methods
   saveICSFile(content: string): Promise<string>;
@@ -2266,6 +2287,165 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
     
     return results;
+  }
+
+  // Notification methods
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [created] = await db.insert(notifications).values(notification).returning();
+    return created;
+  }
+
+  async getUnreadNotifications(userId: string, limit: number = 50): Promise<Notification[]> {
+    return db
+      .select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.status, 'unread')
+        )
+      )
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getNotificationsByUser(
+    userId: string, 
+    limit: number = 50, 
+    offset: number = 0
+  ): Promise<{ notifications: Notification[], total: number }> {
+    const [notificationList, countResult] = await Promise.all([
+      db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
+        .orderBy(desc(notifications.createdAt))
+        .limit(limit)
+        .offset(offset),
+      
+      db
+        .select({ count: count() })
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
+    ]);
+
+    return {
+      notifications: notificationList,
+      total: countResult[0]?.count || 0
+    };
+  }
+
+  async markNotificationRead(notificationId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ status: 'read', readAt: new Date() })
+      .where(eq(notifications.id, notificationId));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ status: 'read', readAt: new Date() })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.status, 'unread')
+        )
+      );
+  }
+
+  async getUnreadNotificationCounts(userId: string): Promise<{ 
+    total: number;
+    byChannel: { [channelId: string]: number };
+    byDM: { [senderId: string]: number };
+    byType: { [type: string]: number };
+  }> {
+    const unreadNotifs = await db
+      .select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.status, 'unread')
+        )
+      );
+
+    const result = {
+      total: unreadNotifs.length,
+      byChannel: {} as { [channelId: string]: number },
+      byDM: {} as { [senderId: string]: number },
+      byType: {} as { [type: string]: number }
+    };
+
+    unreadNotifs.forEach(notif => {
+      // Count by type
+      result.byType[notif.type] = (result.byType[notif.type] || 0) + 1;
+
+      // Count by channel
+      if (notif.channelId) {
+        result.byChannel[notif.channelId] = (result.byChannel[notif.channelId] || 0) + 1;
+      }
+
+      // Count by DM sender
+      if (notif.type === 'dm' && notif.senderId) {
+        result.byDM[notif.senderId] = (result.byDM[notif.senderId] || 0) + 1;
+      }
+    });
+
+    return result;
+  }
+
+  async deleteNotification(notificationId: string): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, notificationId));
+  }
+
+  async deleteOldNotifications(userId: string, daysOld: number = 30): Promise<void> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+    await db
+      .delete(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          sql`${notifications.createdAt} < ${cutoffDate}`
+        )
+      );
+  }
+
+  async updateUserNotificationPreferences(userId: string, preferences: any): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set({ notificationPreferences: preferences, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async updateChannelLastSeen(userId: string, channelId: string): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (user) {
+      const lastSeenChannels = (user.lastSeenChannels as any) || {};
+      lastSeenChannels[channelId] = new Date().toISOString();
+      
+      await db
+        .update(users)
+        .set({ lastSeenChannels, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
+  }
+
+  async updateDMLastSeen(userId: string, senderId: string): Promise<void> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (user) {
+      const lastSeenDMs = (user.lastSeenDMs as any) || {};
+      lastSeenDMs[senderId] = new Date().toISOString();
+      
+      await db
+        .update(users)
+        .set({ lastSeenDMs, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
   }
 }
 

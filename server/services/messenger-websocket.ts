@@ -16,7 +16,7 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'typing_start' | 'typing_stop' | 'online_status' | 'read_receipt' | 'join_channel' | 'thread_reply' | 'thread_typing' | 'message_pinned' | 'user_status_changed';
+  type: 'authenticate' | 'message' | 'direct_message' | 'typing' | 'typing_start' | 'typing_stop' | 'online_status' | 'read_receipt' | 'join_channel' | 'thread_reply' | 'thread_typing' | 'message_pinned' | 'user_status_changed' | 'notification' | 'notification_counts_updated';
   payload: any;
 }
 
@@ -209,13 +209,48 @@ export class MessengerWebSocketService {
       const message = await storage.createMessage(messageWithAuthenticatedSender);
 
       const channelMembers = await storage.getChannelMembers(payload.channelId);
+      const channel = await storage.getChannel(payload.channelId);
+      const sender = await storage.getUser(ws.userId);
       
-      channelMembers.forEach(member => {
+      // Create notifications for all channel members (except sender)
+      for (const member of channelMembers) {
+        if (member.userId !== ws.userId) {
+          // Check if message contains a mention
+          const isMention = payload.content?.includes(`@${member.userId}`) || 
+                           payload.content?.includes(`@everyone`) ||
+                           payload.content?.includes(`@channel`);
+          
+          // Create notification
+          await storage.createNotification({
+            userId: member.userId,
+            type: isMention ? 'mention' : 'message',
+            status: 'unread',
+            sourceId: message.id,
+            channelId: payload.channelId,
+            senderId: ws.userId,
+            title: `${sender?.firstName || sender?.email} in #${channel?.name}`,
+            content: payload.content?.substring(0, 100), // Preview of message
+            metadata: {
+              channelName: channel?.name,
+              senderName: sender?.firstName || sender?.email,
+              isMention
+            }
+          });
+          
+          // Send notification counts update
+          const counts = await storage.getUnreadNotificationCounts(member.userId);
+          this.sendToUser(member.userId, {
+            type: 'notification_counts_updated',
+            payload: counts
+          });
+        }
+        
+        // Send the message to all members
         this.sendToUser(member.userId, {
           type: 'new_message',
           payload: message
         });
-      });
+      }
 
       console.log(`[Messenger WS] Message sent to channel ${payload.channelId}`);
     } catch (error) {
@@ -245,15 +280,42 @@ export class MessengerWebSocketService {
         payload.fileUrl,
         payload.fileName
       );
+      
+      // Get sender info for notification
+      const sender = await storage.getUser(ws.userId);
+      
+      // Create notification for recipient
+      await storage.createNotification({
+        userId: payload.receiverId,
+        type: 'dm',
+        status: 'unread',
+        sourceId: directMessage.id,
+        senderId: ws.userId,
+        title: `${sender?.firstName || sender?.email}`,
+        content: payload.content?.substring(0, 100), // Preview of message
+        metadata: {
+          senderName: sender?.firstName || sender?.email,
+          senderProfileImage: sender?.profileImageUrl
+        }
+      });
 
-      // Notify the recipient with unread count
+      // Get updated notification counts for recipient
+      const notificationCounts = await storage.getUnreadNotificationCounts(payload.receiverId);
       const unreadCounts = await storage.getUnreadCounts(payload.receiverId);
+      
+      // Notify the recipient with unread count and notification counts
       this.sendToUser(payload.receiverId, {
         type: 'new_direct_message',
         payload: {
           message: directMessage,
           unreadCount: unreadCounts[ws.userId] || 1
         }
+      });
+      
+      // Send notification counts update
+      this.sendToUser(payload.receiverId, {
+        type: 'notification_counts_updated',
+        payload: notificationCounts
       });
 
       // Confirm to sender

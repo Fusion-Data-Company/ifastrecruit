@@ -50,6 +50,10 @@ import {
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
 import iFastRecruitLogo from "@assets/D3A79AEA-5F31-45A5-90D2-AD2878D4A934_1760646767765.png";
+import { NotificationDropdown } from '@/components/NotificationDropdown';
+import { NotificationBadge } from '@/components/NotificationBadge';
+import { notificationSound } from '@/lib/notificationSound';
+import { desktopNotifications } from '@/lib/desktopNotifications';
 
 interface Channel {
   id: string;
@@ -218,7 +222,30 @@ export default function MessengerPage() {
   const [infoPanelTab, setInfoPanelTab] = useState<'members' | 'pinned' | 'about'>('members');
   // Search modal state
   const [showSearchModal, setShowSearchModal] = useState(false);
+  
+  // Notification state
+  const [unreadCounts, setUnreadCounts] = useState<any>({ total: 0, byChannel: {}, byDM: {} });
+  const [notificationsPermission, setNotificationsPermission] = useState<NotificationPermission>('default');
 
+  // Fetch unread notification counts
+  const { data: fetchedUnreadCounts } = useQuery({
+    queryKey: ['/api/messenger/notifications/unread-counts'],
+    refetchInterval: 60000, // Refetch every minute
+    onSuccess: (data) => {
+      if (data) setUnreadCounts(data);
+    }
+  });
+  
+  // Request notification permission on first interaction
+  useEffect(() => {
+    if (user && desktopNotifications.isSupported() && !desktopNotifications.hasPermission()) {
+      // Request permission after a short delay to avoid being too aggressive
+      setTimeout(() => {
+        desktopNotifications.requestPermission();
+      }, 3000);
+    }
+  }, [user]);
+  
   // Check onboarding status
   const { data: onboardingStatus } = useQuery({
     queryKey: ['/api/user/onboarding-status'],
@@ -436,11 +463,39 @@ export default function MessengerPage() {
         queryClient.invalidateQueries({ queryKey: ['/api/messenger/dm/users'] });
       }
       
-      if (data.type === 'notification_sound' && data.payload?.soundType === 'dm') {
-        // Play notification sound for new DM
-        const audio = new Audio('/sounds/notification.mp3');
-        audio.volume = 0.5;
-        audio.play().catch(e => console.log('Could not play notification sound:', e));
+      // Notification events
+      if (data.type === 'notification') {
+        const notification = data.payload;
+        
+        // Play sound based on notification type
+        notificationSound.play(notification.type);
+        
+        // Show desktop notification if tab is not visible
+        if (document.visibilityState !== 'visible' && desktopNotifications.isEnabled()) {
+          const url = notification.channelId 
+            ? `/messenger?channel=${notification.channelId}`
+            : `/messenger?dm=${notification.senderId}`;
+            
+          desktopNotifications.showMessageNotification(
+            notification.type,
+            notification.metadata?.senderName || 'Someone',
+            notification.content || 'New message',
+            url
+          );
+        }
+        
+        // Invalidate notification queries
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/notifications'] });
+      }
+      
+      if (data.type === 'notification_counts_updated') {
+        setUnreadCounts(data.payload);
+        queryClient.invalidateQueries({ queryKey: ['/api/messenger/notifications/unread-counts'] });
+      }
+      
+      if (data.type === 'notification_sound' && data.payload?.soundType) {
+        // Play notification sound
+        notificationSound.play(data.payload.soundType);
       }
       
       if (data.type === 'dm_read' || data.type === 'unread_counts_updated') {
@@ -1365,16 +1420,22 @@ export default function MessengerPage() {
                             ) : (
                               <Lock className="h-4 w-4 flex-shrink-0 text-gray-500" />
                             )}
-                            <span className="truncate">{channel.name}</span>
+                            <span className={cn(
+                              "truncate",
+                              unreadCounts?.byChannel?.[channel.id] > 0 && "font-semibold"
+                            )}>{channel.name}</span>
                             {!canPost && (
                               <span className="text-xs text-gray-500">(View Only)</span>
                             )}
                           </div>
-                          {channel.tier && (
-                            <div className="flex-shrink-0">
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {unreadCounts?.byChannel?.[channel.id] > 0 && (
+                              <NotificationBadge count={unreadCounts.byChannel[channel.id]} size="sm" />
+                            )}
+                            {channel.tier && (
                               <TierBadge tier={channel.tier} />
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                         {channel.description && selectedChannel?.id === channel.id && (
                           <p className="text-xs text-gray-500 mt-1 pl-6">{channel.description}</p>
@@ -1444,21 +1505,27 @@ export default function MessengerPage() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1">
-                            <span className="truncate">
-                              {getUserDisplayName(conversation.user)}
-                            </span>
-                            {conversation.user?.isAdmin && (
-                              <Badge className="px-1 py-0 text-[10px] bg-red-500/20 text-red-400">
-                                Admin
-                              </Badge>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1 flex-1 min-w-0">
+                              <span className={cn(
+                                "truncate",
+                                (conversation.unreadCount > 0 || unreadCounts?.byDM?.[conversation.userId] > 0) && "font-semibold"
+                              )}>
+                                {getUserDisplayName(conversation.user)}
+                              </span>
+                              {conversation.user?.isAdmin && (
+                                <Badge className="px-1 py-0 text-[10px] bg-red-500/20 text-red-400 flex-shrink-0">
+                                  Admin
+                                </Badge>
+                              )}
+                            </div>
+                            {(conversation.unreadCount > 0 || unreadCounts?.byDM?.[conversation.userId] > 0) && (
+                              <NotificationBadge 
+                                count={conversation.unreadCount || unreadCounts.byDM[conversation.userId] || 0} 
+                                size="sm" 
+                              />
                             )}
                           </div>
-                          {conversation.unreadCount && conversation.unreadCount > 0 && (
-                            <span className="text-xs bg-primary text-primary-foreground rounded-full px-1.5">
-                              {conversation.unreadCount}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </button>
@@ -1609,6 +1676,9 @@ export default function MessengerPage() {
             
             {/* Header Actions */}
             <div className="flex items-center gap-2">
+              {/* Notification Dropdown */}
+              <NotificationDropdown />
+              
               {/* Global Search Button */}
               <button
                 onClick={() => setShowSearchModal(true)}

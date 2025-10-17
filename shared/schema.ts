@@ -20,6 +20,10 @@ export const fileStatusEnum = pgEnum("file_status", ["pending", "processing", "p
 export const templateTypeEnum = pgEnum("template_type", ["welcome", "qa", "resume", "career", "general"]);
 export const responseFrequencyEnum = pgEnum("response_frequency", ["always", "sometimes", "only_when_mentioned", "never"]);
 
+// Notification Enums
+export const notificationTypeEnum = pgEnum("notification_type", ["message", "mention", "dm", "thread_reply"]);
+export const notificationStatusEnum = pgEnum("notification_status", ["unread", "read"]);
+
 // Tables
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -271,6 +275,12 @@ export const users = pgTable("users", {
   showCalendlyButton: boolean("show_calendly_button").default(true),
   onlineStatus: text("online_status").default("offline"), // "online", "offline", "away"
   lastSeenAt: timestamp("last_seen_at"),
+  // Notification preferences
+  notificationPreferences: jsonb("notification_preferences").default(
+    sql`'{"sound": true, "desktop": true, "email": true, "volume": 50, "soundTypes": {"message": true, "mention": true, "dm": true, "thread_reply": true}}'::jsonb`
+  ),
+  lastSeenChannels: jsonb("last_seen_channels").default(sql`'{}'::jsonb`), // {"channelId": timestamp}
+  lastSeenDMs: jsonb("last_seen_dms").default(sql`'{}'::jsonb`), // {"userId": timestamp}
   // Onboarding fields
   onboardingAnswers: jsonb("onboarding_answers"), // Stores questionnaire responses
   phone: varchar("phone"), // Phone number for communication
@@ -534,6 +544,31 @@ export const jasonChannelBehaviors = pgTable("jason_channel_behaviors", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Notifications table for tracking unread messages, mentions, etc.
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: notificationTypeEnum("type").notNull(), // "message", "mention", "dm", "thread_reply"
+  status: notificationStatusEnum("status").default("unread"),
+  
+  // Source references - nullable to support different types
+  sourceId: varchar("source_id"), // messageId or directMessageId
+  channelId: varchar("channel_id").references(() => channels.id),
+  senderId: varchar("sender_id").references(() => users.id),
+  
+  // Notification content
+  title: text("title"), // Brief notification title
+  content: text("content"), // Preview of the message content
+  metadata: jsonb("metadata"), // Additional context (thread info, mention position, etc.)
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  readAt: timestamp("read_at"),
+}, (table) => [
+  index("idx_notifications_user_status").on(table.userId, table.status),
+  index("idx_notifications_created").on(table.createdAt),
+]);
+
 // Add unique constraints for key-based lookups
 export const conversationContextUniqueConstraint = unique("conversation_context_unique")
   .on(conversationContext.platformConversationId, conversationContext.contextKey, conversationContext.contextType);
@@ -673,6 +708,9 @@ export const insertOnboardingResponseSchema = createInsertSchema(onboardingRespo
 export const insertMessageReactionSchema = createInsertSchema(messageReactions).omit({ id: true, createdAt: true });
 export const insertDirectMessageReactionSchema = createInsertSchema(directMessageReactions).omit({ id: true, createdAt: true });
 
+// Notifications insert schema
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+
 // Messenger types
 export type Channel = typeof channels.$inferSelect;
 export type UserChannel = typeof userChannels.$inferSelect;
@@ -682,6 +720,7 @@ export type FileUpload = typeof fileUploads.$inferSelect;
 export type OnboardingResponse = typeof onboardingResponses.$inferSelect;
 export type MessageReaction = typeof messageReactions.$inferSelect;
 export type DirectMessageReaction = typeof directMessageReactions.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
 
 export type InsertChannel = z.infer<typeof insertChannelSchema>;
 export type InsertUserChannel = z.infer<typeof insertUserChannelSchema>;
@@ -691,6 +730,7 @@ export type InsertFileUpload = z.infer<typeof insertFileUploadSchema>;
 export type InsertOnboardingResponse = z.infer<typeof insertOnboardingResponseSchema>;
 export type InsertMessageReaction = z.infer<typeof insertMessageReactionSchema>;
 export type InsertDirectMessageReaction = z.infer<typeof insertDirectMessageReactionSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 // Replit Auth types
 export type UpsertUser = typeof users.$inferInsert;

@@ -2755,6 +2755,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // =========================
+  // NOTIFICATION API ENDPOINTS
+  // =========================
+
+  // GET /api/messenger/notifications - Get user's notifications
+  app.get("/api/messenger/notifications", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const result = await storage.getNotificationsByUser(userId, limit, offset);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("[Notifications] Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // GET /api/messenger/notifications/unread - Get unread notifications
+  app.get("/api/messenger/notifications/unread", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 50;
+      const notifications = await storage.getUnreadNotifications(userId, limit);
+      
+      res.json(notifications);
+    } catch (error) {
+      console.error("[Notifications] Error fetching unread notifications:", error);
+      res.status(500).json({ error: "Failed to fetch unread notifications" });
+    }
+  });
+
+  // GET /api/messenger/notifications/unread-counts - Get unread counts
+  app.get("/api/messenger/notifications/unread-counts", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const counts = await storage.getUnreadNotificationCounts(userId);
+      
+      res.json(counts);
+    } catch (error) {
+      console.error("[Notifications] Error fetching unread counts:", error);
+      res.status(500).json({ error: "Failed to fetch unread counts" });
+    }
+  });
+
+  // PUT /api/messenger/notifications/:id/read - Mark notification as read
+  app.put("/api/messenger/notifications/:id/read", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { id } = req.params;
+      await storage.markNotificationRead(id);
+      
+      // Broadcast updated counts to user
+      const counts = await storage.getUnreadNotificationCounts(userId);
+      messengerWS.sendToUser(userId, {
+        type: 'notification_counts_updated',
+        payload: counts
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Notifications] Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  // PUT /api/messenger/notifications/read-all - Mark all notifications as read
+  app.put("/api/messenger/notifications/read-all", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      await storage.markAllNotificationsRead(userId);
+      
+      // Broadcast updated counts to user
+      messengerWS.sendToUser(userId, {
+        type: 'notification_counts_updated',
+        payload: {
+          total: 0,
+          byChannel: {},
+          byDM: {},
+          byType: {}
+        }
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Notifications] Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // DELETE /api/messenger/notifications/:id - Delete a notification
+  app.delete("/api/messenger/notifications/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { id } = req.params;
+      await storage.deleteNotification(id);
+      
+      // Broadcast updated counts to user
+      const counts = await storage.getUnreadNotificationCounts(userId);
+      messengerWS.sendToUser(userId, {
+        type: 'notification_counts_updated',
+        payload: counts
+      });
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Notifications] Error deleting notification:", error);
+      res.status(500).json({ error: "Failed to delete notification" });
+    }
+  });
+
+  // POST /api/messenger/notifications/preferences - Update notification preferences
+  app.post("/api/messenger/notifications/preferences", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { preferences } = req.body;
+      if (!preferences) {
+        return res.status(400).json({ error: "Preferences are required" });
+      }
+
+      const updatedUser = await storage.updateUserNotificationPreferences(userId, preferences);
+      
+      res.json({ 
+        success: true, 
+        preferences: updatedUser.notificationPreferences 
+      });
+    } catch (error) {
+      console.error("[Notifications] Error updating preferences:", error);
+      res.status(500).json({ error: "Failed to update notification preferences" });
+    }
+  });
+
+  // POST /api/messenger/notifications/channel-seen - Update channel last seen
+  app.post("/api/messenger/notifications/channel-seen", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { channelId } = req.body;
+      if (!channelId) {
+        return res.status(400).json({ error: "Channel ID is required" });
+      }
+
+      await storage.updateChannelLastSeen(userId, channelId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Notifications] Error updating channel last seen:", error);
+      res.status(500).json({ error: "Failed to update channel last seen" });
+    }
+  });
+
+  // POST /api/messenger/notifications/dm-seen - Update DM last seen
+  app.post("/api/messenger/notifications/dm-seen", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { senderId } = req.body;
+      if (!senderId) {
+        return res.status(400).json({ error: "Sender ID is required" });
+      }
+
+      await storage.updateDMLastSeen(userId, senderId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[Notifications] Error updating DM last seen:", error);
+      res.status(500).json({ error: "Failed to update DM last seen" });
+    }
+  });
+
+  // =========================
   // ELEVENLABS INTEGRATION API
   // =========================
   
