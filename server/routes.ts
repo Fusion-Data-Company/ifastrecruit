@@ -1405,7 +1405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT /api/admin/jason/settings - Update Jason settings
   app.put("/api/admin/jason/settings", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       const { settingKey, settingValue, category, description } = req.body;
       
       if (!settingKey || !settingValue) {
@@ -1449,7 +1449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/admin/jason/templates - Create new template
   app.post("/api/admin/jason/templates", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       const { templateName, templateType, channelTier, template, variables, tags } = req.body;
       
       if (!templateName || !templateType || !template) {
@@ -1477,7 +1477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/jason/templates/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       const updates = { ...req.body, updatedBy: userId };
       
       const updatedTemplate = await storage.updateJasonTemplate(id, updates);
@@ -1515,7 +1515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/jason/channel-behaviors/:channelId", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const { channelId } = req.params;
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       const behavior = { ...req.body, updatedBy: userId };
       
       const updatedBehavior = await storage.upsertJasonChannelBehavior(channelId, behavior);
@@ -1533,7 +1533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/users/search - Search users for @mentions
   app.get("/api/messenger/users/search", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       const { q: query, channelId } = req.query;
       
       if (!userId) {
@@ -1583,7 +1583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/users - List all users available for DM (admins see all, users see admins only)
   app.get("/api/messenger/dm/users", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1618,7 +1618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/conversations - Get user's DM conversations
   app.get("/api/messenger/dm/conversations", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1659,7 +1659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/messages/:userId - Get messages between current user and another user
   app.get("/api/messenger/dm/messages/:userId", isAuthenticated, async (req, res) => {
     try {
-      const currentUserId = (req.user as any)?.id;
+      const currentUserId = req.user.claims.sub;
       if (!currentUserId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1682,7 +1682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/dm/send - Send a direct message
   app.post("/api/messenger/dm/send", isAuthenticated, async (req, res) => {
     try {
-      const senderId = (req.user as any)?.id;
+      const senderId = req.user.claims.sub;
       if (!senderId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1716,7 +1716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT /api/messenger/dm/read/:userId - Mark messages as read
   app.put("/api/messenger/dm/read/:userId", isAuthenticated, async (req, res) => {
     try {
-      const recipientId = (req.user as any)?.id;
+      const recipientId = req.user.claims.sub;
       if (!recipientId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1744,7 +1744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/unread - Get unread message counts
   app.get("/api/messenger/dm/unread", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1769,7 +1769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/threads/:messageId - Get thread replies for a channel message
   app.get("/api/messenger/threads/:messageId", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1787,7 +1787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/threads/reply - Post a reply to a channel thread
   app.post("/api/messenger/threads/reply", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1828,7 +1828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/dm/threads/:messageId - Get thread replies for a direct message
   app.get("/api/messenger/dm/threads/:messageId", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1846,7 +1846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/dm/threads/reply - Post a reply to a DM thread
   app.post("/api/messenger/dm/threads/reply", isAuthenticated, async (req, res) => {
     try {
-      const senderId = (req.user as any)?.id;
+      const senderId = req.user.claims.sub;
       if (!senderId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -1891,7 +1891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/upload - Handle file uploads with enhanced metadata
   app.post("/api/messenger/upload", isAuthenticated, uploadRateLimit, upload.single('file'), async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       const { messageId } = req.body; // Optional message ID to link file to
       
       if (!userId) {
@@ -1990,7 +1990,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/uploads - Get user's uploaded files
   app.get("/api/messenger/uploads", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2006,7 +2006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/upload/:fileId - Get specific file upload details
   app.get("/api/messenger/upload/:fileId", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2019,7 +2019,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if user has access to this file
-      if (file.userId !== userId && !(req.user as any)?.isAdmin) {
+      const currentUser = await storage.getUser(userId);
+      if (file.userId !== userId && !currentUser?.isAdmin) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -2084,7 +2085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/reactions/add - Add a reaction to a message
   app.post("/api/messenger/reactions/add", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2132,7 +2133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/reactions/remove - Remove a reaction from a message
   app.post("/api/messenger/reactions/remove", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2211,27 +2212,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/channels - Get list of channels for user  
-  app.get("/api/channels", isAuthenticated, async (req, res) => {
-    try {
-      const userId = (req.user as any)?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
-      // Return all channels - visibility is handled in frontend
-      const allChannels = await storage.getChannels();
-      res.json(allChannels);
-    } catch (error) {
-      console.error("[Messenger] Error fetching channels:", error);
-      res.status(500).json({ error: "Failed to fetch channels" });
-    }
-  });
+  // [REMOVED: Duplicate /api/channels endpoint - using the correct one at line 441 instead]
 
   // GET /api/online-users - Get list of online users
   app.get("/api/online-users", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2283,7 +2269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/ai/jason - Get Jason AI response
   app.post("/api/messenger/ai/jason", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2322,7 +2308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/ai/jason/welcome - Generate welcome message
   app.post("/api/messenger/ai/jason/welcome", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2354,7 +2340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/ai/jason/resume-feedback - Generate resume feedback
   app.post("/api/messenger/ai/jason/resume-feedback", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2381,7 +2367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/ai/jason/career-guidance - Get career path guidance
   app.post("/api/messenger/ai/jason/career-guidance", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2473,7 +2459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/notifications - Get user's notifications
   app.get("/api/messenger/notifications", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2493,7 +2479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/notifications/unread - Get unread notifications
   app.get("/api/messenger/notifications/unread", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2511,7 +2497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/messenger/notifications/unread-counts - Get unread counts
   app.get("/api/messenger/notifications/unread-counts", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2528,7 +2514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT /api/messenger/notifications/:id/read - Mark notification as read
   app.put("/api/messenger/notifications/:id/read", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2553,7 +2539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT /api/messenger/notifications/read-all - Mark all notifications as read
   app.put("/api/messenger/notifications/read-all", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2581,7 +2567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DELETE /api/messenger/notifications/:id - Delete a notification
   app.delete("/api/messenger/notifications/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2606,7 +2592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/notifications/preferences - Update notification preferences
   app.post("/api/messenger/notifications/preferences", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2631,7 +2617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/notifications/channel-seen - Update channel last seen
   app.post("/api/messenger/notifications/channel-seen", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
@@ -2653,7 +2639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/messenger/notifications/dm-seen - Update DM last seen
   app.post("/api/messenger/notifications/dm-seen", isAuthenticated, async (req, res) => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user.claims.sub;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }
