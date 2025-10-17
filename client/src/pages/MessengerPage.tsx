@@ -1751,7 +1751,7 @@ export default function MessengerPage() {
 
             <div className="space-y-4">
               {viewMode === 'channel' ? (
-                channelMessages.map((message) => {
+                (channelMessages || []).map((message) => {
                   const isOwnMessage = message.userId === user?.id;
                   
                   return (
@@ -1978,7 +1978,7 @@ export default function MessengerPage() {
                   );
                 })
               ) : (
-                directMessages.map((message) => {
+                (directMessages || []).map((message) => {
                   const isOwnMessage = message.senderId === user?.id;
                   const messageUser = isOwnMessage ? user : selectedDMUser;
                   
