@@ -27,7 +27,6 @@ import OnboardingPage from "@/pages/OnboardingPage";
 import DevMessengerPage from "@/pages/DevMessengerPage";
 import LoginPage from "@/pages/LoginPage";
 import WorkflowsPage from "@/pages/workflows";
-import BillingPage from "@/pages/billing";
 import NotFound from "@/pages/not-found";
 
 // Admin wrapper that includes ElevenLabs agent
@@ -138,7 +137,6 @@ function Router() {
         <Route path="/elevenlabs">{() => <AdminPageWrapper><ElevenLabsPage /></AdminPageWrapper>}</Route>
         <Route path="/jason-ai-settings">{() => <AdminPageWrapper><JasonAIAdmin /></AdminPageWrapper>}</Route>
         <Route path="/workflows">{() => <AdminPageWrapper><WorkflowsPage /></AdminPageWrapper>}</Route>
-        <Route path="/billing" component={BillingPage} />
         <Route path="/onboarding" component={OnboardingPage} />
         <Route path="/messenger">
           {() => {

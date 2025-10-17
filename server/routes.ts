@@ -76,7 +76,6 @@ import { syncMonitoringRouter } from "./routes/sync-monitoring";
 import callRoutes from "./routes/calls";
 import commandRoutes from "./routes/commands";
 import searchRoutes from "./routes/search";
-import billingRoutes from "./routes/billing";
 import { webrtcSignaling } from "./services/webrtc.service";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
@@ -1271,8 +1270,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount search routes
   app.use("/api/search", searchRoutes);
 
-  // Mount billing routes
-  app.use("/api/billing", billingRoutes);
 
   // MCP Server endpoints
   app.post("/api/mcp/tools/list", async (req, res) => {
