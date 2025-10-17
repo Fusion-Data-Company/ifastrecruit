@@ -493,6 +493,9 @@ export default function MessengerPage() {
       const messages = viewMode === 'channel' ? channelMessages : directMessages;
       const messageType = viewMode === 'channel' ? 'channel' : 'dm';
       
+      // Ensure messages is not null and is an array
+      if (!messages || !Array.isArray(messages)) return;
+      
       for (const message of messages) {
         try {
           const response = await fetch(`/api/messenger/reactions/${messageType}/${message.id}`, {
@@ -511,7 +514,7 @@ export default function MessengerPage() {
       }
     };
 
-    if ((channelMessages.length > 0 && viewMode === 'channel') || (directMessages.length > 0 && viewMode === 'dm')) {
+    if ((channelMessages && channelMessages.length > 0 && viewMode === 'channel') || (directMessages && directMessages.length > 0 && viewMode === 'dm')) {
       loadReactions();
     }
   }, [channelMessages, directMessages, viewMode]);
