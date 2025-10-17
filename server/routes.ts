@@ -473,11 +473,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Messenger API endpoints
   app.get('/api/channels', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const channels = await storage.getUserChannels(userId);
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      // Get the actual user from the database using email or auth ID
+      let user = await storage.getUser(authUserId);
+      if (!user && userEmail) {
+        user = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!user) {
+        console.error('[/api/channels] User not found for auth ID:', authUserId, 'email:', userEmail);
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const actualUserId = user.id;
+      
+      const userChannelMemberships = await storage.getUserChannels(actualUserId);
+      
+      // If no memberships exist, return all channels the user should have access to based on their tier
+      if (userChannelMemberships.length === 0) {
+        // Get all channels
+        const allChannels = await storage.getChannels();
+        
+        // Filter based on user's licensing tier
+        const accessibleChannels = allChannels.filter(channel => {
+          if (user.isAdmin) return true; // Admins can see all channels
+          if (channel.tier === 'NON_LICENSED') return true; // Everyone can see non-licensed
+          if (channel.tier === 'FL_LICENSED' && (user.hasFloridaLicense || user.isMultiStateLicensed)) return true;
+          if (channel.tier === 'MULTI_STATE' && user.isMultiStateLicensed) return true;
+          return false;
+        });
+        
+        return res.json(accessibleChannels);
+      }
+      
       const channelDetails = await Promise.all(
-        channels.map(uc => storage.getChannel(uc.channelId))
+        userChannelMemberships.map(uc => storage.getChannel(uc.channelId))
       );
+      
       res.json(channelDetails.filter(Boolean));
     } catch (error) {
       console.error("Error fetching channels:", error);
