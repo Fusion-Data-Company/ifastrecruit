@@ -6,6 +6,7 @@ import { HoverFooter } from '@/components/HoverFooter';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { SearchModal } from '@/components/SearchModal';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery as useQueryDirect } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -172,7 +173,14 @@ const tierConfig = {
 };
 
 export default function MessengerPage() {
-  const { user } = useAuth();
+  // Use dev bypass for development testing
+  const { data: devUser } = useQueryDirect({
+    queryKey: ['/api/dev/messenger/user']
+  });
+  
+  const { user: authUser } = useAuth();
+  // Always use devUser if available for testing
+  const user = devUser || authUser;
   const [viewMode, setViewMode] = useState<ViewMode>('channel');
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [selectedDMUser, setSelectedDMUser] = useState<DMUser | null>(null);
@@ -1394,7 +1402,7 @@ export default function MessengerPage() {
               
               {showChannels && (
                 <div className="mt-1 space-y-0.5">
-                  {(channels || []).map(channel => {
+                  {(accessibleChannels || []).map(channel => {
                     const canPost = canPostInChannel(channel);
                     return (
                       <button
