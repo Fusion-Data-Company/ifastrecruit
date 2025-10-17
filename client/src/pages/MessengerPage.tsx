@@ -234,10 +234,14 @@ export default function MessengerPage() {
   const { data: fetchedUnreadCounts } = useQuery({
     queryKey: ['/api/messenger/notifications/unread-counts'],
     refetchInterval: 60000, // Refetch every minute
-    onSuccess: (data) => {
-      if (data) setUnreadCounts(data);
-    }
   });
+  
+  // Update unread counts when data changes
+  useEffect(() => {
+    if (fetchedUnreadCounts) {
+      setUnreadCounts(fetchedUnreadCounts);
+    }
+  }, [fetchedUnreadCounts]);
   
   // Request notification permission on first interaction
   useEffect(() => {
@@ -250,7 +254,7 @@ export default function MessengerPage() {
   }, [user]);
   
   // Check onboarding status
-  const { data: onboardingStatus } = useQuery({
+  const { data: onboardingStatus } = useQuery<{ completed: boolean }>({
     queryKey: ['/api/user/onboarding-status'],
     enabled: !!user
   });
@@ -271,13 +275,6 @@ export default function MessengerPage() {
   } = useQuery<Channel[]>({
     queryKey: ['/api/channels'],
     enabled: !!user,
-    onError: () => {
-      toast({
-        title: "Failed to load channels",
-        description: "Could not fetch channels. Please try again.",
-        variant: "destructive"
-      });
-    }
   });
 
   const { 
@@ -288,13 +285,6 @@ export default function MessengerPage() {
   } = useQuery<Message[]>({
     queryKey: [`/api/channels/${selectedChannel?.id}/messages`],
     enabled: !!selectedChannel && viewMode === 'channel',
-    onError: () => {
-      toast({
-        title: "Failed to load messages",
-        description: "Could not fetch channel messages. Please try again.",
-        variant: "destructive"
-      });
-    }
   });
 
   const { 
@@ -305,13 +295,6 @@ export default function MessengerPage() {
   } = useQuery<DMUser[]>({
     queryKey: ['/api/messenger/dm/users'],
     enabled: !!user,
-    onError: () => {
-      toast({
-        title: "Failed to load users",
-        description: "Could not fetch DM users. Please try again.",
-        variant: "destructive"
-      });
-    }
   });
 
   const { 
@@ -322,13 +305,6 @@ export default function MessengerPage() {
   } = useQuery<DMConversation[]>({
     queryKey: ['/api/messenger/dm/conversations'],
     enabled: !!user,
-    onError: () => {
-      toast({
-        title: "Failed to load conversations",
-        description: "Could not fetch DM conversations. Please try again.",
-        variant: "destructive"
-      });
-    }
   });
 
   const { 
@@ -339,14 +315,58 @@ export default function MessengerPage() {
   } = useQuery<DirectMessage[]>({
     queryKey: [`/api/messenger/dm/messages/${selectedDMUser?.id}`],
     enabled: !!selectedDMUser && viewMode === 'dm',
-    onError: () => {
+  });
+  
+  // Error handling with useEffect
+  useEffect(() => {
+    if (channelsError) {
+      toast({
+        title: "Failed to load channels",
+        description: "Could not fetch channels. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [channelsError, toast]);
+  
+  useEffect(() => {
+    if (channelMessagesError) {
+      toast({
+        title: "Failed to load messages",
+        description: "Could not fetch channel messages. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [channelMessagesError, toast]);
+  
+  useEffect(() => {
+    if (dmUsersError) {
+      toast({
+        title: "Failed to load users",
+        description: "Could not fetch DM users. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [dmUsersError, toast]);
+  
+  useEffect(() => {
+    if (dmConversationsError) {
+      toast({
+        title: "Failed to load conversations",
+        description: "Could not fetch DM conversations. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [dmConversationsError, toast]);
+  
+  useEffect(() => {
+    if (directMessagesError) {
       toast({
         title: "Failed to load messages",
         description: "Could not fetch direct messages. Please try again.",
         variant: "destructive"
       });
     }
-  });
+  }, [directMessagesError, toast]);
 
   const { data: onlineUsers = [] } = useQuery<DMUser[]>({
     queryKey: ['/api/online-users'],
@@ -383,18 +403,20 @@ export default function MessengerPage() {
         : [`/api/messenger/dm/threads/${selectedThread.id}`]
       : [],
     enabled: !!selectedThread,
-    onSuccess: (data) => {
-      setThreadReplies(data);
-    }
   });
+  
+  // Update thread replies when data changes
+  useEffect(() => {
+    if (threadRepliesData) {
+      setThreadReplies(threadRepliesData as (Message | DirectMessage)[]);
+    }
+  }, [threadRepliesData]);
 
   // Reaction mutations
   const addReactionMutation = useMutation({
     mutationFn: async ({ messageId, emoji, messageType }: { messageId: string; emoji: string; messageType: 'channel' | 'dm' }) => {
-      return apiRequest('/api/messenger/reactions/add', {
-        method: 'POST',
-        body: { messageId, emoji, messageType }
-      });
+      const response = await apiRequest('POST', '/api/messenger/reactions/add', { messageId, emoji, messageType });
+      return response.json();
     },
     onSuccess: (data, variables) => {
       // Optimistically update UI
@@ -411,10 +433,7 @@ export default function MessengerPage() {
 
   const removeReactionMutation = useMutation({
     mutationFn: async ({ messageId, emoji, messageType }: { messageId: string; emoji: string; messageType: 'channel' | 'dm' }) => {
-      return apiRequest('/api/messenger/reactions/remove', {
-        method: 'POST',
-        body: { messageId, emoji, messageType }
-      });
+      await apiRequest('POST', '/api/messenger/reactions/remove', { messageId, emoji, messageType });
     },
     onSuccess: (_, variables) => {
       // Optimistically update UI
@@ -435,17 +454,14 @@ export default function MessengerPage() {
   // Pin/Unpin mutation
   const pinMessageMutation = useMutation({
     mutationFn: async ({ messageId, messageType, action }: { messageId: string; messageType: 'channel' | 'dm'; action: 'pin' | 'unpin' }) => {
-      return apiRequest('/api/messenger/pin', {
-        method: 'POST',
-        body: { messageId, messageType, action }
-      });
+      await apiRequest('POST', '/api/messenger/pin', { messageId, messageType, action });
     },
     onSuccess: () => {
       // Refresh pinned messages and messages list
-      queryClient.invalidateQueries([`/api/messenger/pinned/${selectedChannel?.id}`]);
-      queryClient.invalidateQueries([`/api/messenger/pinned/dm/${selectedDMUser?.id}`]);
-      queryClient.invalidateQueries([`/api/channels/${selectedChannel?.id}/messages`]);
-      queryClient.invalidateQueries([`/api/messenger/dm/messages/${selectedDMUser?.id}`]);
+      queryClient.invalidateQueries({ queryKey: [`/api/messenger/pinned/${selectedChannel?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messenger/pinned/dm/${selectedDMUser?.id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/channels/${selectedChannel?.id}/messages`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/messenger/dm/messages/${selectedDMUser?.id}`] });
     }
   });
 
@@ -806,12 +822,9 @@ export default function MessengerPage() {
     mutationFn: async (payload: { content: string; formattedContent?: string; fileUrl?: string; fileName?: string }) => {
       if (!selectedDMUser || !user) return;
 
-      return apiRequest(`/api/messenger/dm/send`, {
-        method: 'POST',
-        body: {
-          recipientId: selectedDMUser.id,
-          ...payload
-        }
+      await apiRequest('POST', '/api/messenger/dm/send', {
+        recipientId: selectedDMUser.id,
+        ...payload
       });
     },
     onSuccess: () => {
@@ -846,10 +859,7 @@ export default function MessengerPage() {
             content
           };
 
-      return apiRequest(endpoint, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
+      await apiRequest('POST', endpoint, payload);
     },
     onSuccess: () => {
       setThreadInput('');
@@ -908,26 +918,24 @@ export default function MessengerPage() {
     mutationFn: async (message: string) => {
       // Prepare conversation history based on view mode
       const conversationHistory = viewMode === 'channel' 
-        ? channelMessages.slice(-5).map(msg => ({
+        ? (channelMessages as Message[]).slice(-5).map(msg => ({
             role: msg.isAiGenerated ? 'assistant' : 'user',
             content: msg.content
           }))
-        : directMessages.slice(-5).map(msg => ({
+        : (directMessages as DirectMessage[]).slice(-5).map(msg => ({
             role: msg.senderId === 'jason-ai' ? 'assistant' : 'user',
             content: msg.content
           }));
 
-      const response = await apiRequest('/api/messenger/ai/jason', {
-        method: 'POST',
-        body: JSON.stringify({
-          message,
-          channel: selectedChannel?.name || selectedDMUser?.firstName || 'general',
-          conversationHistory,
-          isDM: viewMode === 'dm',
-          dmUserId: selectedDMUser?.id
-        })
+      const response = await apiRequest('POST', '/api/messenger/ai/jason', {
+        message,
+        channel: selectedChannel?.name || selectedDMUser?.firstName || 'general',
+        conversationHistory,
+        isDM: viewMode === 'dm',
+        dmUserId: selectedDMUser?.id
       });
-      return response;
+      
+      return response.json();
     },
     onSuccess: async (response) => {
       // Send the AI response as a message in the current channel or DM
@@ -1632,7 +1640,7 @@ export default function MessengerPage() {
                             <div className="flex items-center gap-1 flex-1 min-w-0">
                               <span className={cn(
                                 "truncate",
-                                (conversation.unreadCount > 0 || unreadCounts?.byDM?.[conversation.userId] > 0) && "font-semibold"
+                                ((conversation.unreadCount ?? 0) > 0 || unreadCounts?.byDM?.[conversation.userId] > 0) && "font-semibold"
                               )}>
                                 {getUserDisplayName(conversation.user)}
                               </span>
@@ -1642,7 +1650,7 @@ export default function MessengerPage() {
                                 </Badge>
                               )}
                             </div>
-                            {(conversation.unreadCount > 0 || unreadCounts?.byDM?.[conversation.userId] > 0) && (
+                            {((conversation.unreadCount ?? 0) > 0 || unreadCounts?.byDM?.[conversation.userId] > 0) && (
                               <NotificationBadge 
                                 count={conversation.unreadCount || unreadCounts.byDM[conversation.userId] || 0} 
                                 size="sm" 
@@ -2043,14 +2051,14 @@ export default function MessengerPage() {
                             )}
                             
                             {/* Thread indicator */}
-                            {(message.threadCount > 0 || !message.parentMessageId) && (
+                            {((message.threadCount ?? 0) > 0 || !message.parentMessageId) && (
                               <button
                                 onClick={() => openThread(message)}
                                 className="inline-flex items-center gap-2 mt-2 text-blue-400 hover:text-blue-300 transition-colors text-sm"
                                 data-testid={`thread-indicator-${message.id}`}
                               >
                                 <MessageSquare className="h-4 w-4" />
-                                {message.threadCount > 0 ? (
+                                {(message.threadCount ?? 0) > 0 ? (
                                   <span>
                                     {message.threadCount} {message.threadCount === 1 ? 'reply' : 'replies'}
                                     {message.lastThreadReply && (
@@ -2460,7 +2468,7 @@ export default function MessengerPage() {
                     setMentionSearch(search);
                     // Trigger user search
                     if (search.trim()) {
-                      searchUsersMutation.mutate(search);
+                      searchMentionUsers(search);
                     }
                   }}
                   showAttachment={!askJasonMode}
@@ -3022,8 +3030,8 @@ export default function MessengerPage() {
           onComplete={(tier) => {
             setShowOnboarding(false);
             // Refresh channels and user data
-            queryClient.invalidateQueries(['/api/channels']);
-            queryClient.invalidateQueries(['/api/auth/user']);
+            queryClient.invalidateQueries({ queryKey: ['/api/channels'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
             console.log(`User onboarding completed with tier: ${tier}`);
           }}
           onClose={() => {
