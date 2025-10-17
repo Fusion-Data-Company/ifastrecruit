@@ -50,6 +50,17 @@ The WebSocket messenger service now implements secure session-based authenticati
 - **Fail-Secure Design**: WebSocket connections without valid sessions are rejected with HTTP 401
 - **Session Parser Utility**: `server/utils/sessionParser.ts` handles cookie extraction and session validation against the PostgreSQL session store
 
+## Recent Changes
+
+### October 17, 2025 - Messenger System Complete Fix
+- **Fixed WebSocket Server**: Removed production-only restriction in messenger-websocket.ts so WebSocket server runs in all environments, enabling real-time messaging in development
+- **Admin Onboarding Bypass**: Implemented automatic bypass of onboarding survey modal for admin accounts in OnboardingModal.tsx
+- **Channel Seeding System**: Created comprehensive channel seeding with three-tier system (non-licensed, FL-licensed, multi-state) and Jason AI welcome messages
+- **User-Channel Assignment**: Automated user assignment to channels based on licensing status (hasFloridaLicense, isMultiStateLicensed, isAdmin)
+- **Critical Security Fix**: Removed all /api/dev/messenger/* endpoints that allowed unauthenticated access - now all messenger access requires proper authentication
+- **Test User System**: Added three test users with different licensing tiers (test-nonlicensed@, test-florida@, test-multistate@ifast.recruit) for development testing
+- **Database Seeding**: Created seed-full.ts script to populate database with channels, test users, and proper assignments
+
 ## External Dependencies
 
 ### AI & Voice Services
