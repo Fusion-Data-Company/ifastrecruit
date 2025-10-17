@@ -7,6 +7,7 @@ import { MainUIAgent, SecondaryAgent, CenterAgent } from "@/components/ElevenLab
 import { FloatingCalendlyButton } from "@/components/FloatingCalendlyButton";
 import { HoverFooter } from "@/components/HoverFooter";
 import { useAuth } from "@/hooks/useAuth";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Dashboard from "@/pages/dashboard";
 import Candidates from "@/pages/candidates";
 import Interviews from "@/pages/interviews";
@@ -129,7 +130,13 @@ function Router() {
         <Route path="/elevenlabs">{() => <AdminPageWrapper><ElevenLabsPage /></AdminPageWrapper>}</Route>
         <Route path="/jason-ai-settings">{() => <AdminPageWrapper><JasonAIAdmin /></AdminPageWrapper>}</Route>
         <Route path="/onboarding" component={OnboardingPage} />
-        <Route path="/messenger" component={MessengerPage} />
+        <Route path="/messenger">
+          {() => (
+            <ErrorBoundary fallbackMessage="Something went wrong loading the messenger">
+              <MessengerPage />
+            </ErrorBoundary>
+          )}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </OnboardingGuard>
