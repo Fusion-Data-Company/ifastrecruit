@@ -16,7 +16,7 @@ import {
   type InsertUserChannel,
   type InsertMessage
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 export async function seedDefaultChannels() {
   try {
@@ -201,6 +201,86 @@ async function assignAllUsersToChannels(channelList: any[]) {
   }
 }
 
+export async function seedTestUsers() {
+  try {
+    console.log("🌱 Seeding test users...");
+    
+    // Check if test users already exist
+    const testEmails = [
+      'test-nonlicensed@ifast.recruit',
+      'test-florida@ifast.recruit', 
+      'test-multistate@ifast.recruit'
+    ];
+    
+    const existingUsers = await db
+      .select()
+      .from(users)
+      .where(sql`${users.email} IN (${sql.join(testEmails.map(e => sql`${e}`), sql`, `)})`);
+    
+    if (existingUsers.length >= 3) {
+      console.log("   ✓ Test users already exist");
+      return existingUsers;
+    }
+    
+    // Create test users with different licensing tiers
+    const testUserData = [
+      {
+        id: 'test-user-nonlicensed',
+        email: 'test-nonlicensed@ifast.recruit',
+        firstName: 'Alice',
+        lastName: 'Newbie',
+        phone: '555-0101',
+        hasFloridaLicense: false,
+        isMultiStateLicensed: false,
+        licensedStates: [],
+        onboardingCompleted: true,
+        isAdmin: false,
+        onlineStatus: 'offline' as const,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: 'test-user-florida',
+        email: 'test-florida@ifast.recruit',
+        firstName: 'Bob',
+        lastName: 'Sunshine',
+        phone: '555-0102',
+        hasFloridaLicense: true,
+        isMultiStateLicensed: false,
+        licensedStates: ['FL'],
+        onboardingCompleted: true,
+        isAdmin: false,
+        onlineStatus: 'online' as const,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: 'test-user-multistate',
+        email: 'test-multistate@ifast.recruit',
+        firstName: 'Carol',
+        lastName: 'Elite',
+        phone: '555-0103',
+        hasFloridaLicense: true,
+        isMultiStateLicensed: true,
+        licensedStates: ['FL', 'CA', 'TX', 'NY', 'GA'],
+        onboardingCompleted: true,
+        isAdmin: false,
+        onlineStatus: 'online' as const,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+    
+    const insertedUsers = await db.insert(users).values(testUserData).returning();
+    console.log(`   ✓ Created ${insertedUsers.length} test users`);
+    
+    return insertedUsers;
+  } catch (error) {
+    console.error("❌ Error seeding test users:", error);
+    throw error;
+  }
+}
+
 export async function seedDemoData() {
   try {
     console.log("🌱 Seeding demo data...");
@@ -210,6 +290,9 @@ export async function seedDemoData() {
     
     // Seed Jason AI and welcome messages
     await seedJasonAIMessages(channelList);
+    
+    // Seed test users with different licensing tiers
+    await seedTestUsers();
     
     // Assign all existing users to appropriate channels
     await assignAllUsersToChannels(channelList);
@@ -244,7 +327,8 @@ export async function seedDemoData() {
 
     console.log("✅ Minimal seed data completed!");
     console.log(`   - ${campaignData.length} ElevenLabs campaign created`);
-    console.log(`   - No fake candidates seeded - real candidates come from ElevenLabs`);
+    console.log(`   - Test users created with different licensing tiers`);
+    console.log(`   - Users assigned to appropriate channels based on licensing`);
     console.log(`   - Real data flows through ElevenLabs automation only`);
 
   } catch (error) {
