@@ -42,6 +42,21 @@ function AdminPageWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Messenger page wrapper to handle authentication properly
+function MessengerPageWrapper() {
+  const { user } = useAuth();
+  
+  if (user) {
+    return (
+      <WebRTCProvider userId={user.id}>
+        <MessengerPage />
+      </WebRTCProvider>
+    );
+  }
+  
+  return <MessengerPage />;
+}
+
 interface OnboardingGuardProps {
   children: React.ReactNode;
 }
@@ -139,20 +154,11 @@ function Router() {
         <Route path="/workflows">{() => <AdminPageWrapper><WorkflowsPage /></AdminPageWrapper>}</Route>
         <Route path="/onboarding" component={OnboardingPage} />
         <Route path="/messenger">
-          {() => {
-            const { user } = useAuth();
-            return (
-              <ErrorBoundary fallbackMessage="Something went wrong loading the messenger">
-                {user ? (
-                  <WebRTCProvider userId={user.id}>
-                    <MessengerPage />
-                  </WebRTCProvider>
-                ) : (
-                  <MessengerPage />
-                )}
-              </ErrorBoundary>
-            );
-          }}
+          {() => (
+            <ErrorBoundary fallbackMessage="Something went wrong loading the messenger">
+              <MessengerPageWrapper />
+            </ErrorBoundary>
+          )}
         </Route>
         <Route component={NotFound} />
       </Switch>
