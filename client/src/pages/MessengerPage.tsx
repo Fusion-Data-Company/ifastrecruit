@@ -260,12 +260,12 @@ export default function MessengerPage() {
     enabled: !!user
   });
 
-  // Show onboarding modal if not completed
+  // Show onboarding modal if not completed (skip for admins)
   useEffect(() => {
-    if (onboardingStatus && !onboardingStatus.completed) {
+    if (onboardingStatus && !onboardingStatus.completed && !user?.isAdmin) {
       setShowOnboarding(true);
     }
-  }, [onboardingStatus]);
+  }, [onboardingStatus, user]);
 
   // Queries
   const { data: channels = [] } = useQuery<Channel[]>({
