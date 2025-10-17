@@ -24,8 +24,15 @@ export function NotificationDropdown() {
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ['/api/messenger/notifications', 'unread'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/messenger/notifications/unread?limit=20');
-      return response.json();
+      try {
+        const response = await apiRequest('GET', '/api/messenger/notifications/unread?limit=20');
+        const data = await response.json();
+        // Ensure we always return an array
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+        return [];
+      }
     },
     refetchInterval: isOpen ? 5000 : false,
     enabled: true
@@ -120,7 +127,7 @@ export function NotificationDropdown() {
       <DropdownMenuContent className="w-96" align="end">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span className="font-semibold">Notifications</span>
-          {notifications.length > 0 && (
+          {notifications && notifications.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -136,7 +143,7 @@ export function NotificationDropdown() {
         <DropdownMenuSeparator />
         
         <ScrollArea className="max-h-[400px]">
-          {notifications.length === 0 ? (
+          {!notifications || notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No new notifications</p>
