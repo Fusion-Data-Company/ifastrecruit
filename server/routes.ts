@@ -73,6 +73,11 @@ import { elevenlabsIntegration } from "./integrations/elevenlabs";
 import { elevenLabsAutomation } from "./services/elevenlabs-automation";
 import { elevenLabsReconciliation } from "./services/elevenlabs-reconciliation";
 import { syncMonitoringRouter } from "./routes/sync-monitoring";
+import callRoutes from "./routes/calls";
+import commandRoutes from "./routes/commands";
+import searchRoutes from "./routes/search";
+import billingRoutes from "./routes/billing";
+import { webrtcSignaling } from "./services/webrtc.service";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
 import cors from "cors";
@@ -84,6 +89,7 @@ import multer from "multer";
 import path from "path";
 import { promises as fs } from "fs";
 import { resumeParser } from "./services/resume-parser";
+import { registerWorkflowRoutes } from "./routes/workflows";
 
 // Configure multer for file uploads
 const uploadStorage = multer.diskStorage({
@@ -153,6 +159,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize messenger WebSocket service for all environments
   // The service handles WebSocket upgrade separately to avoid conflicts with Vite
   messengerWS.initialize(httpServer);
+  
+  // Initialize WebRTC signaling service
+  webrtcSignaling.initialize(httpServer);
   
   // Setup SSE for real-time updates
   setupSSE(app);
@@ -471,6 +480,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Messenger API endpoints
+  // =======================
+  // CHANNEL MANAGEMENT ROUTES
+  // =======================
+  
+  // GET /api/channels - Get all channels (enhanced with membership info)
   app.get('/api/channels', isAuthenticated, async (req: any, res) => {
     try {
       const authUserId = req.user.claims.sub;
@@ -534,6 +548,381 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // GET /api/channels/browse - Browse all available channels
+  app.get('/api/channels/browse', isAuthenticated, async (req: any, res) => {
+    try {
+      const authUserId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      let user = await storage.getUser(authUserId);
+      if (!user && userEmail) {
+        user = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Parse query filters
+      const filters = {
+        searchQuery: req.query.search as string,
+        showPrivate: req.query.showPrivate === 'true',
+        showArchived: req.query.showArchived === 'true',
+        tier: req.query.tier as string
+      };
+      
+      // Browse channels with filters
+      const channels = await storage.browseChannels(user.id, filters);
+      
+      // Enrich with stats and membership info
+      const enrichedChannels = await Promise.all(
+        channels.map(async (channel) => {
+          const stats = await storage.getChannelStats(channel.id);
+          const membership = await storage.getChannelMember(channel.id, user.id);
+          
+          return {
+            ...channel,
+            ...stats,
+            isMember: !!membership,
+            memberRole: membership?.role || null
+          };
+        })
+      );
+      
+      res.json(enrichedChannels);
+    } catch (error) {
+      console.error("Error browsing channels:", error);
+      res.status(500).json({ message: "Failed to browse channels" });
+    }
+  });
+
+  // POST /api/channels/:id/join - Join a channel
+  app.post('/api/channels/:id/join', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: channelId } = req.params;
+      
+      // Check if channel exists
+      const channel = await storage.getChannel(channelId);
+      if (!channel) {
+        return res.status(404).json({ message: "Channel not found" });
+      }
+      
+      // Check if already a member
+      const existingMembership = await storage.getChannelMember(channelId, userId);
+      if (existingMembership) {
+        return res.status(400).json({ message: "Already a member of this channel" });
+      }
+      
+      // If private channel, create join request instead
+      if (channel.isPrivate) {
+        const joinRequest = await storage.createChannelJoinRequest({
+          channelId,
+          userId,
+          message: req.body.message || ''
+        });
+        return res.json({ type: 'request', data: joinRequest });
+      }
+      
+      // Join public channel directly
+      const membership = await storage.joinChannel(userId, channelId);
+      res.json({ type: 'joined', data: membership });
+    } catch (error) {
+      console.error("Error joining channel:", error);
+      res.status(500).json({ message: "Failed to join channel" });
+    }
+  });
+
+  // POST /api/channels/:id/leave - Leave a channel
+  app.post('/api/channels/:id/leave', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: channelId } = req.params;
+      
+      await storage.leaveChannel(userId, channelId);
+      res.json({ message: "Successfully left channel" });
+    } catch (error) {
+      console.error("Error leaving channel:", error);
+      res.status(500).json({ message: "Failed to leave channel" });
+    }
+  });
+
+  // PUT /api/channels/:id/archive - Archive a channel
+  app.put('/api/channels/:id/archive', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id: channelId } = req.params;
+      
+      const archived = await storage.archiveChannel(channelId);
+      res.json(archived);
+    } catch (error) {
+      console.error("Error archiving channel:", error);
+      res.status(500).json({ message: "Failed to archive channel" });
+    }
+  });
+
+  // PUT /api/channels/:id/unarchive - Unarchive a channel
+  app.put('/api/channels/:id/unarchive', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id: channelId } = req.params;
+      
+      const unarchived = await storage.unarchiveChannel(channelId);
+      res.json(unarchived);
+    } catch (error) {
+      console.error("Error unarchiving channel:", error);
+      res.status(500).json({ message: "Failed to unarchive channel" });
+    }
+  });
+
+  // POST /api/channels/:id/members - Add members to a channel
+  app.post('/api/channels/:id/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: channelId } = req.params;
+      const { userIds } = req.body;
+      
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ message: "userIds must be a non-empty array" });
+      }
+      
+      // Check if user has permission to add members
+      const permissions = await storage.getUserChannelPermissions(channelId, userId);
+      if (!permissions?.canInvite) {
+        return res.status(403).json({ message: "No permission to add members" });
+      }
+      
+      const addedMembers = await storage.addChannelMembers(channelId, userIds, userId);
+      res.json(addedMembers);
+    } catch (error) {
+      console.error("Error adding channel members:", error);
+      res.status(500).json({ message: "Failed to add members" });
+    }
+  });
+
+  // DELETE /api/channels/:id/members/:userId - Remove a member from channel
+  app.delete('/api/channels/:id/members/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const { id: channelId, userId: memberToRemove } = req.params;
+      
+      // Check if user has permission to remove members
+      const permissions = await storage.getUserChannelPermissions(channelId, currentUserId);
+      if (!permissions?.canManageMembers && currentUserId !== memberToRemove) {
+        return res.status(403).json({ message: "No permission to remove members" });
+      }
+      
+      await storage.removeChannelMember(channelId, memberToRemove);
+      res.json({ message: "Member removed successfully" });
+    } catch (error) {
+      console.error("Error removing channel member:", error);
+      res.status(500).json({ message: "Failed to remove member" });
+    }
+  });
+
+  // GET /api/channels/:id/permissions - Get channel permissions
+  app.get('/api/channels/:id/permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: channelId } = req.params;
+      
+      // Get user's permissions for this channel
+      const userPermissions = await storage.getUserChannelPermissions(channelId, userId);
+      
+      // Get all permission sets if user is admin
+      const member = await storage.getChannelMember(channelId, userId);
+      if (member?.role === 'admin' || member?.role === 'owner') {
+        const allPermissions = await storage.getChannelPermissions(channelId);
+        return res.json({ userPermissions, allPermissions });
+      }
+      
+      res.json({ userPermissions });
+    } catch (error) {
+      console.error("Error fetching channel permissions:", error);
+      res.status(500).json({ message: "Failed to fetch permissions" });
+    }
+  });
+
+  // PUT /api/channels/:id/permissions - Update channel permissions
+  app.put('/api/channels/:id/permissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: channelId } = req.params;
+      const { role, permissions } = req.body;
+      
+      if (!role || !permissions) {
+        return res.status(400).json({ message: "role and permissions are required" });
+      }
+      
+      // Check if user has permission to manage settings
+      const userPermissions = await storage.getUserChannelPermissions(channelId, userId);
+      if (!userPermissions?.canManageSettings) {
+        return res.status(403).json({ message: "No permission to manage settings" });
+      }
+      
+      // Get existing permission or create new
+      let permissionRecord = await storage.getChannelPermissionByRole(channelId, role);
+      
+      if (permissionRecord) {
+        permissionRecord = await storage.updateChannelPermission(permissionRecord.id, permissions);
+      } else {
+        permissionRecord = await storage.createChannelPermission({
+          channelId,
+          role,
+          ...permissions
+        });
+      }
+      
+      res.json(permissionRecord);
+    } catch (error) {
+      console.error("Error updating channel permissions:", error);
+      res.status(500).json({ message: "Failed to update permissions" });
+    }
+  });
+
+  // GET /api/channels/:id/join-requests - Get pending join requests
+  app.get('/api/channels/:id/join-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: channelId } = req.params;
+      const { status = 'pending' } = req.query;
+      
+      // Check if user has permission to view join requests
+      const permissions = await storage.getUserChannelPermissions(channelId, userId);
+      if (!permissions?.canManageMembers) {
+        return res.status(403).json({ message: "No permission to view join requests" });
+      }
+      
+      const requests = await storage.getChannelJoinRequests(channelId, status as string);
+      
+      // Enrich with user info
+      const enrichedRequests = await Promise.all(
+        requests.map(async (request) => {
+          const user = await storage.getUser(request.userId);
+          return {
+            ...request,
+            user: user ? {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email
+            } : null
+          };
+        })
+      );
+      
+      res.json(enrichedRequests);
+    } catch (error) {
+      console.error("Error fetching join requests:", error);
+      res.status(500).json({ message: "Failed to fetch join requests" });
+    }
+  });
+
+  // POST /api/channels/:id/join-requests/:requestId/review - Review a join request
+  app.post('/api/channels/:id/join-requests/:requestId/review', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { requestId } = req.params;
+      const { status, reviewNote } = req.body;
+      
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ message: "Status must be 'approved' or 'rejected'" });
+      }
+      
+      const updatedRequest = await storage.reviewJoinRequest(requestId, status, userId, reviewNote);
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Error reviewing join request:", error);
+      res.status(500).json({ message: "Failed to review join request" });
+    }
+  });
+
+  // PUT /api/channels/:id - Update channel settings
+  app.put('/api/channels/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: channelId } = req.params;
+      const updates = req.body;
+      
+      // Check if user has permission to manage settings
+      const permissions = await storage.getUserChannelPermissions(channelId, userId);
+      if (!permissions?.canManageSettings) {
+        return res.status(403).json({ message: "No permission to manage settings" });
+      }
+      
+      // Filter allowed updates
+      const allowedUpdates = ['name', 'description', 'purpose', 'topic', 'isPrivate', 'isAnnouncement'];
+      const filteredUpdates: any = {};
+      
+      for (const key of allowedUpdates) {
+        if (key in updates) {
+          filteredUpdates[key] = updates[key];
+        }
+      }
+      
+      const updated = await storage.updateChannel(channelId, filteredUpdates);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating channel:", error);
+      res.status(500).json({ message: "Failed to update channel" });
+    }
+  });
+
+  // GET /api/channels/:id/members - Get channel members with details
+  app.get('/api/channels/:id/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id: channelId } = req.params;
+      
+      const members = await storage.getChannelMembers(channelId);
+      
+      // Enrich with user details
+      const enrichedMembers = await Promise.all(
+        members.map(async (member) => {
+          const user = await storage.getUser(member.userId);
+          return {
+            ...member,
+            user: user ? {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              profileImageUrl: user.profileImageUrl,
+              isAdmin: user.isAdmin
+            } : null
+          };
+        })
+      );
+      
+      res.json(enrichedMembers);
+    } catch (error) {
+      console.error("Error fetching channel members:", error);
+      res.status(500).json({ message: "Failed to fetch members" });
+    }
+  });
+
+  // PUT /api/channels/:id/members/:userId/role - Update member role
+  app.put('/api/channels/:id/members/:userId/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const { id: channelId, userId: targetUserId } = req.params;
+      const { role } = req.body;
+      
+      if (!['owner', 'admin', 'member'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      
+      // Check if user has permission to manage members
+      const permissions = await storage.getUserChannelPermissions(channelId, currentUserId);
+      if (!permissions?.canManageMembers) {
+        return res.status(403).json({ message: "No permission to manage members" });
+      }
+      
+      const updated = await storage.updateChannelMemberRole(channelId, targetUserId, role);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      res.status(500).json({ message: "Failed to update role" });
     }
   });
 
@@ -875,6 +1264,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount sync monitoring routes
   app.use("/api/sync", syncMonitoringRouter);
+  
+  // Mount call routes
+  app.use("/api/calls", callRoutes);
+  
+  // Mount search routes
+  app.use("/api/search", searchRoutes);
+
+  // Mount billing routes
+  app.use("/api/billing", billingRoutes);
 
   // MCP Server endpoints
   app.post("/api/mcp/tools/list", async (req, res) => {
@@ -1453,6 +1851,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch KPIs" });
     }
   });
+
+  // =========================
+  // WORKFLOW AUTOMATION ENDPOINTS
+  // =========================
+  
+  // Register workflow routes
+  registerWorkflowRoutes(app);
 
   // =========================
   // JASON AI ADMIN ENDPOINTS
@@ -4278,6 +4683,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     res.json(apiDocs);
   });
+
+  // Mount command routes
+  app.use(commandRoutes);
+  
+  // Register workflow routes
+  registerWorkflowRoutes(app);
 
   // 404 handler for undefined API routes only
   app.use('/api/*', notFoundHandler);

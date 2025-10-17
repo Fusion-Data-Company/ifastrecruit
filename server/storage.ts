@@ -8,6 +8,10 @@ import {
   auditLogs,
   users,
   channels,
+  channelMembers,
+  channelPermissions,
+  sharedChannels,
+  channelJoinRequests,
   userChannels,
   messages,
   directMessages,
@@ -24,6 +28,8 @@ import {
   jasonTemplates,
   jasonChannelBehaviors,
   notifications,
+  calls,
+  callParticipants,
   type Campaign,
   type Candidate, 
   type Interview,
@@ -34,6 +40,10 @@ import {
   type User,
   type UpsertUser,
   type Channel,
+  type ChannelMember,
+  type ChannelPermission,
+  type SharedChannel,
+  type ChannelJoinRequest,
   type UserChannel,
   type Message,
   type DirectMessage,
@@ -50,6 +60,8 @@ import {
   type JasonTemplate,
   type JasonChannelBehavior,
   type Notification,
+  type Call,
+  type CallParticipant,
   type InsertCampaign,
   type InsertCandidate,
   type InsertInterview,
@@ -59,6 +71,10 @@ import {
   type InsertAuditLog,
   type InsertUser,
   type InsertChannel,
+  type InsertChannelMember,
+  type InsertChannelPermission,
+  type InsertSharedChannel,
+  type InsertChannelJoinRequest,
   type InsertUserChannel,
   type InsertMessage,
   type InsertDirectMessage,
@@ -74,7 +90,48 @@ import {
   type InsertJasonSetting,
   type InsertJasonTemplate,
   type InsertJasonChannelBehavior,
-  type InsertNotification
+  type InsertNotification,
+  type InsertCall,
+  type InsertCallParticipant,
+  slashCommands,
+  commandHistory,
+  commandPermissions,
+  commandFavorites,
+  reminders,
+  polls,
+  pollVotes,
+  savedSearches,
+  searchHistory,
+  type SlashCommand,
+  type CommandHistory,
+  type CommandPermission,
+  type CommandFavorite,
+  type Reminder,
+  type Poll,
+  type PollVote,
+  type SavedSearch,
+  type SearchHistory,
+  type InsertSlashCommand,
+  type InsertCommandHistory,
+  type InsertCommandPermission,
+  type InsertCommandFavorite,
+  type InsertReminder,
+  type InsertPoll,
+  type InsertPollVote,
+  type InsertSavedSearch,
+  type InsertSearchHistory,
+  workflows,
+  workflowRuns,
+  workflowTemplates,
+  workflowSchedules,
+  type Workflow,
+  type WorkflowRun,
+  type WorkflowTemplate,
+  type WorkflowSchedule,
+  type InsertWorkflow,
+  type InsertWorkflowRun,
+  type InsertWorkflowTemplate,
+  type InsertWorkflowSchedule
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sql, and } from "drizzle-orm";
@@ -236,11 +293,56 @@ export interface IStorage {
   getChannels(): Promise<Channel[]>;
   getChannel(id: string): Promise<Channel | undefined>;
   createChannel(channel: InsertChannel): Promise<Channel>;
+  updateChannel(id: string, updates: Partial<Channel>): Promise<Channel>;
+  archiveChannel(id: string): Promise<Channel>;
+  unarchiveChannel(id: string): Promise<Channel>;
   
-  // User Channel methods (membership)
+  // Channel Discovery & Browse methods
+  browseChannels(userId: string, filters?: {
+    searchQuery?: string;
+    showPrivate?: boolean;
+    showArchived?: boolean;
+    tier?: string;
+  }): Promise<Channel[]>;
+  getChannelStats(channelId: string): Promise<{
+    memberCount: number;
+    messageCount: number;
+    lastActivityAt: Date | null;
+  }>;
+  
+  // Enhanced Channel Membership methods (using channelMembers table)
+  getChannelMembers(channelId: string): Promise<ChannelMember[]>;
+  getChannelMember(channelId: string, userId: string): Promise<ChannelMember | undefined>;
+  getUserChannelMemberships(userId: string): Promise<ChannelMember[]>;
+  joinChannel(userId: string, channelId: string, invitedBy?: string): Promise<ChannelMember>;
+  leaveChannel(userId: string, channelId: string): Promise<void>;
+  updateChannelMemberRole(channelId: string, userId: string, role: string): Promise<ChannelMember>;
+  addChannelMembers(channelId: string, userIds: string[], invitedBy: string): Promise<ChannelMember[]>;
+  removeChannelMember(channelId: string, userId: string): Promise<void>;
+  
+  // Channel Join Request methods
+  createChannelJoinRequest(request: InsertChannelJoinRequest): Promise<ChannelJoinRequest>;
+  getChannelJoinRequests(channelId: string, status?: string): Promise<ChannelJoinRequest[]>;
+  getUserJoinRequests(userId: string): Promise<ChannelJoinRequest[]>;
+  reviewJoinRequest(requestId: string, status: 'approved' | 'rejected', reviewedBy: string, reviewNote?: string): Promise<ChannelJoinRequest>;
+  
+  // Channel Permission methods
+  getChannelPermissions(channelId: string): Promise<ChannelPermission[]>;
+  getChannelPermissionByRole(channelId: string, role: string): Promise<ChannelPermission | undefined>;
+  createChannelPermission(permission: InsertChannelPermission): Promise<ChannelPermission>;
+  updateChannelPermission(id: string, updates: Partial<ChannelPermission>): Promise<ChannelPermission>;
+  getUserChannelPermissions(channelId: string, userId: string): Promise<ChannelPermission | undefined>;
+  
+  // Shared Channel methods
+  createSharedChannel(sharedChannel: InsertSharedChannel): Promise<SharedChannel>;
+  getSharedChannels(workspaceId?: string): Promise<SharedChannel[]>;
+  getSharedChannelByChannelId(channelId: string): Promise<SharedChannel[]>;
+  updateSharedChannel(id: string, updates: Partial<SharedChannel>): Promise<SharedChannel>;
+  approveSharedChannel(id: string, approvedBy: string): Promise<SharedChannel>;
+  disconnectSharedChannel(id: string, disconnectedBy: string, reason: string): Promise<SharedChannel>;
+  
+  // Legacy methods (kept for backward compatibility)
   getUserChannels(userId: string): Promise<UserChannel[]>;
-  getChannelMembers(channelId: string): Promise<UserChannel[]>;
-  joinChannel(userId: string, channelId: string): Promise<UserChannel>;
   updateChannelAccess(userId: string, channelId: string, canAccess: boolean): Promise<UserChannel>;
   userHasChannelAccess(userId: string, channelId: string): Promise<boolean>;
   updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void>;
@@ -317,6 +419,66 @@ export interface IStorage {
   updateChannelLastSeen(userId: string, channelId: string): Promise<void>;
   updateDMLastSeen(userId: string, senderId: string): Promise<void>;
   
+  // Call methods
+  // Call management
+  getCalls(filters?: { workspaceId?: string; channelId?: string; status?: string }): Promise<Call[]>;
+  getCall(id: string): Promise<Call | undefined>;
+  getCallByRoomId(roomId: string): Promise<Call | undefined>;
+  getActiveCalls(workspaceId: string): Promise<Call[]>;
+  createCall(call: InsertCall): Promise<Call>;
+  updateCall(id: string, updates: Partial<Call>): Promise<Call>;
+  endCall(id: string): Promise<Call>;
+  
+  // Call participant methods
+  getCallParticipants(callId: string): Promise<CallParticipant[]>;
+  getCallParticipant(callId: string, userId: string): Promise<CallParticipant | undefined>;
+  addCallParticipant(participant: InsertCallParticipant): Promise<CallParticipant>;
+  updateCallParticipant(id: string, updates: Partial<CallParticipant>): Promise<CallParticipant>;
+  removeCallParticipant(callId: string, userId: string): Promise<void>;
+  userInCall(userId: string): Promise<Call | undefined>;
+  updateCallMetrics(callId: string): Promise<Call>;
+  
+  // Search methods
+  // Saved searches
+  getSavedSearches(userId: string): Promise<SavedSearch[]>;
+  getSavedSearch(id: string): Promise<SavedSearch | undefined>;
+  createSavedSearch(search: InsertSavedSearch): Promise<SavedSearch>;
+  updateSavedSearch(id: string, updates: Partial<SavedSearch>): Promise<SavedSearch>;
+  deleteSavedSearch(id: string): Promise<void>;
+  
+  // Search history
+  getSearchHistory(userId: string, limit?: number): Promise<SearchHistory[]>;
+  createSearchHistory(history: InsertSearchHistory): Promise<SearchHistory>;
+  clearSearchHistory(userId: string): Promise<void>;
+  getSearchSuggestions(userId: string, query: string, limit?: number): Promise<string[]>;
+
+  // Workflow methods
+  getWorkflows(filters?: { workspaceId?: string; status?: string; createdBy?: string }): Promise<Workflow[]>;
+  getWorkflow(id: string): Promise<Workflow | undefined>;
+  createWorkflow(workflow: InsertWorkflow): Promise<Workflow>;
+  updateWorkflow(id: string, updates: Partial<Workflow>): Promise<Workflow>;
+  deleteWorkflow(id: string): Promise<void>;
+  
+  // Workflow run methods
+  getWorkflowRuns(workflowId?: string, limit?: number): Promise<WorkflowRun[]>;
+  getWorkflowRun(id: string): Promise<WorkflowRun | undefined>;
+  createWorkflowRun(run: InsertWorkflowRun): Promise<WorkflowRun>;
+  updateWorkflowRun(id: string, updates: Partial<WorkflowRun>): Promise<WorkflowRun>;
+  
+  // Workflow template methods
+  getWorkflowTemplates(category?: string): Promise<WorkflowTemplate[]>;
+  getWorkflowTemplate(id: string): Promise<WorkflowTemplate | undefined>;
+  createWorkflowTemplate(template: InsertWorkflowTemplate): Promise<WorkflowTemplate>;
+  updateWorkflowTemplate(id: string, updates: Partial<WorkflowTemplate>): Promise<WorkflowTemplate>;
+  
+  // Workflow schedule methods
+  getWorkflowSchedules(workflowId?: string): Promise<WorkflowSchedule[]>;
+  getWorkflowSchedule(id: string): Promise<WorkflowSchedule | undefined>;
+  getActiveSchedules(): Promise<WorkflowSchedule[]>;
+  createWorkflowSchedule(schedule: InsertWorkflowSchedule): Promise<WorkflowSchedule>;
+  updateWorkflowSchedule(id: string, updates: Partial<WorkflowSchedule>): Promise<WorkflowSchedule>;
+  deleteWorkflowSchedule(id: string): Promise<void>;
+
   // Utility methods
   saveICSFile(content: string): Promise<string>;
 }
@@ -1154,6 +1316,416 @@ export class DatabaseStorage implements IStorage {
   async createChannel(channel: InsertChannel): Promise<Channel> {
     const [created] = await db.insert(channels).values(channel).returning();
     return created;
+  }
+
+  async updateChannel(id: string, updates: Partial<Channel>): Promise<Channel> {
+    const [updated] = await db
+      .update(channels)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(channels.id, id))
+      .returning();
+    return updated;
+  }
+
+  async archiveChannel(id: string): Promise<Channel> {
+    const [archived] = await db
+      .update(channels)
+      .set({ isArchived: true, updatedAt: new Date() })
+      .where(eq(channels.id, id))
+      .returning();
+    return archived;
+  }
+
+  async unarchiveChannel(id: string): Promise<Channel> {
+    const [unarchived] = await db
+      .update(channels)
+      .set({ isArchived: false, updatedAt: new Date() })
+      .where(eq(channels.id, id))
+      .returning();
+    return unarchived;
+  }
+
+  // Channel Discovery & Browse methods
+  async browseChannels(userId: string, filters?: {
+    searchQuery?: string;
+    showPrivate?: boolean;
+    showArchived?: boolean;
+    tier?: string;
+  }): Promise<Channel[]> {
+    let query = db.select().from(channels);
+    
+    // Filter conditions
+    const conditions = [];
+    
+    // Default: don't show archived unless specifically requested
+    if (!filters?.showArchived) {
+      conditions.push(sql`${channels.isArchived} = false`);
+    }
+    
+    // Filter by search query
+    if (filters?.searchQuery) {
+      conditions.push(
+        sql`(
+          LOWER(${channels.name}) LIKE LOWER(${'%' + filters.searchQuery + '%'}) OR 
+          LOWER(${channels.description}) LIKE LOWER(${'%' + filters.searchQuery + '%'}) OR
+          LOWER(${channels.purpose}) LIKE LOWER(${'%' + filters.searchQuery + '%'})
+        )`
+      );
+    }
+    
+    // Filter by tier
+    if (filters?.tier) {
+      conditions.push(eq(channels.tier, filters.tier as any));
+    }
+    
+    // Handle private channel visibility
+    if (!filters?.showPrivate) {
+      // Only show public channels and private channels the user is a member of
+      const userMemberships = await db
+        .select({ channelId: channelMembers.channelId })
+        .from(channelMembers)
+        .where(eq(channelMembers.userId, userId));
+      
+      const memberChannelIds = userMemberships.map(m => m.channelId);
+      
+      if (memberChannelIds.length > 0) {
+        conditions.push(
+          sql`(${channels.isPrivate} = false OR ${channels.id} IN (${sql.join(memberChannelIds.map(id => sql`${id}`), sql`, `)}))`
+        );
+      } else {
+        conditions.push(sql`${channels.isPrivate} = false`);
+      }
+    }
+    
+    // Apply all conditions
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    return await query.orderBy(desc(channels.lastActivityAt), desc(channels.createdAt));
+  }
+
+  async getChannelStats(channelId: string): Promise<{
+    memberCount: number;
+    messageCount: number;
+    lastActivityAt: Date | null;
+  }> {
+    // Get member count
+    const [memberResult] = await db
+      .select({ count: count() })
+      .from(channelMembers)
+      .where(eq(channelMembers.channelId, channelId));
+    
+    // Get message count
+    const [messageResult] = await db
+      .select({ count: count() })
+      .from(messages)
+      .where(eq(messages.channelId, channelId));
+    
+    // Get channel info for last activity
+    const [channel] = await db
+      .select({ lastActivityAt: channels.lastActivityAt })
+      .from(channels)
+      .where(eq(channels.id, channelId));
+    
+    return {
+      memberCount: Number(memberResult?.count || 0),
+      messageCount: Number(messageResult?.count || 0),
+      lastActivityAt: channel?.lastActivityAt || null
+    };
+  }
+
+  // Enhanced Channel Membership methods (using channelMembers table)
+  async getChannelMembers(channelId: string): Promise<ChannelMember[]> {
+    return await db
+      .select()
+      .from(channelMembers)
+      .where(eq(channelMembers.channelId, channelId))
+      .orderBy(channelMembers.joinedAt);
+  }
+
+  async getChannelMember(channelId: string, userId: string): Promise<ChannelMember | undefined> {
+    const [member] = await db
+      .select()
+      .from(channelMembers)
+      .where(
+        and(
+          eq(channelMembers.channelId, channelId),
+          eq(channelMembers.userId, userId)
+        )
+      );
+    return member || undefined;
+  }
+
+  async getUserChannelMemberships(userId: string): Promise<ChannelMember[]> {
+    return await db
+      .select()
+      .from(channelMembers)
+      .where(eq(channelMembers.userId, userId))
+      .orderBy(channelMembers.joinedAt);
+  }
+
+  async joinChannel(userId: string, channelId: string, invitedBy?: string): Promise<ChannelMember> {
+    const [joined] = await db
+      .insert(channelMembers)
+      .values({ userId, channelId, invitedBy, role: 'member' })
+      .onConflictDoUpdate({
+        target: [channelMembers.userId, channelMembers.channelId],
+        set: { canAccess: true, leftAt: null }
+      })
+      .returning();
+    
+    // Update channel member count
+    await this.updateChannelMemberCount(channelId);
+    
+    return joined;
+  }
+
+  async leaveChannel(userId: string, channelId: string): Promise<void> {
+    await db
+      .update(channelMembers)
+      .set({ canAccess: false, leftAt: new Date() })
+      .where(
+        and(
+          eq(channelMembers.userId, userId),
+          eq(channelMembers.channelId, channelId)
+        )
+      );
+    
+    // Update channel member count
+    await this.updateChannelMemberCount(channelId);
+  }
+
+  async updateChannelMemberRole(channelId: string, userId: string, role: string): Promise<ChannelMember> {
+    const [updated] = await db
+      .update(channelMembers)
+      .set({ role })
+      .where(
+        and(
+          eq(channelMembers.channelId, channelId),
+          eq(channelMembers.userId, userId)
+        )
+      )
+      .returning();
+    return updated;
+  }
+
+  async addChannelMembers(channelId: string, userIds: string[], invitedBy: string): Promise<ChannelMember[]> {
+    const membersToAdd = userIds.map(userId => ({
+      userId,
+      channelId,
+      invitedBy,
+      role: 'member' as const
+    }));
+    
+    const added = await db
+      .insert(channelMembers)
+      .values(membersToAdd)
+      .onConflictDoNothing()
+      .returning();
+    
+    // Update channel member count
+    await this.updateChannelMemberCount(channelId);
+    
+    return added;
+  }
+
+  async removeChannelMember(channelId: string, userId: string): Promise<void> {
+    await db
+      .delete(channelMembers)
+      .where(
+        and(
+          eq(channelMembers.channelId, channelId),
+          eq(channelMembers.userId, userId)
+        )
+      );
+    
+    // Update channel member count
+    await this.updateChannelMemberCount(channelId);
+  }
+
+  // Helper method to update channel member count
+  private async updateChannelMemberCount(channelId: string): Promise<void> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(channelMembers)
+      .where(
+        and(
+          eq(channelMembers.channelId, channelId),
+          eq(channelMembers.canAccess, true)
+        )
+      );
+    
+    await db
+      .update(channels)
+      .set({ 
+        memberCount: Number(result?.count || 0),
+        updatedAt: new Date()
+      })
+      .where(eq(channels.id, channelId));
+  }
+
+  // Channel Join Request methods
+  async createChannelJoinRequest(request: InsertChannelJoinRequest): Promise<ChannelJoinRequest> {
+    const [created] = await db
+      .insert(channelJoinRequests)
+      .values(request)
+      .returning();
+    return created;
+  }
+
+  async getChannelJoinRequests(channelId: string, status?: string): Promise<ChannelJoinRequest[]> {
+    let query = db
+      .select()
+      .from(channelJoinRequests)
+      .where(eq(channelJoinRequests.channelId, channelId));
+    
+    if (status) {
+      query = query.where(eq(channelJoinRequests.status, status)) as any;
+    }
+    
+    return await query.orderBy(desc(channelJoinRequests.createdAt));
+  }
+
+  async getUserJoinRequests(userId: string): Promise<ChannelJoinRequest[]> {
+    return await db
+      .select()
+      .from(channelJoinRequests)
+      .where(eq(channelJoinRequests.userId, userId))
+      .orderBy(desc(channelJoinRequests.createdAt));
+  }
+
+  async reviewJoinRequest(requestId: string, status: 'approved' | 'rejected', reviewedBy: string, reviewNote?: string): Promise<ChannelJoinRequest> {
+    const [updated] = await db
+      .update(channelJoinRequests)
+      .set({
+        status,
+        reviewedBy,
+        reviewedAt: new Date(),
+        reviewNote,
+        updatedAt: new Date()
+      })
+      .where(eq(channelJoinRequests.id, requestId))
+      .returning();
+    
+    // If approved, add user to channel
+    if (status === 'approved') {
+      await this.joinChannel(updated.userId, updated.channelId, reviewedBy);
+    }
+    
+    return updated;
+  }
+
+  // Channel Permission methods
+  async getChannelPermissions(channelId: string): Promise<ChannelPermission[]> {
+    return await db
+      .select()
+      .from(channelPermissions)
+      .where(eq(channelPermissions.channelId, channelId));
+  }
+
+  async getChannelPermissionByRole(channelId: string, role: string): Promise<ChannelPermission | undefined> {
+    const [permission] = await db
+      .select()
+      .from(channelPermissions)
+      .where(
+        and(
+          eq(channelPermissions.channelId, channelId),
+          eq(channelPermissions.role, role)
+        )
+      );
+    return permission || undefined;
+  }
+
+  async createChannelPermission(permission: InsertChannelPermission): Promise<ChannelPermission> {
+    const [created] = await db
+      .insert(channelPermissions)
+      .values(permission)
+      .returning();
+    return created;
+  }
+
+  async updateChannelPermission(id: string, updates: Partial<ChannelPermission>): Promise<ChannelPermission> {
+    const [updated] = await db
+      .update(channelPermissions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(channelPermissions.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getUserChannelPermissions(channelId: string, userId: string): Promise<ChannelPermission | undefined> {
+    // Get user's role in the channel
+    const member = await this.getChannelMember(channelId, userId);
+    if (!member) return undefined;
+    
+    // Get permissions for that role
+    return await this.getChannelPermissionByRole(channelId, member.role);
+  }
+
+  // Shared Channel methods
+  async createSharedChannel(sharedChannel: InsertSharedChannel): Promise<SharedChannel> {
+    const [created] = await db
+      .insert(sharedChannels)
+      .values(sharedChannel)
+      .returning();
+    return created;
+  }
+
+  async getSharedChannels(workspaceId?: string): Promise<SharedChannel[]> {
+    let query = db.select().from(sharedChannels);
+    
+    if (workspaceId) {
+      query = query.where(eq(sharedChannels.externalWorkspaceId, workspaceId)) as any;
+    }
+    
+    return await query.orderBy(desc(sharedChannels.createdAt));
+  }
+
+  async getSharedChannelByChannelId(channelId: string): Promise<SharedChannel[]> {
+    return await db
+      .select()
+      .from(sharedChannels)
+      .where(eq(sharedChannels.channelId, channelId))
+      .orderBy(desc(sharedChannels.createdAt));
+  }
+
+  async updateSharedChannel(id: string, updates: Partial<SharedChannel>): Promise<SharedChannel> {
+    const [updated] = await db
+      .update(sharedChannels)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(sharedChannels.id, id))
+      .returning();
+    return updated;
+  }
+
+  async approveSharedChannel(id: string, approvedBy: string): Promise<SharedChannel> {
+    const [approved] = await db
+      .update(sharedChannels)
+      .set({
+        connectionStatus: 'active',
+        approvedBy,
+        approvedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(sharedChannels.id, id))
+      .returning();
+    return approved;
+  }
+
+  async disconnectSharedChannel(id: string, disconnectedBy: string, reason: string): Promise<SharedChannel> {
+    const [disconnected] = await db
+      .update(sharedChannels)
+      .set({
+        connectionStatus: 'disconnected',
+        disconnectedBy,
+        disconnectedAt: new Date(),
+        disconnectionReason: reason,
+        updatedAt: new Date()
+      })
+      .where(eq(sharedChannels.id, id))
+      .returning();
+    return disconnected;
   }
 
   // User Channel methods (membership)
@@ -2490,6 +3062,484 @@ export class DatabaseStorage implements IStorage {
         .set({ lastSeenDMs, updatedAt: new Date() })
         .where(eq(users.id, userId));
     }
+  }
+
+  // Call methods implementation
+  async getCalls(filters?: { workspaceId?: string; channelId?: string; status?: string }): Promise<Call[]> {
+    let query = db.select().from(calls);
+    
+    const conditions = [];
+    if (filters?.workspaceId) {
+      conditions.push(eq(calls.workspaceId, filters.workspaceId));
+    }
+    if (filters?.channelId) {
+      conditions.push(eq(calls.channelId, filters.channelId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(calls.status, filters.status as any));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return query.orderBy(desc(calls.startedAt));
+  }
+
+  async getCall(id: string): Promise<Call | undefined> {
+    const [call] = await db.select().from(calls).where(eq(calls.id, id));
+    return call || undefined;
+  }
+
+  async getCallByRoomId(roomId: string): Promise<Call | undefined> {
+    const [call] = await db.select().from(calls).where(eq(calls.roomId, roomId));
+    return call || undefined;
+  }
+
+  async getActiveCalls(workspaceId: string): Promise<Call[]> {
+    return db
+      .select()
+      .from(calls)
+      .where(
+        and(
+          eq(calls.workspaceId, workspaceId),
+          eq(calls.status, 'active')
+        )
+      )
+      .orderBy(desc(calls.startedAt));
+  }
+
+  async createCall(call: InsertCall): Promise<Call> {
+    // Generate a unique room ID
+    const roomId = call.roomId || `room_${crypto.randomBytes(16).toString('hex')}`;
+    
+    const [created] = await db
+      .insert(calls)
+      .values({
+        ...call,
+        roomId,
+        stunServers: call.stunServers || [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ],
+        turnServers: call.turnServers || []
+      })
+      .returning();
+    return created;
+  }
+
+  async updateCall(id: string, updates: Partial<Call>): Promise<Call> {
+    const [updated] = await db
+      .update(calls)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(calls.id, id))
+      .returning();
+    return updated;
+  }
+
+  async endCall(id: string): Promise<Call> {
+    const call = await this.getCall(id);
+    if (!call) {
+      throw new Error('Call not found');
+    }
+    
+    const endedAt = new Date();
+    const totalDuration = Math.floor((endedAt.getTime() - new Date(call.startedAt).getTime()) / 1000);
+    
+    const [ended] = await db
+      .update(calls)
+      .set({ 
+        status: 'ended', 
+        endedAt, 
+        totalDuration,
+        updatedAt: new Date() 
+      })
+      .where(eq(calls.id, id))
+      .returning();
+      
+    // Mark all participants as left
+    await db
+      .update(callParticipants)
+      .set({ 
+        status: 'disconnected', 
+        leftAt: endedAt,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(callParticipants.callId, id),
+          sql`${callParticipants.leftAt} IS NULL`
+        )
+      );
+    
+    return ended;
+  }
+
+  async getCallParticipants(callId: string): Promise<CallParticipant[]> {
+    return db
+      .select()
+      .from(callParticipants)
+      .where(eq(callParticipants.callId, callId))
+      .orderBy(callParticipants.joinedAt);
+  }
+
+  async getCallParticipant(callId: string, userId: string): Promise<CallParticipant | undefined> {
+    const [participant] = await db
+      .select()
+      .from(callParticipants)
+      .where(
+        and(
+          eq(callParticipants.callId, callId),
+          eq(callParticipants.userId, userId)
+        )
+      );
+    return participant || undefined;
+  }
+
+  async addCallParticipant(participant: InsertCallParticipant): Promise<CallParticipant> {
+    // Check if participant already exists
+    const existing = await this.getCallParticipant(participant.callId, participant.userId);
+    if (existing) {
+      // Update existing participant
+      return this.updateCallParticipant(existing.id, {
+        status: 'connected',
+        joinedAt: new Date(),
+        leftAt: null
+      });
+    }
+    
+    const [created] = await db
+      .insert(callParticipants)
+      .values(participant)
+      .returning();
+      
+    // Update peak participants count
+    await this.updateCallMetrics(participant.callId);
+    
+    return created;
+  }
+
+  async updateCallParticipant(id: string, updates: Partial<CallParticipant>): Promise<CallParticipant> {
+    const [updated] = await db
+      .update(callParticipants)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(callParticipants.id, id))
+      .returning();
+    return updated;
+  }
+
+  async removeCallParticipant(callId: string, userId: string): Promise<void> {
+    await db
+      .update(callParticipants)
+      .set({ 
+        status: 'disconnected', 
+        leftAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(callParticipants.callId, callId),
+          eq(callParticipants.userId, userId)
+        )
+      );
+      
+    // Update peak participants count
+    await this.updateCallMetrics(callId);
+  }
+
+  async userInCall(userId: string): Promise<Call | undefined> {
+    const [result] = await db
+      .select({ call: calls })
+      .from(callParticipants)
+      .innerJoin(calls, eq(callParticipants.callId, calls.id))
+      .where(
+        and(
+          eq(callParticipants.userId, userId),
+          eq(callParticipants.status, 'connected'),
+          eq(calls.status, 'active')
+        )
+      );
+    return result?.call || undefined;
+  }
+
+  async updateCallMetrics(callId: string): Promise<Call> {
+    const participants = await this.getCallParticipants(callId);
+    const connectedCount = participants.filter(p => p.status === 'connected').length;
+    
+    const [call] = await db
+      .select()
+      .from(calls)
+      .where(eq(calls.id, callId));
+      
+    if (call && connectedCount > (call.peakParticipants || 0)) {
+      const [updated] = await db
+        .update(calls)
+        .set({ 
+          peakParticipants: connectedCount,
+          updatedAt: new Date()
+        })
+        .where(eq(calls.id, callId))
+        .returning();
+      return updated;
+    }
+    
+    return call;
+  }
+
+  // Search methods implementation
+  async getSavedSearches(userId: string): Promise<SavedSearch[]> {
+    return db
+      .select()
+      .from(savedSearches)
+      .where(eq(savedSearches.userId, userId))
+      .orderBy(desc(savedSearches.isPinned), desc(savedSearches.lastUsedAt));
+  }
+
+  async getSavedSearch(id: string): Promise<SavedSearch | undefined> {
+    const [search] = await db
+      .select()
+      .from(savedSearches)
+      .where(eq(savedSearches.id, id));
+    return search || undefined;
+  }
+
+  async createSavedSearch(search: InsertSavedSearch): Promise<SavedSearch> {
+    const [created] = await db
+      .insert(savedSearches)
+      .values(search)
+      .returning();
+    return created;
+  }
+
+  async updateSavedSearch(id: string, updates: Partial<SavedSearch>): Promise<SavedSearch> {
+    const [updated] = await db
+      .update(savedSearches)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(savedSearches.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSavedSearch(id: string): Promise<void> {
+    await db.delete(savedSearches).where(eq(savedSearches.id, id));
+  }
+
+  async getSearchHistory(userId: string, limit: number = 20): Promise<SearchHistory[]> {
+    return db
+      .select()
+      .from(searchHistory)
+      .where(eq(searchHistory.userId, userId))
+      .orderBy(desc(searchHistory.createdAt))
+      .limit(limit);
+  }
+
+  async createSearchHistory(history: InsertSearchHistory): Promise<SearchHistory> {
+    const [created] = await db
+      .insert(searchHistory)
+      .values(history)
+      .returning();
+    return created;
+  }
+
+  async clearSearchHistory(userId: string): Promise<void> {
+    await db.delete(searchHistory).where(eq(searchHistory.userId, userId));
+  }
+
+  async getSearchSuggestions(userId: string, query: string, limit: number = 10): Promise<string[]> {
+    // Get recent search queries that match
+    const pattern = `${query}%`;
+    const results = await db
+      .selectDistinct({ query: searchHistory.query })
+      .from(searchHistory)
+      .where(
+        and(
+          eq(searchHistory.userId, userId),
+          sql`LOWER(${searchHistory.query}) LIKE LOWER(${pattern})`
+        )
+      )
+      .orderBy(desc(searchHistory.createdAt))
+      .limit(limit);
+    
+    return results.map(r => r.query);
+  }
+
+  // Workflow methods implementation
+  async getWorkflows(filters?: { workspaceId?: string; status?: string; createdBy?: string }): Promise<Workflow[]> {
+    let query = db.select().from(workflows);
+    
+    const conditions = [];
+    if (filters?.workspaceId) {
+      conditions.push(eq(workflows.workspaceId, filters.workspaceId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(workflows.status, filters.status));
+    }
+    if (filters?.createdBy) {
+      conditions.push(eq(workflows.createdBy, filters.createdBy));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return query.orderBy(desc(workflows.createdAt));
+  }
+
+  async getWorkflow(id: string): Promise<Workflow | undefined> {
+    const [workflow] = await db
+      .select()
+      .from(workflows)
+      .where(eq(workflows.id, id));
+    return workflow || undefined;
+  }
+
+  async createWorkflow(workflow: InsertWorkflow): Promise<Workflow> {
+    const [created] = await db
+      .insert(workflows)
+      .values(workflow)
+      .returning();
+    return created;
+  }
+
+  async updateWorkflow(id: string, updates: Partial<Workflow>): Promise<Workflow> {
+    const [updated] = await db
+      .update(workflows)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(workflows.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflow(id: string): Promise<void> {
+    await db.delete(workflows).where(eq(workflows.id, id));
+  }
+
+  // Workflow run methods implementation
+  async getWorkflowRuns(workflowId?: string, limit: number = 50): Promise<WorkflowRun[]> {
+    let query = db.select().from(workflowRuns);
+    
+    if (workflowId) {
+      query = query.where(eq(workflowRuns.workflowId, workflowId));
+    }
+    
+    return query
+      .orderBy(desc(workflowRuns.createdAt))
+      .limit(limit);
+  }
+
+  async getWorkflowRun(id: string): Promise<WorkflowRun | undefined> {
+    const [run] = await db
+      .select()
+      .from(workflowRuns)
+      .where(eq(workflowRuns.id, id));
+    return run || undefined;
+  }
+
+  async createWorkflowRun(run: InsertWorkflowRun): Promise<WorkflowRun> {
+    const [created] = await db
+      .insert(workflowRuns)
+      .values(run)
+      .returning();
+    return created;
+  }
+
+  async updateWorkflowRun(id: string, updates: Partial<WorkflowRun>): Promise<WorkflowRun> {
+    const [updated] = await db
+      .update(workflowRuns)
+      .set(updates)
+      .where(eq(workflowRuns.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Workflow template methods implementation
+  async getWorkflowTemplates(category?: string): Promise<WorkflowTemplate[]> {
+    let query = db.select().from(workflowTemplates);
+    
+    if (category) {
+      query = query.where(eq(workflowTemplates.category, category));
+    }
+    
+    return query
+      .orderBy(desc(workflowTemplates.usageCount), workflowTemplates.name);
+  }
+
+  async getWorkflowTemplate(id: string): Promise<WorkflowTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(workflowTemplates)
+      .where(eq(workflowTemplates.id, id));
+    return template || undefined;
+  }
+
+  async createWorkflowTemplate(template: InsertWorkflowTemplate): Promise<WorkflowTemplate> {
+    const [created] = await db
+      .insert(workflowTemplates)
+      .values(template)
+      .returning();
+    return created;
+  }
+
+  async updateWorkflowTemplate(id: string, updates: Partial<WorkflowTemplate>): Promise<WorkflowTemplate> {
+    const [updated] = await db
+      .update(workflowTemplates)
+      .set(updates)
+      .where(eq(workflowTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Workflow schedule methods implementation
+  async getWorkflowSchedules(workflowId?: string): Promise<WorkflowSchedule[]> {
+    let query = db.select().from(workflowSchedules);
+    
+    if (workflowId) {
+      query = query.where(eq(workflowSchedules.workflowId, workflowId));
+    }
+    
+    return query.orderBy(workflowSchedules.nextRunAt);
+  }
+
+  async getWorkflowSchedule(id: string): Promise<WorkflowSchedule | undefined> {
+    const [schedule] = await db
+      .select()
+      .from(workflowSchedules)
+      .where(eq(workflowSchedules.id, id));
+    return schedule || undefined;
+  }
+
+  async getActiveSchedules(): Promise<WorkflowSchedule[]> {
+    return db
+      .select()
+      .from(workflowSchedules)
+      .where(
+        and(
+          eq(workflowSchedules.isActive, true),
+          sql`${workflowSchedules.nextRunAt} <= NOW()`
+        )
+      )
+      .orderBy(workflowSchedules.nextRunAt);
+  }
+
+  async createWorkflowSchedule(schedule: InsertWorkflowSchedule): Promise<WorkflowSchedule> {
+    const [created] = await db
+      .insert(workflowSchedules)
+      .values(schedule)
+      .returning();
+    return created;
+  }
+
+  async updateWorkflowSchedule(id: string, updates: Partial<WorkflowSchedule>): Promise<WorkflowSchedule> {
+    const [updated] = await db
+      .update(workflowSchedules)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(workflowSchedules.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWorkflowSchedule(id: string): Promise<void> {
+    await db.delete(workflowSchedules).where(eq(workflowSchedules.id, id));
   }
 }
 

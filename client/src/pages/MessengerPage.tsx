@@ -4,7 +4,7 @@ import { CybercoreBackground } from '@/components/CybercoreBackground';
 import { FloatingConsultButton } from '@/components/FloatingConsultButton';
 import { HoverFooter } from '@/components/HoverFooter';
 import { OnboardingModal } from '@/components/OnboardingModal';
-import { SearchModal } from '@/components/SearchModal';
+import { AdvancedSearchModal } from '@/components/AdvancedSearchModal';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,10 +13,18 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import { MessageRenderer } from '@/components/MessageRenderer';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { CallButton } from '@/components/CallButton';
+import { CallInterface } from '@/components/CallInterface';
+import { IncomingCallModal } from '@/components/IncomingCallModal';
+import { useWebRTC } from '@/hooks/useWebRTC';
+import { ChannelBrowser } from '@/components/ChannelBrowser';
+import { ChannelSettings } from '@/components/ChannelSettings';
+import { CommandPalette } from '@/components/CommandPalette';
 import { 
   Send, 
   Hash, 
@@ -61,10 +69,18 @@ interface Channel {
   id: string;
   name: string;
   description?: string;
+  purpose?: string;
+  topic?: string;
   tier: 'NON_LICENSED' | 'FL_LICENSED' | 'MULTI_STATE';
   badgeIcon?: string;
   badgeColor?: string;
   isActive?: boolean;
+  isPrivate?: boolean;
+  isArchived?: boolean;
+  isShared?: boolean;
+  isAnnouncement?: boolean;
+  createdBy?: string;
+  ownerId?: string;
 }
 
 interface Reaction {
@@ -176,6 +192,7 @@ const tierConfig = {
 export default function MessengerPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { currentCall } = useWebRTC();
   const [viewMode, setViewMode] = useState<ViewMode>('channel');
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [selectedDMUser, setSelectedDMUser] = useState<DMUser | null>(null);
@@ -196,6 +213,9 @@ export default function MessengerPage() {
   const [userFiles, setUserFiles] = useState<any[]>([]);
   const [askJasonMode, setAskJasonMode] = useState(false);
   const [jasonLoading, setJasonLoading] = useState(false);
+  // Channel management state
+  const [showChannelBrowser, setShowChannelBrowser] = useState(false);
+  const [showChannelSettings, setShowChannelSettings] = useState(false);
   // Thread state
   const [selectedThread, setSelectedThread] = useState<Message | DirectMessage | null>(null);
   const [threadReplies, setThreadReplies] = useState<(Message | DirectMessage)[]>([]);
@@ -225,6 +245,8 @@ export default function MessengerPage() {
   const [infoPanelTab, setInfoPanelTab] = useState<'members' | 'pinned' | 'about'>('members');
   // Search modal state
   const [showSearchModal, setShowSearchModal] = useState(false);
+  // Command palette state
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   
   // Notification state
   const [unreadCounts, setUnreadCounts] = useState<any>({ total: 0, byChannel: {}, byDM: {} });
@@ -1455,14 +1477,24 @@ export default function MessengerPage() {
           <ScrollArea className="flex-1 px-2">
             {/* Channels Section */}
             <div className="mb-4">
-              <button
-                onClick={() => setShowChannels(!showChannels)}
-                className="flex items-center gap-1 w-full px-2 py-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
-                data-testid="toggle-channels"
-              >
-                {showChannels ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                CHANNELS
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowChannels(!showChannels)}
+                  className="flex items-center gap-1 flex-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                  data-testid="toggle-channels"
+                >
+                  {showChannels ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                  CHANNELS
+                </button>
+                <button
+                  onClick={() => setShowChannelBrowser(true)}
+                  className="p-1 text-gray-400 hover:text-gray-300 transition-colors"
+                  title="Browse Channels"
+                  data-testid="button-browse-channels"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
               
               {showChannels && (
                 <div className="mt-1 space-y-0.5">
@@ -1760,7 +1792,11 @@ export default function MessengerPage() {
             <div className="flex items-center gap-2">
               {viewMode === 'channel' && selectedChannel ? (
                 <>
-                  <Hash className="h-5 w-5 text-gray-400" />
+                  {selectedChannel.isPrivate ? (
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <Hash className="h-5 w-5 text-gray-400" />
+                  )}
                   <button
                     onClick={() => setShowInfoPanel(!showInfoPanel)}
                     className="text-white font-medium hover:underline flex items-center gap-2"
@@ -1773,6 +1809,14 @@ export default function MessengerPage() {
                     )}
                   </button>
                   {selectedChannel.tier && <TierBadge tier={selectedChannel.tier} />}
+                  <button
+                    onClick={() => setShowChannelSettings(true)}
+                    className="p-1 text-gray-400 hover:text-gray-300 transition-colors ml-2"
+                    title="Channel Settings"
+                    data-testid="button-channel-settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
                   {selectedChannel.description && (
                     <span className="text-sm text-gray-400 ml-2 hidden lg:inline">
                       {selectedChannel.description}
@@ -1807,6 +1851,16 @@ export default function MessengerPage() {
             
             {/* Header Actions */}
             <div className="flex items-center gap-2">
+              {/* Call Button - For channels and DMs */}
+              {(selectedChannel || selectedDMUser) && (
+                <CallButton
+                  channelId={selectedChannel?.id || `dm-${selectedDMUser?.id}`}
+                  workspaceId="default-workspace"
+                  participants={selectedDMUser ? [selectedDMUser.id] : []}
+                  className="text-gray-400"
+                />
+              )}
+              
               {/* Notification Dropdown */}
               <NotificationDropdown />
               
@@ -3041,11 +3095,109 @@ export default function MessengerPage() {
         />
       )}
       
-      {/* Search Modal */}
-      <SearchModal
+      {/* Advanced Search Modal */}
+      <AdvancedSearchModal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
-        onNavigateToMessage={handleSearchNavigate}
+        onResultClick={(result) => {
+          // Handle different result types
+          if (result.type === 'message' && result.channel) {
+            // Navigate to the channel and message
+            const channel = channels?.find(c => c.id === result.channel?.id);
+            if (channel) {
+              setSelectedChannel(channel);
+              setViewMode('channel');
+              setSelectedDMUser(null);
+            }
+          } else if (result.type === 'dm' && result.author) {
+            // Navigate to DM conversation
+            const user = dmUsers?.find(u => u.id === result.author?.id);
+            if (user) {
+              setSelectedDMUser(user);
+              setViewMode('dm');
+              setSelectedChannel(null);
+            }
+          } else if (result.type === 'channel') {
+            // Navigate to channel
+            const channel = channels?.find(c => c.id === result.id);
+            if (channel) {
+              setSelectedChannel(channel);
+              setViewMode('channel');
+              setSelectedDMUser(null);
+            }
+          } else if (result.type === 'user') {
+            // Start DM with user
+            const user = dmUsers?.find(u => u.id === result.id);
+            if (user) {
+              setSelectedDMUser(user);
+              setViewMode('dm');
+              setSelectedChannel(null);
+            }
+          }
+        }}
+      />
+      
+      {/* Call UI Components */}
+      <IncomingCallModal />
+      {currentCall && (
+        <CallInterface onClose={() => {
+          // Optionally handle close
+        }} />
+      )}
+
+      {/* Channel Browser Modal */}
+      {showChannelBrowser && (
+        <Dialog open={showChannelBrowser} onOpenChange={setShowChannelBrowser}>
+          <DialogContent className="max-w-4xl h-[80vh] p-0">
+            <ChannelBrowser
+              onChannelSelect={(channel) => {
+                setSelectedChannel(channel);
+                setViewMode('channel');
+                setSelectedDMUser(null);
+                setShowChannelBrowser(false);
+              }}
+              selectedChannelId={selectedChannel?.id}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Channel Settings Modal */}
+      {showChannelSettings && selectedChannel && user && (
+        <ChannelSettings
+          channel={selectedChannel}
+          currentUserId={user.id}
+          isOpen={showChannelSettings}
+          onClose={() => setShowChannelSettings(false)}
+        />
+      )}
+
+      {/* Command Palette */}
+      <CommandPalette
+        open={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        onExecute={(command) => {
+          // Handle command execution
+          if (command.startsWith('/dm ')) {
+            // Extract user ID and switch to DM
+            const userId = command.slice(4);
+            const dmUser = dmUsers.find(u => u.id === userId);
+            if (dmUser) {
+              setSelectedDMUser(dmUser);
+              setViewMode('dm');
+              setSelectedChannel(null);
+            }
+          } else {
+            // For message commands, send them through the message system
+            setMessageInput(command);
+            // Trigger send message
+            handleSendMessage();
+          }
+          setShowCommandPalette(false);
+        }}
+        channelId={selectedChannel?.id}
+        dmUserId={selectedDMUser?.id}
+        initialInput={messageInput}
       />
     </div>
   );

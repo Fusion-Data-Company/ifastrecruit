@@ -1,3 +1,8 @@
+// Polyfill for global object needed by simple-peer
+if (typeof window !== 'undefined' && typeof window.global === 'undefined') {
+  window.global = window;
+}
+
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -8,6 +13,7 @@ import { FloatingCalendlyButton } from "@/components/FloatingCalendlyButton";
 import { HoverFooter } from "@/components/HoverFooter";
 import { useAuth } from "@/hooks/useAuth";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { WebRTCProvider } from "@/hooks/useWebRTC";
 import Dashboard from "@/pages/dashboard";
 import Candidates from "@/pages/candidates";
 import Interviews from "@/pages/interviews";
@@ -20,6 +26,8 @@ import MessengerPage from "@/pages/MessengerPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import DevMessengerPage from "@/pages/DevMessengerPage";
 import LoginPage from "@/pages/LoginPage";
+import WorkflowsPage from "@/pages/workflows";
+import BillingPage from "@/pages/billing";
 import NotFound from "@/pages/not-found";
 
 // Admin wrapper that includes ElevenLabs agent
@@ -129,13 +137,24 @@ function Router() {
         <Route path="/airtop">{() => <AdminPageWrapper><AirtopIntegration /></AdminPageWrapper>}</Route>
         <Route path="/elevenlabs">{() => <AdminPageWrapper><ElevenLabsPage /></AdminPageWrapper>}</Route>
         <Route path="/jason-ai-settings">{() => <AdminPageWrapper><JasonAIAdmin /></AdminPageWrapper>}</Route>
+        <Route path="/workflows">{() => <AdminPageWrapper><WorkflowsPage /></AdminPageWrapper>}</Route>
+        <Route path="/billing" component={BillingPage} />
         <Route path="/onboarding" component={OnboardingPage} />
         <Route path="/messenger">
-          {() => (
-            <ErrorBoundary fallbackMessage="Something went wrong loading the messenger">
-              <MessengerPage />
-            </ErrorBoundary>
-          )}
+          {() => {
+            const { user } = useAuth();
+            return (
+              <ErrorBoundary fallbackMessage="Something went wrong loading the messenger">
+                {user ? (
+                  <WebRTCProvider userId={user.id}>
+                    <MessengerPage />
+                  </WebRTCProvider>
+                ) : (
+                  <MessengerPage />
+                )}
+              </ErrorBoundary>
+            );
+          }}
         </Route>
         <Route component={NotFound} />
       </Switch>
