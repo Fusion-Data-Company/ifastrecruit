@@ -331,45 +331,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // First try to find existing user by ID
-    const existingUserById = await this.getUser(userData.id);
+    // First try to find existing user by email if email is provided
+    const existingByEmail = userData.email ? await this.getUserByEmail(userData.email) : null;
     
-    if (existingUserById) {
-      // User exists with this ID, update them
+    if (existingByEmail && existingByEmail.id !== userData.id) {
+      // User exists with this email but different ID - update the existing one
       const [updated] = await db
         .update(users)
-        .set({
-          ...userData,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, userData.id))
+        .set({ ...userData, id: existingByEmail.id, updatedAt: new Date() })
+        .where(eq(users.id, existingByEmail.id))
         .returning();
       return updated;
     }
     
-    // Check if a user exists with this email (to handle email conflicts)
-    if (userData.email) {
-      const existingUserByEmail = await this.getUserByEmail(userData.email);
-      if (existingUserByEmail) {
-        // Email exists for different user - update that user's ID to match the Replit auth ID
-        // This handles the case where a user was created with a different ID but same email
-        const [updated] = await db
-          .update(users)
-          .set({
-            ...userData,
-            id: userData.id, // Update to new ID from Replit auth
-            updatedAt: new Date(),
-          })
-          .where(eq(users.email, userData.email))
-          .returning();
-        return updated;
-      }
-    }
-    
-    // No conflicts, create new user
+    // Otherwise do normal upsert by ID
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values({ ...userData, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: { ...userData, updatedAt: new Date() }
+      })
       .returning();
     return user;
   }
