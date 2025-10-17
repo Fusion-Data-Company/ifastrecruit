@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,6 +37,7 @@ export default function OnboardingPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [completionMessage, setCompletionMessage] = useState<string>("");
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingSchema),
@@ -53,18 +54,65 @@ export default function OnboardingPage() {
   const totalSteps = hasFloridaLicense ? (isMultiStateLicensed ? 3 : 2) : 1;
   const progress = (step / totalSteps) * 100;
 
+  // Handle redirect when onboarding is complete
+  useEffect(() => {
+    if (shouldRedirect && completionMessage) {
+      const redirectTimer = setTimeout(() => {
+        try {
+          console.log("Attempting to redirect to /messenger");
+          navigate("/messenger");
+        } catch (error) {
+          console.error("Failed to navigate to messenger:", error);
+          // Fallback to window.location if navigate fails
+          window.location.href = "/messenger";
+        }
+      }, 2000);
+
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [shouldRedirect, completionMessage, navigate]);
+
   const completeMutation = useMutation({
     mutationFn: async (data: OnboardingFormData) => {
-      const response = await apiRequest("/api/onboarding/complete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+      console.log("[Onboarding] Starting form submission with data:", data);
+      
+      // Create FormData because backend expects multipart/form-data
+      const formData = new FormData();
+      formData.append("hasFloridaLicense", String(data.hasFloridaLicense));
+      formData.append("isMultiStateLicensed", String(data.isMultiStateLicensed));
+      
+      // Send licensed states as JSON string (backend expects this format)
+      if (data.licensedStates && data.licensedStates.length > 0) {
+        formData.append("licensedStates", JSON.stringify(data.licensedStates));
+      }
+      
+      console.log("[Onboarding] Sending FormData to /api/onboarding/complete");
+      console.log("[Onboarding] FormData contents:", {
+        hasFloridaLicense: data.hasFloridaLicense,
+        isMultiStateLicensed: data.isMultiStateLicensed,
+        licensedStates: data.licensedStates
       });
-      return response;
+      
+      const response = await fetch("/api/onboarding/complete", {
+        method: "POST",
+        body: formData,
+        credentials: "include", // Important for authentication cookies
+      });
+      
+      console.log("[Onboarding] Response status:", response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Onboarding] Error response:", errorText);
+        throw new Error(`Failed to complete onboarding: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log("[Onboarding] Success response:", result);
+      return result;
     },
     onSuccess: (data) => {
+      console.log("[Onboarding] Mutation succeeded with data:", data);
       const channels = data.channels?.join(", ") || "your assigned channels";
       setCompletionMessage(`Welcome! You've been assigned to: ${channels}`);
       
@@ -73,11 +121,11 @@ export default function OnboardingPage() {
         description: `You've been assigned to ${channels}`,
       });
 
-      setTimeout(() => {
-        navigate("/messenger");
-      }, 2000);
+      // Trigger the redirect through useEffect
+      setShouldRedirect(true);
     },
     onError: (error: any) => {
+      console.error("[Onboarding] Mutation failed:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -87,24 +135,39 @@ export default function OnboardingPage() {
   });
 
   const handleNext = () => {
+    console.log("[Onboarding] handleNext clicked, step:", step);
+    console.log("[Onboarding] hasFloridaLicense:", hasFloridaLicense);
+    console.log("[Onboarding] isMultiStateLicensed:", isMultiStateLicensed);
+    
     if (step === 1 && !hasFloridaLicense) {
       // If no Florida license, skip to submission
+      console.log("[Onboarding] No Florida license, submitting form");
       handleSubmit();
     } else if (step === 2 && !isMultiStateLicensed) {
       // If has FL license but not multi-state, submit
+      console.log("[Onboarding] Has FL license but not multi-state, submitting form");
       handleSubmit();
     } else {
+      console.log("[Onboarding] Moving to next step:", step + 1);
       setStep(step + 1);
     }
   };
 
   const handleBack = () => {
+    console.log("[Onboarding] Going back from step:", step, "to step:", step - 1);
     setStep(step - 1);
   };
 
   const handleSubmit = () => {
+    console.log("[Onboarding] handleSubmit called");
+    console.log("[Onboarding] Form errors before submit:", form.formState.errors);
+    console.log("[Onboarding] Form values before submit:", form.getValues());
+    
     form.handleSubmit((data) => {
+      console.log("[Onboarding] Form validation passed, submitting with data:", data);
       completeMutation.mutate(data);
+    }, (errors) => {
+      console.error("[Onboarding] Form validation failed:", errors);
     })();
   };
 
@@ -293,7 +356,12 @@ export default function OnboardingPage() {
                   ) : (
                     <Button
                       type="button"
-                      onClick={handleSubmit}
+                      onClick={() => {
+                        console.log("[Onboarding] Complete Onboarding button clicked");
+                        console.log("[Onboarding] Current step:", step);
+                        console.log("[Onboarding] Total steps:", totalSteps);
+                        handleSubmit();
+                      }}
                       disabled={completeMutation.isPending}
                       data-testid="button-submit"
                     >

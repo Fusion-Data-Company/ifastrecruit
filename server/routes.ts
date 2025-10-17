@@ -330,11 +330,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   ]), async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log(`[ONBOARDING DEBUG] Starting completion for user: ${userId}`);
+      
       const user = await storage.getUser(userId);
       
       if (!user) {
+        console.error(`[ONBOARDING DEBUG] User not found: ${userId}`);
         return res.status(404).json({ message: "User not found" });
       }
+      
+      console.log(`[ONBOARDING DEBUG] User before update:`, {
+        id: user.id,
+        email: user.email,
+        hasCompletedOnboarding: user.hasCompletedOnboarding
+      });
 
       // Parse and validate request body
       const bodyData = {
@@ -342,12 +351,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isMultiStateLicensed: req.body.hasMultiStateLicense === 'true' || req.body.hasMultiStateLicense === true || req.body.isMultiStateLicensed === 'true' || req.body.isMultiStateLicensed === true,
         licensedStates: req.body.selectedStates ? (typeof req.body.selectedStates === 'string' ? JSON.parse(req.body.selectedStates) : req.body.selectedStates) : (req.body.licensedStates || [])
       };
+      
+      console.log(`[ONBOARDING DEBUG] Parsed body data:`, bodyData);
 
       const validatedData = onboardingSchema.parse(bodyData);
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
       // Complete onboarding using storage method
+      console.log(`[ONBOARDING DEBUG] Calling storage.completeOnboarding...`);
       const { user: updatedUser, channels: assignedChannels } = await storage.completeOnboarding(userId, validatedData);
+      
+      console.log(`[ONBOARDING DEBUG] User after completeOnboarding:`, {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        hasCompletedOnboarding: updatedUser.hasCompletedOnboarding
+      });
+      
+      // Verify the update was successful by re-fetching the user
+      const verifyUser = await storage.getUser(userId);
+      console.log(`[ONBOARDING DEBUG] Verification check - User hasCompletedOnboarding:`, verifyUser?.hasCompletedOnboarding);
+      
+      if (!verifyUser?.hasCompletedOnboarding) {
+        console.error(`[ONBOARDING DEBUG] ERROR: User onboarding flag was not updated in database!`);
+        // Try to force update it again
+        console.log(`[ONBOARDING DEBUG] Attempting direct update...`);
+        const forcedUpdate = await storage.updateUser(userId, { hasCompletedOnboarding: true });
+        console.log(`[ONBOARDING DEBUG] Forced update result:`, {
+          id: forcedUpdate.id,
+          hasCompletedOnboarding: forcedUpdate.hasCompletedOnboarding
+        });
+      }
       
       const channelNames = assignedChannels.map(c => c.name);
 

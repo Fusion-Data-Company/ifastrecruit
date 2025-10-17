@@ -381,11 +381,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    // Debug logging for onboarding updates
+    if (updates.hasCompletedOnboarding !== undefined) {
+      console.log(`[ONBOARDING DEBUG - updateUser] Updating user ${id} with:`, {
+        hasCompletedOnboarding: updates.hasCompletedOnboarding,
+        hasFloridaLicense: updates.hasFloridaLicense,
+        isMultiStateLicensed: updates.isMultiStateLicensed
+      });
+    }
+    
     const [updated] = await db
       .update(users)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
+    
+    // Debug logging for onboarding updates
+    if (updates.hasCompletedOnboarding !== undefined) {
+      console.log(`[ONBOARDING DEBUG - updateUser] Update result for user ${id}:`, {
+        id: updated?.id,
+        hasCompletedOnboarding: updated?.hasCompletedOnboarding,
+        hasFloridaLicense: updated?.hasFloridaLicense
+      });
+      
+      if (!updated) {
+        console.error(`[ONBOARDING DEBUG - updateUser] CRITICAL: No user returned from update for id ${id}`);
+        throw new Error(`Failed to update user ${id} - no result returned from database`);
+      }
+      
+      if (updates.hasCompletedOnboarding === true && updated.hasCompletedOnboarding !== true) {
+        console.error(`[ONBOARDING DEBUG - updateUser] CRITICAL: hasCompletedOnboarding was not updated!`);
+        console.error(`[ONBOARDING DEBUG - updateUser] Expected: true, Got: ${updated.hasCompletedOnboarding}`);
+        throw new Error(`Failed to update hasCompletedOnboarding for user ${id}`);
+      }
+    }
+    
     return updated;
   }
 
@@ -1692,15 +1722,47 @@ export class DatabaseStorage implements IStorage {
     userId: string, 
     responses: { hasFloridaLicense: boolean; isMultiStateLicensed: boolean; licensedStates: string[] }
   ): Promise<{ user: User; channels: Channel[] }> {
+    console.log(`[ONBOARDING DEBUG - Storage] Starting completeOnboarding for userId: ${userId}`);
+    console.log(`[ONBOARDING DEBUG - Storage] Responses:`, responses);
+    
+    // Get user before update to check current state
+    const userBefore = await this.getUser(userId);
+    console.log(`[ONBOARDING DEBUG - Storage] User BEFORE update:`, {
+      id: userBefore?.id,
+      hasCompletedOnboarding: userBefore?.hasCompletedOnboarding,
+      hasFloridaLicense: userBefore?.hasFloridaLicense
+    });
+    
     // Update user with onboarding completion and licensing info
+    console.log(`[ONBOARDING DEBUG - Storage] Calling updateUser with hasCompletedOnboarding: true`);
     const updatedUser = await this.updateUser(userId, {
       hasCompletedOnboarding: true,
       hasFloridaLicense: responses.hasFloridaLicense,
       isMultiStateLicensed: responses.isMultiStateLicensed,
       licensedStates: responses.licensedStates
     });
+    
+    console.log(`[ONBOARDING DEBUG - Storage] User AFTER updateUser:`, {
+      id: updatedUser.id,
+      hasCompletedOnboarding: updatedUser.hasCompletedOnboarding,
+      hasFloridaLicense: updatedUser.hasFloridaLicense
+    });
+    
+    // Double-check by fetching user again
+    const userAfterCheck = await this.getUser(userId);
+    console.log(`[ONBOARDING DEBUG - Storage] User AFTER re-fetch:`, {
+      id: userAfterCheck?.id,
+      hasCompletedOnboarding: userAfterCheck?.hasCompletedOnboarding,
+      hasFloridaLicense: userAfterCheck?.hasFloridaLicense
+    });
+    
+    if (!userAfterCheck?.hasCompletedOnboarding) {
+      console.error(`[ONBOARDING DEBUG - Storage] CRITICAL ERROR: User hasCompletedOnboarding is still false after update!`);
+      throw new Error(`Failed to update hasCompletedOnboarding for user ${userId}`);
+    }
 
     // Upsert onboarding response record (handles retries/duplicates gracefully)
+    console.log(`[ONBOARDING DEBUG - Storage] Upserting onboarding response record...`);
     await db
       .insert(onboardingResponses)
       .values({

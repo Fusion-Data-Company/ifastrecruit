@@ -94,8 +94,8 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
         origin: { y: 0.6 }
       });
       
-      // Complete onboarding
-      queryClient.invalidateQueries({ queryKey: ['/api/user/onboarding-status'] });
+      // Complete onboarding - invalidate the correct query key used in MessengerPage
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding/status'] });
       onComplete(data.tier);
     }
   });

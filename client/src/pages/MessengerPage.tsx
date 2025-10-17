@@ -1695,7 +1695,7 @@ export default function MessengerPage() {
               
               {(selectedChannel || selectedDMUser) && (
                 <>
-                  {pinnedMessages.length > 0 && (
+                  {pinnedMessages && pinnedMessages.length > 0 && (
                   <button
                     onClick={() => {
                       setShowInfoPanel(true);
@@ -2614,7 +2614,7 @@ export default function MessengerPage() {
                 >
                   <Pin className="h-4 w-4 inline-block mr-1" />
                   Pinned
-                  {pinnedMessages.length > 0 && (
+                  {pinnedMessages && pinnedMessages.length > 0 && (
                     <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                       {pinnedMessages.length}
                     </span>
@@ -2702,7 +2702,7 @@ export default function MessengerPage() {
               {/* Pinned Messages Tab */}
               {infoPanelTab === 'pinned' && (
                 <div className="p-4 space-y-3">
-                  {pinnedMessages.length === 0 ? (
+                  {!pinnedMessages || pinnedMessages.length === 0 ? (
                     <div className="text-center py-8">
                       <Pin className="h-12 w-12 text-gray-500 mx-auto mb-3" />
                       <p className="text-gray-400">No pinned messages</p>
