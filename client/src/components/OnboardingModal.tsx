@@ -121,18 +121,18 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
       case 3:
         // Conditional validation based on license status
         if (answers.licenseStatus === 'fl_licensed') {
-          return answers.licenseDuration && answers.licenseLines && answers.licenseLines.length > 0;
+          return !!answers.licenseDuration && answers.licenseLines && answers.licenseLines.length > 0;
         } else if (answers.licenseStatus === 'multi_state') {
           return answers.licensedStates && answers.licensedStates.length > 0 && 
                  answers.interestedInFlorida !== undefined;
         } else if (answers.licenseStatus === 'non_licensed') {
           return answers.studyingForExam !== undefined && 
-                 (answers.studyingForExam === false || answers.examTimeline);
+                 (answers.studyingForExam === false || !!answers.examTimeline);
         }
         return false;
       case 4:
         return answers.careerGoals && answers.careerGoals.length > 0 && 
-               answers.yearsExperience !== undefined;
+               !!answers.yearsExperience;
       default:
         return false;
     }
@@ -200,28 +200,25 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
               onValueChange={(value: any) => setAnswers({ ...answers, licenseStatus: value })}
               className="space-y-3"
             >
-              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
-                    onClick={() => setAnswers({ ...answers, licenseStatus: 'fl_licensed' })}>
-                <Label className="flex items-center space-x-3 p-4 cursor-pointer">
-                  <RadioGroupItem value="fl_licensed" />
+              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+                <Label htmlFor="fl_licensed" className="flex items-center space-x-3 p-4 cursor-pointer">
+                  <RadioGroupItem value="fl_licensed" id="fl_licensed" />
                   <Shield className="h-5 w-5 text-blue-400" />
                   <span className="text-white">Yes, I have a Florida license</span>
                 </Label>
               </Card>
 
-              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
-                    onClick={() => setAnswers({ ...answers, licenseStatus: 'multi_state' })}>
-                <Label className="flex items-center space-x-3 p-4 cursor-pointer">
-                  <RadioGroupItem value="multi_state" />
+              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+                <Label htmlFor="multi_state" className="flex items-center space-x-3 p-4 cursor-pointer">
+                  <RadioGroupItem value="multi_state" id="multi_state" />
                   <Globe className="h-5 w-5 text-purple-400" />
                   <span className="text-white">I have licenses in other states</span>
                 </Label>
               </Card>
 
-              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
-                    onClick={() => setAnswers({ ...answers, licenseStatus: 'non_licensed' })}>
-                <Label className="flex items-center space-x-3 p-4 cursor-pointer">
-                  <RadioGroupItem value="non_licensed" />
+              <Card className="bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
+                <Label htmlFor="non_licensed" className="flex items-center space-x-3 p-4 cursor-pointer">
+                  <RadioGroupItem value="non_licensed" id="non_licensed" />
                   <Star className="h-5 w-5 text-yellow-400" />
                   <span className="text-white">No, but I'm interested in getting one</span>
                 </Label>
@@ -249,24 +246,24 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
                 <div className="space-y-2">
                   <Label className="text-gray-300">How long have you been licensed?</Label>
                   <RadioGroup
-                    value={answers.licenseDuration}
+                    value={answers.licenseDuration || ''}
                     onValueChange={(value) => setAnswers({ ...answers, licenseDuration: value })}
                     className="space-y-2"
                   >
-                    <Label className="flex items-center space-x-2">
-                      <RadioGroupItem value="less-1" />
+                    <Label htmlFor="duration_less_1" className="flex items-center space-x-2">
+                      <RadioGroupItem value="less-1" id="duration_less_1" />
                       <span className="text-gray-300">Less than 1 year</span>
                     </Label>
-                    <Label className="flex items-center space-x-2">
-                      <RadioGroupItem value="1-3" />
+                    <Label htmlFor="duration_1_3" className="flex items-center space-x-2">
+                      <RadioGroupItem value="1-3" id="duration_1_3" />
                       <span className="text-gray-300">1-3 years</span>
                     </Label>
-                    <Label className="flex items-center space-x-2">
-                      <RadioGroupItem value="3-5" />
+                    <Label htmlFor="duration_3_5" className="flex items-center space-x-2">
+                      <RadioGroupItem value="3-5" id="duration_3_5" />
                       <span className="text-gray-300">3-5 years</span>
                     </Label>
-                    <Label className="flex items-center space-x-2">
-                      <RadioGroupItem value="5-plus" />
+                    <Label htmlFor="duration_5_plus" className="flex items-center space-x-2">
+                      <RadioGroupItem value="5-plus" id="duration_5_plus" />
                       <span className="text-gray-300">5+ years</span>
                     </Label>
                   </RadioGroup>
@@ -333,16 +330,16 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
               <div className="space-y-2">
                 <Label className="text-gray-300">Are you interested in getting a Florida license?</Label>
                 <RadioGroup
-                  value={answers.interestedInFlorida ? 'yes' : 'no'}
+                  value={answers.interestedInFlorida === undefined ? '' : (answers.interestedInFlorida ? 'yes' : 'no')}
                   onValueChange={(value) => setAnswers({ ...answers, interestedInFlorida: value === 'yes' })}
                   className="space-y-2"
                 >
-                  <Label className="flex items-center space-x-2">
-                    <RadioGroupItem value="yes" />
+                  <Label htmlFor="florida_yes" className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="florida_yes" />
                     <span className="text-gray-300">Yes, I'm interested</span>
                   </Label>
-                  <Label className="flex items-center space-x-2">
-                    <RadioGroupItem value="no" />
+                  <Label htmlFor="florida_no" className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="florida_no" />
                     <span className="text-gray-300">No, not at this time</span>
                   </Label>
                 </RadioGroup>
@@ -367,16 +364,16 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
                 <div className="space-y-2">
                   <Label className="text-gray-300">Are you currently studying for the Florida exam?</Label>
                   <RadioGroup
-                    value={answers.studyingForExam ? 'yes' : 'no'}
+                    value={answers.studyingForExam === undefined ? '' : (answers.studyingForExam ? 'yes' : 'no')}
                     onValueChange={(value) => setAnswers({ ...answers, studyingForExam: value === 'yes' })}
                     className="space-y-2"
                   >
-                    <Label className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" />
+                    <Label htmlFor="studying_yes" className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="studying_yes" />
                       <span className="text-gray-300">Yes, I'm studying</span>
                     </Label>
-                    <Label className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" />
+                    <Label htmlFor="studying_no" className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="studying_no" />
                       <span className="text-gray-300">No, not yet</span>
                     </Label>
                   </RadioGroup>
@@ -386,24 +383,24 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
                   <div className="space-y-2">
                     <Label className="text-gray-300">When do you plan to take the exam?</Label>
                     <RadioGroup
-                      value={answers.examTimeline}
+                      value={answers.examTimeline || ''}
                       onValueChange={(value) => setAnswers({ ...answers, examTimeline: value })}
                       className="space-y-2"
                     >
-                      <Label className="flex items-center space-x-2">
-                        <RadioGroupItem value="this-month" />
+                      <Label htmlFor="exam_this_month" className="flex items-center space-x-2">
+                        <RadioGroupItem value="this-month" id="exam_this_month" />
                         <span className="text-gray-300">This month</span>
                       </Label>
-                      <Label className="flex items-center space-x-2">
-                        <RadioGroupItem value="1-3-months" />
+                      <Label htmlFor="exam_1_3_months" className="flex items-center space-x-2">
+                        <RadioGroupItem value="1-3-months" id="exam_1_3_months" />
                         <span className="text-gray-300">1-3 months</span>
                       </Label>
-                      <Label className="flex items-center space-x-2">
-                        <RadioGroupItem value="3-6-months" />
+                      <Label htmlFor="exam_3_6_months" className="flex items-center space-x-2">
+                        <RadioGroupItem value="3-6-months" id="exam_3_6_months" />
                         <span className="text-gray-300">3-6 months</span>
                       </Label>
-                      <Label className="flex items-center space-x-2">
-                        <RadioGroupItem value="unsure" />
+                      <Label htmlFor="exam_unsure" className="flex items-center space-x-2">
+                        <RadioGroupItem value="unsure" id="exam_unsure" />
                         <span className="text-gray-300">Not sure yet</span>
                       </Label>
                     </RadioGroup>
@@ -463,28 +460,28 @@ export function OnboardingModal({ isOpen, userId, onComplete }: OnboardingModalP
               <div className="space-y-2">
                 <Label className="text-gray-300">Years of experience in insurance?</Label>
                 <RadioGroup
-                  value={answers.yearsExperience}
+                  value={answers.yearsExperience || ''}
                   onValueChange={(value) => setAnswers({ ...answers, yearsExperience: value })}
                   className="space-y-2"
                 >
-                  <Label className="flex items-center space-x-2">
-                    <RadioGroupItem value="none" />
+                  <Label htmlFor="exp_none" className="flex items-center space-x-2">
+                    <RadioGroupItem value="none" id="exp_none" />
                     <span className="text-gray-300">No experience</span>
                   </Label>
-                  <Label className="flex items-center space-x-2">
-                    <RadioGroupItem value="less-1" />
+                  <Label htmlFor="exp_less_1" className="flex items-center space-x-2">
+                    <RadioGroupItem value="less-1" id="exp_less_1" />
                     <span className="text-gray-300">Less than 1 year</span>
                   </Label>
-                  <Label className="flex items-center space-x-2">
-                    <RadioGroupItem value="1-3" />
+                  <Label htmlFor="exp_1_3" className="flex items-center space-x-2">
+                    <RadioGroupItem value="1-3" id="exp_1_3" />
                     <span className="text-gray-300">1-3 years</span>
                   </Label>
-                  <Label className="flex items-center space-x-2">
-                    <RadioGroupItem value="3-5" />
+                  <Label htmlFor="exp_3_5" className="flex items-center space-x-2">
+                    <RadioGroupItem value="3-5" id="exp_3_5" />
                     <span className="text-gray-300">3-5 years</span>
                   </Label>
-                  <Label className="flex items-center space-x-2">
-                    <RadioGroupItem value="5-plus" />
+                  <Label htmlFor="exp_5_plus" className="flex items-center space-x-2">
+                    <RadioGroupItem value="5-plus" id="exp_5_plus" />
                     <span className="text-gray-300">5+ years</span>
                   </Label>
                 </RadioGroup>
