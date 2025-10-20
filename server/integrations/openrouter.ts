@@ -6,12 +6,12 @@ export class OpenRouterIntegration {
 
   constructor() {
     this.apiKey = process.env.OPENROUTER_API_KEY || "";
-    if (!this.apiKey) {
-      throw new Error("OPENROUTER_API_KEY environment variable is required");
-    }
   }
 
   async chat(prompt: string, profile: "orchestrator" | "research" | "fast" = "orchestrator"): Promise<any> {
+    if (!this.apiKey) {
+      throw new Error("OPENROUTER_API_KEY environment variable is required");
+    }
     try {
       const models = {
         orchestrator: "anthropic/claude-3.5-sonnet",
@@ -74,6 +74,9 @@ export class OpenRouterIntegration {
   }
 
   async streamChat(prompt: string, profile: "orchestrator" | "research" | "fast" = "orchestrator"): Promise<ReadableStream> {
+    if (!this.apiKey) {
+      throw new Error("OPENROUTER_API_KEY environment variable is required");
+    }
     const models = {
       orchestrator: "anthropic/claude-3.5-sonnet",
       research: "openai/gpt-4-turbo", 
