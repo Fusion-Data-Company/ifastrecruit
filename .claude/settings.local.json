@@ -16,7 +16,12 @@
       "Bash(tee:*)",
       "Bash(JASON_USER_ID=a6f87abf-5498-4b32-9e47-bf0cc12ac10f tsx server/scripts/verify-database.ts:*)",
       "Bash(echo:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9)",
+      "Bash(NODE_ENV=production npm run start:*)",
+      "Bash(kill:*)"
     ],
     "deny": [],
     "ask": []
