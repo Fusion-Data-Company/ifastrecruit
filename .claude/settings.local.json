@@ -23,7 +23,8 @@
       "Bash(NODE_ENV=production npm run start:*)",
       "Bash(kill:*)",
       "Bash(awk:*)",
-      "Bash(JASON_USER_ID=a6f87abf-5498-4b32-9e47-bf0cc12ac10f tsx server/scripts/seed-channels.ts:*)"
+      "Bash(JASON_USER_ID=a6f87abf-5498-4b32-9e47-bf0cc12ac10f tsx server/scripts/seed-channels.ts:*)",
+      "Bash(JASON_USER_ID=a6f87abf-5498-4b32-9e47-bf0cc12ac10f tsx:*)"
     ],
     "deny": [],
     "ask": []
