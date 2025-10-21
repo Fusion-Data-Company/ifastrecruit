@@ -11,7 +11,12 @@
       "Bash(npm run build:*)",
       "Bash(curl:*)",
       "Read(//tmp/**)",
-      "Bash(npm run db:push:*)"
+      "Bash(npm run db:push:*)",
+      "Bash(tsx:*)",
+      "Bash(tee:*)",
+      "Bash(JASON_USER_ID=a6f87abf-5498-4b32-9e47-bf0cc12ac10f tsx server/scripts/verify-database.ts:*)",
+      "Bash(echo:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []

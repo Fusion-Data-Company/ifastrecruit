@@ -4,10 +4,9 @@
  * Creates the Jason AI system user and adds him to all channels
  */
 
-import { db } from '../index';
+import { db } from '../../db';
 import { users, channels, channelMembers } from '../../../shared/schema';
 import { eq } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
 
 export async function up() {
   console.log('🚀 Starting Jason AI user migration...');
