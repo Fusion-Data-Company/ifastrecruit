@@ -93,10 +93,23 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const user = {};
+      updateUserSession(user, tokens);
+      const claims = tokens.claims();
+      console.log('[Auth] Processing login for user:', claims.email);
+      await upsertUser(claims);
+      console.log('[Auth] User upserted successfully:', claims.email);
+      verified(null, user);
+    } catch (error: any) {
+      console.error('[Auth] Error in verify callback:', error);
+      console.error('[Auth] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        code: error.code
+      });
+      verified(error);
+    }
   };
 
   for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
@@ -123,10 +136,26 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log('[Auth] Callback received for:', req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
-    })(req, res, next);
+    })(req, res, (err) => {
+      if (err) {
+        console.error('[Auth] Callback error:', err);
+        return res.status(500).json({
+          error: {
+            message: "Authentication failed",
+            code: "AUTH_ERROR",
+            statusCode: 500,
+            details: err.message
+          },
+          timestamp: new Date().toISOString(),
+          path: req.path
+        });
+      }
+      next();
+    });
   });
 
   app.get("/api/logout", (req, res) => {

@@ -493,29 +493,55 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // First try to find existing user by email if email is provided
-    const existingByEmail = userData.email ? await this.getUserByEmail(userData.email) : null;
-    
-    if (existingByEmail && existingByEmail.id !== userData.id) {
-      // User exists with this email but different ID - update the existing one
-      const [updated] = await db
-        .update(users)
-        .set({ ...userData, id: existingByEmail.id, updatedAt: new Date() })
-        .where(eq(users.id, existingByEmail.id))
+    try {
+      console.log('[Storage] upsertUser called with:', {
+        id: userData.id,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName
+      });
+
+      // Filter out undefined values to avoid database errors
+      const cleanData = Object.fromEntries(
+        Object.entries(userData).filter(([_, v]) => v !== undefined)
+      ) as Partial<UpsertUser>;
+
+      // First try to find existing user by email if email is provided
+      const existingByEmail = userData.email ? await this.getUserByEmail(userData.email) : null;
+
+      if (existingByEmail && existingByEmail.id !== userData.id) {
+        // User exists with this email but different ID - update the existing one
+        console.log('[Storage] Updating existing user by email:', existingByEmail.id);
+        const [updated] = await db
+          .update(users)
+          .set({ ...cleanData, id: existingByEmail.id, updatedAt: new Date() })
+          .where(eq(users.id, existingByEmail.id))
+          .returning();
+        return updated;
+      }
+
+      // Otherwise do normal upsert by ID
+      console.log('[Storage] Performing upsert by ID:', userData.id);
+      const [user] = await db
+        .insert(users)
+        .values({ ...cleanData, updatedAt: new Date() })
+        .onConflictDoUpdate({
+          target: users.id,
+          set: { ...cleanData, updatedAt: new Date() }
+        })
         .returning();
-      return updated;
+
+      console.log('[Storage] User upserted successfully:', user.id);
+      return user;
+    } catch (error: any) {
+      console.error('[Storage] upsertUser error:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        stack: error.stack
+      });
+      throw error;
     }
-    
-    // Otherwise do normal upsert by ID
-    const [user] = await db
-      .insert(users)
-      .values({ ...userData, updatedAt: new Date() })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: { ...userData, updatedAt: new Date() }
-      })
-      .returning();
-    return user;
   }
 
   // Additional user methods

@@ -35,7 +35,7 @@ args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_stripe:1.0.0"]
+integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_stripe:1.0.0", "javascript_database:1.0.0"]
 expertMode = true
 
 [[ports]]
@@ -101,6 +101,10 @@ externalPort = 3001
 localPort = 46001
 externalPort = 5000
 exposeLocalhost = true
+
+[[ports]]
+localPort = 46635
+externalPort = 9000
 
 [[ports]]
 localPort = 59267

@@ -63,16 +63,26 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(queryKey.join("/") as string, {
+        credentials: "include",
+      });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      return await res.json();
+    } catch (error) {
+      console.error('[Query] Error fetching:', queryKey, error);
+      // If it's a 401 and we want to return null, do so
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      // Otherwise throw the error
+      throw error;
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({
@@ -82,7 +92,7 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: 0, // FORCE REFRESH - no caching of stale data
-      retry: 1, // Allow one retry
+      retry: false, // Disable retries to prevent infinite loops on errors
     },
     mutations: {
       retry: false,
