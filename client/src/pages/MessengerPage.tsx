@@ -1500,7 +1500,7 @@ export default function MessengerPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0a0f1c] pb-16">
+    <div className="flex flex-col h-screen bg-[#1a1d29] pb-16">
       <CybercoreBackground />
 
       {/* Connection Status Banner */}
@@ -1511,9 +1511,9 @@ export default function MessengerPage() {
       {/* Main Container - Added pb-16 for footer spacing */}
       <div className="flex flex-1 relative z-10 overflow-hidden">
         {/* Left Sidebar - Servers & Channels */}
-        <div className="w-64 bg-black/30 backdrop-blur-sm border-r border-white/5 flex flex-col">
+        <div className="w-64 bg-[#232533] border-r border-[#383a4a] flex flex-col">
           {/* Server Header */}
-          <div className="p-4 border-b border-white/5">
+          <div className="p-4 border-b border-[#383a4a]">
             <div className="flex items-center gap-3">
               <img src={iFastRecruitLogo} alt="iFast Recruit" className="h-8 w-8 rounded" />
               <div>
@@ -1601,10 +1601,10 @@ export default function MessengerPage() {
                         }}
                         className={cn(
                           "w-full px-2 py-2 rounded text-sm text-left transition-all",
-                          "hover:bg-white/5",
-                          selectedChannel?.id === channel.id && viewMode === 'channel' 
-                            ? "bg-white/10 text-white" 
-                            : canPost ? "text-gray-400" : "text-gray-600"
+                          "hover:bg-[#1a1d29]",
+                          selectedChannel?.id === channel.id && viewMode === 'channel'
+                            ? "bg-[#1264a3] text-white font-medium"
+                            : canPost ? "text-gray-300" : "text-gray-500"
                         )}
                         data-testid={`channel-${channel.id}`}
                       >
@@ -1703,10 +1703,10 @@ export default function MessengerPage() {
                       }}
                       className={cn(
                         "w-full px-2 py-2 rounded text-sm text-left transition-all",
-                        "hover:bg-white/5",
+                        "hover:bg-[#1a1d29]",
                         selectedDMUser?.id === conversation.userId && viewMode === 'dm'
-                          ? "bg-white/10 text-white" 
-                          : "text-gray-400"
+                          ? "bg-[#1264a3] text-white font-medium"
+                          : "text-gray-300"
                       )}
                       data-testid={`dm-${conversation.userId}`}
                     >
@@ -1843,26 +1843,26 @@ export default function MessengerPage() {
         </div>
 
         {/* Center - Messages Area */}
-        <div 
-          className="flex-1 flex flex-col"
+        <div
+          className="flex-1 flex flex-col bg-white"
           ref={dropZoneRef}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
           {/* Channel/DM Header */}
-          <div className="h-14 px-4 flex items-center justify-between border-b border-white/5 bg-black/20 backdrop-blur-sm">
+          <div className="h-14 px-4 flex items-center justify-between border-b border-[#383a4a] bg-white shadow-sm">
             <div className="flex items-center gap-2">
               {viewMode === 'channel' && selectedChannel ? (
                 <>
                   {selectedChannel.isPrivate ? (
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-gray-700" />
                   ) : (
-                    <Hash className="h-5 w-5 text-gray-400" />
+                    <Hash className="h-5 w-5 text-gray-700" />
                   )}
                   <button
                     onClick={() => setShowInfoPanel(!showInfoPanel)}
-                    className="text-white font-medium hover:underline flex items-center gap-2"
+                    className="text-gray-900 font-bold hover:underline flex items-center gap-2 text-lg"
                   >
                     {selectedChannel.name}
                     {channelMembers.length > 0 && (
@@ -1986,7 +1986,7 @@ export default function MessengerPage() {
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-4 bg-white">
             {isDragging && (
               <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-50">
                 <div className="text-center">
@@ -2036,7 +2036,7 @@ export default function MessengerPage() {
                   const isOwnMessage = message.userId === user?.id;
                   
                   return (
-                    <div key={message.id} className="group flex gap-3 hover:bg-white/5 px-2 py-2 rounded transition-all">
+                    <div key={message.id} className="group flex gap-3 hover:bg-gray-50 px-3 py-2 rounded transition-all">
                       <Avatar className={cn(
                         "h-10 w-10 flex-shrink-0",
                         message.user?.isAIAgent && "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
@@ -2056,8 +2056,8 @@ export default function MessengerPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
                           <span className={cn(
-                            "font-medium",
-                            message.user?.isAIAgent ? "text-blue-400" : "text-white"
+                            "font-bold text-sm",
+                            message.user?.isAIAgent ? "text-blue-600" : "text-gray-900"
                           )}>
                             {getUserDisplayName(message.sender || message.user)}
                           </span>
@@ -2084,7 +2084,7 @@ export default function MessengerPage() {
                               Pinned
                             </Badge>
                           )}
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-600 font-normal">
                             {formatTime(message.createdAt)}
                           </span>
                           {message.isEdited && (
@@ -2168,7 +2168,7 @@ export default function MessengerPage() {
                             <MessageRenderer
                               content={message.content}
                               formattedContent={message.formattedContent}
-                              className="text-gray-300 mt-1"
+                              className="text-gray-800 mt-1 text-sm leading-relaxed"
                             />
                             {message.fileUrl && (
                               <a
@@ -2186,7 +2186,7 @@ export default function MessengerPage() {
                             {((message.threadCount ?? 0) > 0 || !message.parentMessageId) && (
                               <button
                                 onClick={() => openThread(message)}
-                                className="inline-flex items-center gap-2 mt-2 text-blue-400 hover:text-blue-300 transition-colors text-sm"
+                                className="inline-flex items-center gap-2 mt-2 text-[#1264a3] hover:text-[#0b4c8c] transition-colors text-sm font-medium"
                                 data-testid={`thread-indicator-${message.id}`}
                               >
                                 <MessageSquare className="h-4 w-4" />
@@ -2330,7 +2330,7 @@ export default function MessengerPage() {
                         isOwnMessage && "text-right"
                       )}>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-600 font-normal">
                             {formatTime(message.createdAt)}
                           </span>
                         </div>
@@ -2483,7 +2483,7 @@ export default function MessengerPage() {
           })()}
 
           {/* Message Input */}
-          <div className="p-4 border-t border-white/5">
+          <div className="p-4 border-t border-gray-200 bg-gray-50">
             <div className="flex gap-2">
               <input
                 type="file"
@@ -2512,7 +2512,7 @@ export default function MessengerPage() {
                 variant={askJasonMode ? "default" : "ghost"}
                 className={cn(
                   "flex items-center gap-2",
-                  askJasonMode && "bg-gradient-to-r from-purple-500 to-indigo-500 text-white"
+                  askJasonMode && "bg-gradient-to-r from-[#611f69] to-[#4a154b] text-white hover:from-[#4a154b] hover:to-[#611f69]"
                 )}
                 data-testid="ask-jason"
               >
@@ -2565,7 +2565,7 @@ export default function MessengerPage() {
                 </div>
               )}
               
-              <div className="flex-1 bg-white/5 rounded-md border border-white/10">
+              <div className="flex-1 bg-white rounded-md shadow-sm border border-gray-200">
                 <RichTextEditor
                   value={messageInput}
                   formattedValue={messageFormattedContent}
@@ -2584,13 +2584,13 @@ export default function MessengerPage() {
                   }}
                   onSubmit={handleSendMessage}
                   placeholder={
-                    uploadingFile 
-                      ? "Uploading file..." 
+                    uploadingFile
+                      ? "Uploading file..."
                       : askJasonMode
                         ? "Ask Jason for advice about insurance, licensing, or career growth..."
-                      : viewMode === 'channel' && selectedChannel 
-                        ? `Message #${selectedChannel.name}` 
-                        : selectedDMUser 
+                      : viewMode === 'channel' && selectedChannel
+                        ? `Message #${selectedChannel.name}`
+                        : selectedDMUser
                           ? `Message ${getUserDisplayName(selectedDMUser)}`
                           : "Select a channel or user"
                   }
@@ -2612,21 +2612,12 @@ export default function MessengerPage() {
                   }}
                 />
               </div>
-              
-              <Button
-                onClick={handleSendMessage}
-                disabled={(!messageInput.trim() && !uploadingFile) || (!selectedChannel && !selectedDMUser)}
-                className="bg-primary hover:bg-primary/80 transition-colors"
-                data-testid="send-button"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </div>
 
         {/* Right Sidebar - Thread Panel or Active Users */}
-        <div className="w-96 bg-black/30 backdrop-blur-sm border-l border-white/5 flex flex-col">
+        <div className="w-96 bg-[#f8f8f8] border-l border-gray-200 flex flex-col">
           {showThreadPanel && selectedThread ? (
             <>
               {/* Thread Panel */}

@@ -564,7 +564,7 @@ export function RichTextEditor({
 
       <Slate editor={editor} initialValue={initialValue} onChange={handleChange}>
         {/* Formatting Toolbar */}
-        <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
+        <div className="flex items-center gap-1 p-2 border-b border-gray-200 bg-white">
           <ToolbarButton
             active={isMarkActive(editor, 'bold')}
             onMouseDown={(e) => {
@@ -683,10 +683,10 @@ export function RichTextEditor({
         </div>
 
         {/* Editor */}
-        <div className="relative">
+        <div className="relative bg-white">
           <Editable
             ref={editorRef as any}
-            className="min-h-[100px] max-h-[300px] overflow-y-auto p-3 focus:outline-none"
+            className="min-h-[100px] max-h-[300px] overflow-y-auto p-3 focus:outline-none text-gray-900 placeholder:text-gray-500"
             renderElement={renderElement}
             renderLeaf={renderLeaf}
             placeholder={placeholder}
@@ -724,7 +724,7 @@ export function RichTextEditor({
         </div>
 
         {/* Bottom Toolbar */}
-        <div className="flex items-center justify-between p-2 border-t bg-muted/30">
+        <div className="flex items-center justify-between p-2 border-t border-gray-200 bg-white">
           <div className="flex items-center gap-2">
             {showAttachment && (
               <Button
@@ -754,6 +754,8 @@ export function RichTextEditor({
             size="sm"
             onClick={onSubmit}
             disabled={disabled || !value.trim()}
+            className="bg-[#007a5a] hover:bg-[#006644] text-white font-semibold"
+            data-testid="send-button"
           >
             <Send className="h-4 w-4 mr-1" />
             Send

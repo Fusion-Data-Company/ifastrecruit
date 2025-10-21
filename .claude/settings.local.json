@@ -21,7 +21,8 @@
       "Bash(lsof:*)",
       "Bash(xargs kill -9)",
       "Bash(NODE_ENV=production npm run start:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []
