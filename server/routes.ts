@@ -186,9 +186,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log("[ElevenLabs Automation] Automatic polling is DISABLED - use manual trigger endpoint if needed");
   }
 
-  // Health check
+  // Health check with build info
   app.get("/api/health", async (req, res) => {
-    res.json({ ok: true, timestamp: new Date().toISOString() });
+    const buildInfo: any = {
+      ok: true,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+    };
+
+    // In production, add build verification info
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const distPath = path.resolve(import.meta.dirname, "public");
+        const indexPath = path.resolve(distPath, "index.html");
+
+        if (fs.existsSync(indexPath)) {
+          const indexContent = fs.readFileSync(indexPath, 'utf-8');
+          // Extract asset hashes from index.html to verify build version
+          const jsMatch = indexContent.match(/assets\/index-([a-zA-Z0-9_-]+)\.js/);
+          const cssMatch = indexContent.match(/assets\/index-([a-zA-Z0-9_-]+)\.css/);
+
+          buildInfo.build = {
+            deployed: true,
+            jsHash: jsMatch ? jsMatch[1] : null,
+            cssHash: cssMatch ? cssMatch[1] : null,
+            indexSize: fs.statSync(indexPath).size,
+            lastModified: fs.statSync(indexPath).mtime.toISOString(),
+          };
+        } else {
+          buildInfo.build = {
+            deployed: false,
+            error: 'index.html not found',
+          };
+        }
+      } catch (error: any) {
+        buildInfo.build = {
+          deployed: false,
+          error: error.message,
+        };
+      }
+    }
+
+    res.json(buildInfo);
   });
 
   // ===== REMOVED DEVELOPMENT BYPASS ROUTES =====
@@ -230,6 +271,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Session refresh endpoint
+  app.post('/api/auth/refresh', async (req: any, res) => {
+    try {
+      // Check if user is authenticated via Passport
+      if (!req.isAuthenticated() || !req.user || !req.user.claims) {
+        return res.status(401).json({ error: 'No active session' });
+      }
+
+      // Get user ID from Passport session
+      const userId = req.user.claims.sub;
+
+      // Verify user still exists in database
+      const user = await storage.getUser(userId);
+      if (!user) {
+        req.session.destroy(() => {});
+        return res.status(401).json({ error: 'User not found' });
+      }
+
+      // Refresh session by updating timestamp
+      req.session.touch(); // Updates session expiry
+
+      // Save session explicitly
+      req.session.save((err: any) => {
+        if (err) {
+          console.error('[Session] Error saving refreshed session:', err);
+          return res.status(500).json({ error: 'Session refresh failed' });
+        }
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error('[Session] Refresh error:', error);
+      res.status(500).json({ error: 'Session refresh failed' });
     }
   });
 

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(env)",
+      "Bash(npm run check:*)",
+      "Bash(cat:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run check:server:*)",
+      "Bash(npm run)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

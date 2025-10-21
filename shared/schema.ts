@@ -330,6 +330,19 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
   // Messenger-specific fields
   isAdmin: boolean("is_admin").default(false),
+
+  // AI Agent fields
+  isAIAgent: boolean("is_ai_agent").default(false),
+  aiConfig: jsonb("ai_config").$type<{
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    systemPrompt?: string;
+    isActive?: boolean;
+    autoRespondChannels?: string[];
+    autoRespondDMs?: boolean;
+  }>(),
+
   hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
   hasFloridaLicense: boolean("has_florida_license").default(false),
   isMultiStateLicensed: boolean("is_multi_state_licensed").default(false),

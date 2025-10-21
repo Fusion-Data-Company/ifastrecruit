@@ -1,3 +1,4 @@
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
@@ -113,39 +114,46 @@ interface FeatureGateProps {
   showUpgradePrompt?: boolean;
 }
 
-export function FeatureGate({ 
-  feature, 
-  children, 
-  fallback, 
-  showUpgradePrompt = true 
-}: FeatureGateProps) {
+export function FeatureGate({
+  feature,
+  children,
+  fallback,
+  showUpgradePrompt = true
+}: FeatureGateProps): React.ReactElement | null {
   const { hasFeature, features } = useFeatureGate();
-  
+
   if (hasFeature(feature)) {
-    return <>{children}</>;
+    return children as React.ReactElement;
   }
-  
+
   if (fallback) {
-    return <>{fallback}</>;
+    return fallback as React.ReactElement;
   }
-  
+
   if (showUpgradePrompt) {
     const access = features[feature];
-    return (
-      <div className="text-center p-4 border rounded-lg bg-muted/50">
-        <p className="text-sm text-muted-foreground mb-2">
-          {access?.message || `This feature requires a subscription upgrade`}
-        </p>
-        <a 
-          href="/billing" 
-          className="text-primary hover:underline text-sm font-medium"
-        >
-          View Plans →
-        </a>
-      </div>
+    const upgradeMessage = access?.message || 'This feature requires a subscription upgrade';
+    const linkText = 'View Plans →';
+
+    return React.createElement(
+      'div',
+      { className: 'text-center p-4 border rounded-lg bg-muted/50' },
+      React.createElement(
+        'p',
+        { className: 'text-sm text-muted-foreground mb-2' },
+        upgradeMessage
+      ),
+      React.createElement(
+        'a',
+        {
+          href: '/billing',
+          className: 'text-primary hover:underline text-sm font-medium'
+        },
+        linkText
+      )
     );
   }
-  
+
   return null;
 }
 

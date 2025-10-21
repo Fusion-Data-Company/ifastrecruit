@@ -64,6 +64,7 @@ import { NotificationDropdown } from '@/components/NotificationDropdown';
 import { NotificationBadge } from '@/components/NotificationBadge';
 import { notificationSound } from '@/lib/notificationSound';
 import { desktopNotifications } from '@/lib/desktopNotifications';
+import { ConnectionStatusBanner } from '@/components/ConnectionStatusBanner';
 
 interface Channel {
   id: string;
@@ -519,20 +520,45 @@ export default function MessengerPage() {
     }
   }, [channelMessages, directMessages, viewMode]);
 
-  // WebSocket connection
+  // WebSocket connection state
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const websocketRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messageQueueRef = useRef<any[]>([]);
+
+  const MAX_RECONNECT_ATTEMPTS = 10;
+  const RECONNECT_BASE_DELAY = 1000;
+
+  // WebSocket connection with auto-reconnect
   useEffect(() => {
     if (!user) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const websocket = new WebSocket(`${protocol}//${window.location.host}/ws/messenger`);
+    const connectWebSocket = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const websocket = new WebSocket(`${protocol}//${window.location.host}/ws/messenger`);
 
-    websocket.onopen = () => {
-      console.log('[WS] Connected');
-      websocket.send(JSON.stringify({
-        type: 'authenticate',
-        payload: { userId: user.id }
-      }));
-    };
+      setConnectionStatus('connecting');
+
+      websocket.onopen = () => {
+        console.log('[WS] Connected');
+        setConnectionStatus('connected');
+        setReconnectAttempts(0);
+
+        websocket.send(JSON.stringify({
+          type: 'authenticate',
+          payload: { userId: user.id }
+        }));
+
+        // Send any queued messages
+        if (messageQueueRef.current.length > 0) {
+          console.log(`[WS] Sending ${messageQueueRef.current.length} queued messages`);
+          messageQueueRef.current.forEach(msg => {
+            websocket.send(JSON.stringify(msg));
+          });
+          messageQueueRef.current = [];
+        }
+      };
 
     websocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -765,20 +791,49 @@ export default function MessengerPage() {
       }
     };
 
-    websocket.onerror = (error) => {
-      console.error('[WS] Error:', error);
+      websocket.onerror = (error) => {
+        console.error('[WS] Error:', error);
+        setConnectionStatus('disconnected');
+      };
+
+      websocket.onclose = () => {
+        console.log('[WS] Disconnected');
+        setConnectionStatus('disconnected');
+        websocketRef.current = null;
+
+        // Attempt to reconnect with exponential backoff
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(
+            RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts),
+            30000 // Max 30 seconds
+          );
+
+          console.log(`[WS] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+
+          reconnectTimeoutRef.current = setTimeout(() => {
+            setReconnectAttempts(prev => prev + 1);
+            connectWebSocket();
+          }, delay);
+        } else {
+          console.error('[WS] Max reconnection attempts reached');
+        }
+      };
+
+      websocketRef.current = websocket;
+      setWs(websocket);
     };
 
-    websocket.onclose = () => {
-      console.log('[WS] Disconnected');
-    };
-
-    setWs(websocket);
+    connectWebSocket();
 
     return () => {
-      websocket.close();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (websocketRef.current) {
+        websocketRef.current.close();
+      }
     };
-  }, [user, selectedChannel, selectedDMUser, viewMode, selectedThread]);
+  }, [user, reconnectAttempts]);
 
   // Auto-scroll to bottom for new messages
   useEffect(() => {
@@ -1447,7 +1502,12 @@ export default function MessengerPage() {
   return (
     <div className="flex flex-col h-screen bg-[#0a0f1c] pb-16">
       <CybercoreBackground />
-      
+
+      {/* Connection Status Banner */}
+      <div className="relative z-20 px-4 pt-4">
+        <ConnectionStatusBanner status={connectionStatus} />
+      </div>
+
       {/* Main Container - Added pb-16 for footer spacing */}
       <div className="flex flex-1 relative z-10 overflow-hidden">
         {/* Left Sidebar - Servers & Channels */}
@@ -1977,27 +2037,42 @@ export default function MessengerPage() {
                   
                   return (
                     <div key={message.id} className="group flex gap-3 hover:bg-white/5 px-2 py-2 rounded transition-all">
-                      <Avatar className="h-10 w-10 flex-shrink-0">
-                        {message.sender?.profileImageUrl ? (
-                          <AvatarImage src={message.sender.profileImageUrl} />
+                      <Avatar className={cn(
+                        "h-10 w-10 flex-shrink-0",
+                        message.user?.isAIAgent && "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
+                      )}>
+                        {message.sender?.profileImageUrl || message.user?.profileImageUrl ? (
+                          <AvatarImage src={message.sender?.profileImageUrl || message.user?.profileImageUrl} />
                         ) : (
-                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20">
-                            {getUserInitials(message.sender)}
+                          <AvatarFallback className={cn(
+                            "bg-gradient-to-br from-primary/20 to-accent/20",
+                            message.user?.isAIAgent && "bg-gradient-to-br from-blue-500/30 to-purple-500/30"
+                          )}>
+                            {message.user?.isAIAgent ? '🤖' : getUserInitials(message.sender || message.user)}
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-white font-medium">
-                            {getUserDisplayName(message.sender)}
+                          <span className={cn(
+                            "font-medium",
+                            message.user?.isAIAgent ? "text-blue-400" : "text-white"
+                          )}>
+                            {getUserDisplayName(message.sender || message.user)}
                           </span>
-                          {message.sender?.isAdmin && (
+                          {message.user?.isAIAgent && (
+                            <Badge className="px-1.5 py-0 text-[10px] bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-400 flex items-center gap-1">
+                              <Bot className="h-3 w-3" />
+                              AI Assistant
+                            </Badge>
+                          )}
+                          {message.sender?.isAdmin && !message.user?.isAIAgent && (
                             <Badge className="px-1 py-0 text-[10px] bg-red-500/20 text-red-400">
                               Admin
                             </Badge>
                           )}
-                          {message.isAiGenerated && (
+                          {message.isAiGenerated && !message.user?.isAIAgent && (
                             <Badge className="px-1.5 py-0 text-[10px] bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-400 flex items-center gap-1">
                               <Bot className="h-3 w-3" />
                               AI Mentor

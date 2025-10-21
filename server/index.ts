@@ -1,9 +1,19 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDemoData } from "./seedData";
 
 const app = express();
+
+// Security headers (only in production to avoid conflicts with Vite dev)
+if (app.get("env") === "production") {
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP to avoid conflicts with inline scripts
+    crossOriginEmbedderPolicy: false,
+  }));
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -64,6 +74,34 @@ app.use((req, res, next) => {
     await setupVite(app, server);
   } else {
     serveStatic(app);
+
+    // Log build information in production
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const distPath = path.resolve(import.meta.dirname, "public");
+      const indexPath = path.resolve(distPath, "index.html");
+
+      if (fs.existsSync(indexPath)) {
+        const indexContent = fs.readFileSync(indexPath, 'utf-8');
+        const jsMatch = indexContent.match(/assets\/index-([a-zA-Z0-9_-]+)\.js/);
+        const cssMatch = indexContent.match(/assets\/index-([a-zA-Z0-9_-]+)\.css/);
+        const stats = fs.statSync(indexPath);
+
+        log('='.repeat(60));
+        log('PRODUCTION BUILD INFO');
+        log('='.repeat(60));
+        log(`JavaScript Hash: ${jsMatch ? jsMatch[1] : 'NOT FOUND'}`);
+        log(`CSS Hash: ${cssMatch ? cssMatch[1] : 'NOT FOUND'}`);
+        log(`Build Date: ${stats.mtime.toISOString()}`);
+        log(`Build Size: ${(stats.size / 1024).toFixed(2)} KB`);
+        log('='.repeat(60));
+      } else {
+        log('⚠️  WARNING: Production build files not found!');
+      }
+    } catch (error) {
+      log(`⚠️  WARNING: Could not read build info: ${error}`);
+    }
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

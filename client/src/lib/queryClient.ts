@@ -11,6 +11,7 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  retryCount: number = 0
 ): Promise<Response> {
   try {
     const res = await fetch(url, {
@@ -20,15 +21,39 @@ export async function apiRequest(
       credentials: "include",
     });
 
+    // Handle 401 Unauthorized - try to refresh session
+    if (res.status === 401 && retryCount === 0) {
+      console.log('[API] Session expired, attempting refresh...');
+
+      try {
+        // Try to refresh session
+        const refreshResponse = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        });
+
+        if (refreshResponse.ok) {
+          console.log('[API] Session refreshed, retrying request');
+          // Retry original request with refreshed session
+          return apiRequest(method, url, data, retryCount + 1);
+        } else {
+          // Refresh failed, redirect to login
+          console.error('[API] Session refresh failed, redirecting to login');
+          window.location.href = '/login';
+          throw new Error('Session expired');
+        }
+      } catch (error) {
+        console.error('[API] Session refresh error:', error);
+        window.location.href = '/login';
+        throw error;
+      }
+    }
+
     await throwIfResNotOk(res);
     return res;
   } catch (error) {
-    // Return a mock response for failed requests to prevent unhandled rejections
-    return new Response(JSON.stringify({ error: "Network error" }), {
-      status: 500,
-      statusText: "Internal Error",
-      headers: { "Content-Type": "application/json" }
-    });
+    // Re-throw the error to allow proper error handling
+    throw error;
   }
 }
 
@@ -38,21 +63,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    try {
-      const res = await fetch(queryKey.join("/") as string, {
-        credentials: "include",
-      });
+    const res = await fetch(queryKey.join("/") as string, {
+      credentials: "include",
+    });
 
-      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-        return null;
-      }
-
-      await throwIfResNotOk(res);
-      return await res.json();
-    } catch (error) {
-      // Return empty data to prevent unhandled rejections
+    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
     }
+
+    await throwIfResNotOk(res);
+    return await res.json();
   };
 
 export const queryClient = new QueryClient({

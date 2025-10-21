@@ -1,14 +1,15 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
-import type { 
-  Message, 
-  DirectMessage, 
-  UserChannel, 
-  InsertMessage, 
-  InsertDirectMessage 
+import type {
+  Message,
+  DirectMessage,
+  UserChannel,
+  InsertMessage,
+  InsertDirectMessage
 } from "@shared/schema";
 import { storage } from "../storage";
 import { validateWebSocketRequest } from "../utils/sessionParser";
+import { jasonAgent } from "./jason-messenger-agent";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -252,6 +253,9 @@ export class MessengerWebSocketService {
         });
       }
 
+      // Check if message mentions Jason AI and trigger response
+      await this.handleJasonAIMention(payload.channelId, null, payload.content, ws.userId, sender);
+
       console.log(`[Messenger WS] Message sent to channel ${payload.channelId}`);
     } catch (error) {
       console.error('[Messenger WS] Error sending channel message:', error);
@@ -329,6 +333,9 @@ export class MessengerWebSocketService {
         type: 'notification_sound',
         payload: { soundType: 'dm' }
       });
+
+      // Check if DM is sent to Jason AI and trigger response
+      await this.handleJasonAIMention(null, payload.receiverId, payload.content, ws.userId, sender);
 
       console.log(`[Messenger WS] Direct message sent from ${ws.userId} to ${payload.receiverId}`);
     } catch (error) {
@@ -774,6 +781,191 @@ export class MessengerWebSocketService {
         const messageType = key.startsWith('channel:') ? 'channel' : 
                           key.startsWith('dm:') ? 'dm' : 'thread';
         this.clearUserTyping(userId, key, targetUsers, messageType);
+      }
+    }
+  }
+
+  /**
+   * Handle Jason AI mention detection and response
+   * Called after a message or DM is sent
+   */
+  private async handleJasonAIMention(
+    channelId: string | null,
+    dmRecipientId: string | null,
+    messageContent: string,
+    senderId: string,
+    sender: any
+  ) {
+    try {
+      // Get Jason's user ID from environment
+      const jasonUserId = process.env.JASON_USER_ID;
+      if (!jasonUserId) {
+        console.warn('[Jason AI] JASON_USER_ID not configured');
+        return;
+      }
+
+      // Check if this is a DM to Jason
+      const isDMToJason = dmRecipientId === jasonUserId;
+
+      // Check if message mentions @Jason
+      const mentionsJason = messageContent?.toLowerCase().includes('@jason');
+
+      // If neither DM to Jason nor @mention, don't respond
+      if (!isDMToJason && !mentionsJason) {
+        return;
+      }
+
+      console.log('[Jason AI] Detected mention/DM, generating response...');
+
+      // Get channel info if in a channel
+      let channelInfo;
+      if (channelId) {
+        const channel = await storage.getChannel(channelId);
+        if (channel) {
+          channelInfo = {
+            name: channel.name,
+            tier: channel.tier,
+            description: channel.description,
+          };
+        }
+      }
+
+      // Get sender info
+      const senderUser = sender || await storage.getUser(senderId);
+      const senderInfo = {
+        hasFloridaLicense: senderUser?.hasFloridaLicense || false,
+        isMultiStateLicensed: senderUser?.isMultiStateLicensed || false,
+        licensedStates: senderUser?.licensedStates || [],
+        hasCompletedOnboarding: senderUser?.hasCompletedOnboarding || false,
+      };
+
+      // Show Jason typing
+      if (channelId) {
+        // Broadcast typing to channel members
+        const channelMembers = await storage.getChannelMembers(channelId);
+        for (const member of channelMembers) {
+          this.sendToUser(member.userId, {
+            type: 'typing_start',
+            payload: {
+              userId: jasonUserId,
+              userName: 'Jason',
+              channelId,
+            }
+          });
+        }
+      } else if (dmRecipientId) {
+        // Show typing in DM
+        this.sendToUser(senderId, {
+          type: 'typing_start',
+          payload: {
+            userId: jasonUserId,
+            userName: 'Jason',
+            dmUserId: senderId,
+          }
+        });
+      }
+
+      // Generate AI response
+      const agent = jasonAgent();
+      const response = await agent.respondToMessage({
+        channelId: channelId || undefined,
+        dmUserId: isDMToJason ? senderId : undefined,
+        messageText: messageContent,
+        senderId,
+        senderName: senderUser?.firstName || 'User',
+        senderInfo,
+        isDirectMention: mentionsJason || isDMToJason,
+        channelInfo,
+      });
+
+      // Save Jason's response to database
+      const savedMessage = await agent.saveMessage({
+        channelId: channelId || undefined,
+        dmRecipientId: isDMToJason ? senderId : undefined,
+        content: response.content,
+      });
+
+      // Stop typing indicator
+      if (channelId) {
+        const channelMembers = await storage.getChannelMembers(channelId);
+        for (const member of channelMembers) {
+          this.sendToUser(member.userId, {
+            type: 'typing_stop',
+            payload: {
+              userId: jasonUserId,
+              channelId,
+            }
+          });
+
+          // Send Jason's message to all channel members
+          this.sendToUser(member.userId, {
+            type: 'new_message',
+            payload: {
+              ...savedMessage,
+              user: {
+                id: jasonUserId,
+                firstName: 'Jason',
+                lastName: 'AI Assistant',
+                isAIAgent: true,
+              }
+            }
+          });
+        }
+      } else if (isDMToJason) {
+        // Stop typing in DM
+        this.sendToUser(senderId, {
+          type: 'typing_stop',
+          payload: {
+            userId: jasonUserId,
+            dmUserId: senderId,
+          }
+        });
+
+        // Send Jason's DM response
+        this.sendToUser(senderId, {
+          type: 'new_direct_message',
+          payload: {
+            message: {
+              ...savedMessage,
+              sender: {
+                id: jasonUserId,
+                firstName: 'Jason',
+                lastName: 'AI Assistant',
+                isAIAgent: true,
+              }
+            }
+          }
+        });
+      }
+
+      console.log(`[Jason AI] Response sent (${response.responseTime}ms)`);
+
+    } catch (error) {
+      console.error('[Jason AI] Error generating response:', error);
+
+      // Stop typing indicator on error
+      const jasonUserId = process.env.JASON_USER_ID;
+      if (jasonUserId) {
+        if (channelId) {
+          const channelMembers = await storage.getChannelMembers(channelId);
+          for (const member of channelMembers) {
+            this.sendToUser(member.userId, {
+              type: 'typing_stop',
+              payload: {
+                userId: jasonUserId,
+                channelId,
+              }
+            });
+          }
+        } else if (dmRecipientId) {
+          this.sendToUser(senderId, {
+            type: 'typing_stop',
+            payload: {
+              userId: jasonUserId,
+              dmUserId: senderId,
+            }
+          });
+        }
       }
     }
   }
