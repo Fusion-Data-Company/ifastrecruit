@@ -1,0 +1,41 @@
+TypeError: Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'Node'.
+    at index.ts-aa24d275.js:1:3292Understand this error
+ifast-recruit.replit.app/:1 Refused to load media from 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGCz+7Uhz0HGnvH7OigTwwKXKzn7bFUFAg1kuD1y3ssD0+1+OiEyOVrAsVuTAwZfuPjdF08LHjWbwUC' because it violates the following Content Security Policy directive: "media-src 'self' https:".
+Understand this error
+ifast-recruit.replit.app/:1 Refused to load media from 'data:audio/wav;base64,UklGRs4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoFAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGCz+7Uhz0HGnvH7OigTwwKXKzn7bFUFAg1kuD1y3ssDz0wTx8KEm/k7aNLBQ5e1PnfsS4FPJzh37wwDTN8y+2nTAwUZ9r0sGAYBDyS1+fOejIMULDq8KBQHAQ+' because it violates the following Content Security Policy directive: "media-src 'self' https:".
+Understand this error
+ifast-recruit.replit.app/:1 Refused to load media from 'data:audio/wav;base64,UklGRoYHAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQoHAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGCz+7Uhz0HGnvH7OigTwwKXKzn7bFUFAg1kuD1y3ssD0+1+OiEyOVrAsVuTAwZfuPjdF08LHjWbwUCkujiV1kCD2fb8sF+PQgZe+bwx4M9BR1ywOfWmUcMDGzI5+mjUxAHPJvd7cyBMwghg9vz14w6Bhd90OvpmU8NBF6v5+yuWRcGOJXb8sqALwhAq+vs1qNtw96PXQcKacno45tMDRJf1OvRkEkLGn7J6eCXRwkOZrnoq5hQCg5pudPTrGkcDEat4OuwYBsHMYnR8N2QQAoUXrTp66hVFApGn+DyvmwhBTGCz+7Uhz0HGnvH7OigTwwKXKzn7bFUFAg1kuD1y3ssGzk=' because it violates the following Content Security Policy directive: "media-src 'self' https:".
+Understand this error
+chunk-mgcl-PO3547KZ.js:16 @import rules are not allowed here. See https://github.com/WICG/construct-stylesheets/issues/119#issuecomment-588352418.
+(anonymous) @ chunk-mgcl-PO3547KZ.js:16Understand this warning
+index-C68rFMt8.js:646 🔍 ElevenLabs Widget Debug Info:
+index-C68rFMt8.js:646 - Current domain: ifast-recruit.replit.app
+index-C68rFMt8.js:646 - Full URL: https://ifast-recruit.replit.app/dashboard
+index-C68rFMt8.js:646 - Protocol: https:
+index-C68rFMt8.js:646 - Agent ID: agent_3401k4612x44fqcvzgj0hz2shnhv
+index-C68rFMt8.js:646 - Position: bottom-right
+index-C68rFMt8.js:646 - TestID: main-ui-agent
+index-C68rFMt8.js:646 ✅ ElevenLabs ConvAI script loaded successfully
+vendor-react-C4-vaQKD.js:32 Error: Minified React error #310; visit https://reactjs.org/docs/error-decoder.html?invariant=310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at xe (vendor-react-C4-vaQKD.js:30:17533)
+    at il (vendor-react-C4-vaQKD.js:30:20451)
+    at Object.Su [as useEffect] (vendor-react-C4-vaQKD.js:30:20706)
+    at L.useEffect (vendor-react-C4-vaQKD.js:9:5855)
+    at ps (vendor-query-DgH6TO6h.js:1:34916)
+    at gs (vendor-query-DgH6TO6h.js:1:35533)
+    at Fs (vendor-query-DgH6TO6h.js:1:36297)
+    at Pd (index-C68rFMt8.js:849:6246)
+    at children (index-C68rFMt8.js:1119:23726)
+    at Zi (vendor-react-C4-vaQKD.js:40:3009)
+Po @ vendor-react-C4-vaQKD.js:32Understand this error
+vendor-react-C4-vaQKD.js:30 Uncaught Error: Minified React error #310; visit https://reactjs.org/docs/error-decoder.html?invariant=310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at xe (vendor-react-C4-vaQKD.js:30:17533)
+    at il (vendor-react-C4-vaQKD.js:30:20451)
+    at Object.Su [as useEffect] (vendor-react-C4-vaQKD.js:30:20706)
+    at L.useEffect (vendor-react-C4-vaQKD.js:9:5855)
+    at ps (vendor-query-DgH6TO6h.js:1:34916)
+    at gs (vendor-query-DgH6TO6h.js:1:35533)
+    at Fs (vendor-query-DgH6TO6h.js:1:36297)
+    at Pd (index-C68rFMt8.js:849:6246)
+    at children (index-C68rFMt8.js:1119:23726)
+    at Zi (vendor-react-C4-vaQKD.js:40:3009)

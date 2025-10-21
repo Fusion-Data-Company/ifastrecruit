@@ -1,0 +1,114 @@
+messenger:1 Refused to load media from 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0Y…7Uhz0HGnvH7OigTwwKXKzn7bFUFAg1kuD1y3ssD0+1+OiEyOVrAsVuTAwZfuPjdF08LHjWbwUC' because it violates the following Content Security Policy directive: "media-src 'self' https:".
+
+messenger:1 Refused to load media from 'data:audio/wav;base64,UklGRs4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0Y…8KEm/k7aNLBQ5e1PnfsS4FPJzh37wwDTN8y+2nTAwUZ9r0sGAYBDyS1+fOejIMULDq8KBQHAQ+' because it violates the following Content Security Policy directive: "media-src 'self' https:".
+messenger:1 Refused to load media from 'data:audio/wav;base64,UklGRoYHAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0Y…2QQAoUXrTp66hVFApGn+DyvmwhBTGCz+7Uhz0HGnvH7OigTwwKXKzn7bFUFAg1kuD1y3ssGzk=' because it violates the following Content Security Policy directive: "media-src 'self' https:".
+index-C68rFMt8.js:1 
+ GET https://ifast-recruit.replit.app/api/auth/user 401 (Unauthorized)
+(anonymous)	@	index-C68rFMt8.js:1
+u	@	vendor-query-DgH6TO6h.js:1
+C	@	vendor-query-DgH6TO6h.js:1
+start	@	vendor-query-DgH6TO6h.js:1
+fetch	@	vendor-query-DgH6TO6h.js:1
+Tt	@	vendor-query-DgH6TO6h.js:1
+onSubscribe	@	vendor-query-DgH6TO6h.js:1
+subscribe	@	vendor-query-DgH6TO6h.js:1
+(anonymous)	@	vendor-query-DgH6TO6h.js:1
+ga	@	vendor-react-C4-vaQKD.js:30
+al	@	vendor-react-C4-vaQKD.js:32
+Zn	@	vendor-react-C4-vaQKD.js:32
+Bi	@	vendor-react-C4-vaQKD.js:32
+hn	@	vendor-react-C4-vaQKD.js:30
+Rd	@	vendor-react-C4-vaQKD.js:32
+wn	@	vendor-react-C4-vaQKD.js:32
+Za	@	vendor-react-C4-vaQKD.js:32
+E	@	vendor-react-C4-vaQKD.js:17
+st	@	vendor-react-C4-vaQKD.js:17
+chunk-mgcl-PO3547KZ.js:16 @import rules are not allowed here. See https://github.com/WICG/construct-stylesheets/issues/119#issuecomment-588352418.
+(anonymous)	@	chunk-mgcl-PO3547KZ.js:16
+await in (anonymous)		
+(anonymous)	@	chunk-mgcl-PO3547KZ.js:16
+(anonymous)	@	chunk-mgcl-WQN5JPZJ.js:1
+(anonymous)	@	chunk-mgcl-WQN5JPZJ.js:1
+vl	@	chunk-mgcl-DT437CWL.js:8
+qn	@	chunk-mgcl-DT437CWL.js:8
+ms	@	chunk-mgcl-DT437CWL.js:8
+vn	@	chunk-mgcl-DT437CWL.js:6
+Te	@	chunk-mgcl-DT437CWL.js:8
+ad	@	chunk-mgcl-DT437CWL.js:6
+next	@	chunk-mgcl-X3BOXWJK.js:1
+r.next	@	chunk-mgcl-52COTP23.js:3
+e._next	@	chunk-mgcl-52COTP23.js:3
+e.next	@	chunk-mgcl-52COTP23.js:3
+(anonymous)	@	chunk-mgcl-52COTP23.js:3
+p._next	@	chunk-mgcl-52COTP23.js:3
+e.next	@	chunk-mgcl-52COTP23.js:3
+(anonymous)	@	chunk-mgcl-VJ5HRJLO.js:1
+(anonymous)	@	chunk-mgcl-VJ5HRJLO.js:1
+Promise.then		
+ft	@	chunk-mgcl-VJ5HRJLO.js:1
+(anonymous)	@	chunk-mgcl-VJ5HRJLO.js:1
+r._trySubscribe	@	chunk-mgcl-52COTP23.js:3
+(anonymous)	@	chunk-mgcl-52COTP23.js:3
+K	@	chunk-mgcl-52COTP23.js:3
+r.subscribe	@	chunk-mgcl-52COTP23.js:3
+(anonymous)	@	chunk-mgcl-52COTP23.js:3
+(anonymous)	@	chunk-mgcl-52COTP23.js:3
+(anonymous)	@	chunk-mgcl-52COTP23.js:3
+K	@	chunk-mgcl-52COTP23.js:3
+r.subscribe	@	chunk-mgcl-52COTP23.js:3
+(anonymous)	@	chunk-mgcl-X3BOXWJK.js:1
+vl	@	chunk-mgcl-DT437CWL.js:8
+qn	@	chunk-mgcl-DT437CWL.js:8
+zn	@	chunk-mgcl-DT437CWL.js:8
+Id	@	chunk-mgcl-DT437CWL.js:8
+kl	@	chunk-mgcl-DT437CWL.js:8
+ve.render	@	chunk-mgcl-DT437CWL.js:8
+L3	@	chunk-mgcl-PO3547KZ.js:16
+A3	@	chunk-mgcl-PO3547KZ.js:16
+await in A3		
+(anonymous)	@	chunk-mgcl-PO3547KZ.js:16
+index-C68rFMt8.js:1 
+ GET https://ifast-recruit.replit.app/api/auth/user 401 (Unauthorized)
+(anonymous)	@	index-C68rFMt8.js:1
+u	@	vendor-query-DgH6TO6h.js:1
+C	@	vendor-query-DgH6TO6h.js:1
+start	@	vendor-query-DgH6TO6h.js:1
+fetch	@	vendor-query-DgH6TO6h.js:1
+Tt	@	vendor-query-DgH6TO6h.js:1
+onSubscribe	@	vendor-query-DgH6TO6h.js:1
+subscribe	@	vendor-query-DgH6TO6h.js:1
+(anonymous)	@	vendor-query-DgH6TO6h.js:1
+ga	@	vendor-react-C4-vaQKD.js:30
+al	@	vendor-react-C4-vaQKD.js:32
+Zn	@	vendor-react-C4-vaQKD.js:32
+Rd	@	vendor-react-C4-vaQKD.js:32
+wn	@	vendor-react-C4-vaQKD.js:32
+Bi	@	vendor-react-C4-vaQKD.js:32
+hn	@	vendor-react-C4-vaQKD.js:30
+(anonymous)	@	vendor-react-C4-vaQKD.js:32
+setTimeout		
+n	@	vendor-query-DgH6TO6h.js:1
+o	@	vendor-query-DgH6TO6h.js:1
+batch	@	vendor-query-DgH6TO6h.js:1
+N	@	vendor-query-DgH6TO6h.js:1
+setData	@	vendor-query-DgH6TO6h.js:1
+onSuccess	@	vendor-query-DgH6TO6h.js:1
+m	@	vendor-query-DgH6TO6h.js:1
+Promise.then		
+C	@	vendor-query-DgH6TO6h.js:1
+start	@	vendor-query-DgH6TO6h.js:1
+fetch	@	vendor-query-DgH6TO6h.js:1
+Tt	@	vendor-query-DgH6TO6h.js:1
+onSubscribe	@	vendor-query-DgH6TO6h.js:1
+subscribe	@	vendor-query-DgH6TO6h.js:1
+(anonymous)	@	vendor-query-DgH6TO6h.js:1
+ga	@	vendor-react-C4-vaQKD.js:30
+al	@	vendor-react-C4-vaQKD.js:32
+Zn	@	vendor-react-C4-vaQKD.js:32
+Bi	@	vendor-react-C4-vaQKD.js:32
+hn	@	vendor-react-C4-vaQKD.js:30
+Rd	@	vendor-react-C4-vaQKD.js:32
+wn	@	vendor-react-C4-vaQKD.js:32
+Za	@	vendor-react-C4-vaQKD.js:32
+E	@	vendor-react-C4-vaQKD.js:17
+st	@	vendor-react-C4-vaQKD.js:17
